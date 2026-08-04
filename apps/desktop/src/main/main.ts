@@ -9,6 +9,7 @@ import {
   isApprovedExternalUrl,
   isTrustedApplicationNavigation,
 } from "./security.mjs";
+import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
 
 let mainWindow: BrowserWindow | null = null;
 const securedSessions = new WeakSet<Session>();
@@ -103,6 +104,7 @@ const createMainWindow = async (): Promise<void> => {
 
   configurePermissionPolicy(window.webContents.session);
   configureNavigationPolicy(window, content.trustedUrl);
+  registerRuntimeInfoIpc(window, content.trustedUrl);
 
   window.once("ready-to-show", () => {
     window.show();

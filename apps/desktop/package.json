@@ -11,12 +11,14 @@
     "build": "electron-forge package",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "test:security": "node --test --experimental-strip-types src/main/security.test.mts"
+    "test:security": "node --test --experimental-strip-types src/main/security.test.mts",
+    "test:ipc": "node --test --experimental-strip-types ../../packages/contracts/src/app-runtime.test.mts src/main/runtime-info-handler.test.mts src/preload/api.test.mts"
   },
   "config": {
     "forge": "./forge.config.ts"
   },
   "dependencies": {
+    "@showflow/contracts": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

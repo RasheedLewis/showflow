@@ -25,8 +25,8 @@ that is exact-pinned in the root lockfile.
 - Configure Forge makers for macOS ZIP, Windows Squirrel, Linux DEB, and Linux
   RPM artifacts. Each operating system remains responsible for its own build.
 - Expose root `dev`, `build`, `package`, and `make` commands.
-- Keep the preload entry empty until Subtask 0.6 adds the narrow, versioned
-  `window.showflow` API.
+- Keep the preload entry empty until the narrow, versioned `window.showflow` API
+  is introduced in ADR 0004.
 
 ## Consequences
 

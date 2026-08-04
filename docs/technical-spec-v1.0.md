@@ -212,6 +212,8 @@ Use **Zod** for:
 
 Static TypeScript types are not a substitute for runtime validation.
 
+The initial repository pin is Zod `4.4.3`.
+
 ## 4.8 Renderer State
 
 Use two deliberately separate state mechanisms:
@@ -720,6 +722,8 @@ window.showflow.apiVersion
 
 Changes that break renderer-main compatibility require a version update.
 
+The initial desktop API version is `1.0.0`.
+
 ## 9.5 DTO Rule
 
 Do not send class instances, functions, database rows, Node buffers without a defined contract, or objects with prototypes across IPC.
@@ -737,6 +741,21 @@ Use:
 Represent timestamps as ISO 8601 UTC strings.
 
 Represent IDs as UUID strings.
+
+## 9.6 Initial Runtime Information Proof
+
+The first preload surface is:
+
+```ts
+window.showflow.apiVersion
+window.showflow.app.getRuntimeInfo()
+```
+
+`getRuntimeInfo()` returns an `ApiResult` containing application version, desktop
+API version, platform, and architecture. Its undefined request and structured
+response are validated with shared Zod schemas. The main handler accepts only the
+trusted main frame, and preload parses the result before returning it. No generic
+channel invocation is exposed.
 
 ---
 

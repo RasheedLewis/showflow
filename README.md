@@ -188,6 +188,8 @@ React component
   or SQLite.
 - Persistent mutations pass through application use cases.
 - IPC exposes narrow semantic methods, never a generic arbitrary channel.
+- The versioned preload bridge currently exposes only
+  `window.showflow.app.getRuntimeInfo()` and validates its result at runtime.
 - IDs are stable UUIDs; timestamps are ISO 8601 UTC strings.
 - Episode creation from a Blueprint is transactional.
 - Preview and rehearsal share deterministic, cancellable runtime logic.
