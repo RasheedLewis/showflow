@@ -317,9 +317,12 @@ showflow/
 │   └── test-fixtures/
 │
 ├── docs/
+│   ├── README.md
 │   ├── architecture-prd-v1.3.md
 │   ├── ux-spec-v1.0.md
-│   └── technical-spec-v1.0.md
+│   ├── technical-spec-v1.0.md
+│   ├── design-system-spec-v1.0.md
+│   └── implementation-plan-v1.0.md
 │
 ├── migrations/
 ├── scripts/

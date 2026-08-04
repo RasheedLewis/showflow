@@ -164,7 +164,7 @@ showflow/
 │   ├── execution-contracts/ # Renderer-independent production instructions
 │   ├── ui/                  # Shared Showflow UI and tokens
 │   └── test-fixtures/       # Deterministic fixtures
-├── docs/mvp/                # Product, UX, technical, design, and delivery specs
+├── docs/                    # Product, UX, technical, design, and delivery specs
 ├── migrations/              # Immutable numbered SQL migrations
 └── scripts/                 # Repository automation
 ```
@@ -194,11 +194,16 @@ React component
 
 The specifications are authoritative in the following order when they conflict:
 
-1. [Architecture PRD v1.3](docs/mvp/showflow_architecture_prd_v1.3.md) — domain ownership, terminology, invariants, and MVP scope.
-2. [MVP UX Specification v1.0](docs/mvp/showflow_mvp_ux_spec_v1.0.md) — user-facing workflows, screen behavior, accessibility, and open interactions.
-3. [Technical Specification v1.0](docs/mvp/showflow_technical_spec_v1.0.md) — stack, package boundaries, persistence, security, testing, and distribution.
-4. [Design System Specification v1.0](docs/mvp/showflow_design_system_spec_v1.0.md) — visual foundations, components, tokens, motion, and content voice.
-5. [Detailed Implementation Plan v1.0](docs/mvp/showflow_detailed_implementation_plan_v1.0.md) — dependency-ordered Sprints, test gates, decisions, and completion criteria.
+1. [Architecture PRD v1.3](docs/architecture-prd-v1.3.md) — domain ownership, terminology, invariants, and MVP scope.
+2. [MVP UX Specification v1.0](docs/ux-spec-v1.0.md) — user-facing workflows, screen behavior, accessibility, and open interactions.
+3. [Technical Specification v1.0](docs/technical-spec-v1.0.md) — stack, package boundaries, persistence, security, testing, and distribution.
+4. [Design System Specification v1.0](docs/design-system-spec-v1.0.md) — visual foundations, components, tokens, motion, and content voice.
+
+The [Detailed Implementation Plan v1.0](docs/implementation-plan-v1.0.md)
+defines delivery order, test gates, and decision timing. It must conform to the
+four specifications above and does not override them. See the
+[documentation guide](docs/README.md) for terminology, open-specification, and
+versioning rules.
 
 > [!NOTE]
 > Items marked **OPEN SPECIFICATION** are not permission to invent permanent
@@ -224,11 +229,11 @@ git clone <repository-url>
 cd showflow
 
 # List the specification set
-find docs/mvp -maxdepth 1 -type f -name '*.md' -print
+find docs -maxdepth 1 -type f -name '*.md' -print
 ```
 
 No dependencies need to be installed yet because the application scaffold does
-not exist. Start with the [Architecture PRD](docs/mvp/showflow_architecture_prd_v1.3.md),
+not exist. Start with the [Architecture PRD](docs/architecture-prd-v1.3.md),
 then follow the authority order above.
 
 ### After Sprint 0: develop the desktop app
@@ -293,7 +298,7 @@ next Sprint begins.
 </details>
 
 The full gates, subtasks, tests, and decision timing live in the
-[Detailed Implementation Plan](docs/mvp/showflow_detailed_implementation_plan_v1.0.md).
+[Detailed Implementation Plan](docs/implementation-plan-v1.0.md).
 
 ## Contributing
 
