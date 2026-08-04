@@ -1,0 +1,106 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+.pnp.*
+
+# Build, package, and Electron Forge output
+dist/
+build/
+out/
+.vite/
+.webpack/
+.parcel-cache/
+release/
+artifacts/
+*.app/
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.AppImage
+*.exe
+*.msi
+
+# Test output
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+*.lcov
+
+# Runtime data, local databases, and generated media
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+backups/
+cache/
+logs/
+tmp/
+temp/
+thumbnails/
+previews/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer
+*.crt
+*.mobileprovision
+
+# Logs and diagnostic output
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+electron-debug.log*
+crash-reports/
+
+# TypeScript and tooling caches
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.cache/
+.turbo/
+.nx/
+
+# Editor and IDE settings
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# Operating-system metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+
+# Miscellaneous local files
+*.local
+*.bak
+*.orig
+*.rej
