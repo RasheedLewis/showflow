@@ -7,7 +7,7 @@
 Showflow is a local-first desktop production workspace for creators who design,
 prepare, preview, and rehearse recurring shows.
 
-![Project status](https://img.shields.io/badge/status-documentation--first-D6A84B?style=flat-square)
+![Project status](https://img.shields.io/badge/status-foundation%20in%20progress-D6A84B?style=flat-square)
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
@@ -17,10 +17,10 @@ prepare, preview, and rehearse recurring shows.
 </div>
 
 > [!IMPORTANT]
-> **Showflow is currently in its specification phase.** This repository contains
-> an implementation-ready product definition and delivery plan, but the desktop
-> application has not been scaffolded yet. The first engineering milestone is
-> Sprint 0: a secure Electron foundation.
+> **Showflow is building its engineering foundation.** The authoritative product
+> specifications and delivery plan are in place, and the Electron, Vite, and React
+> desktop shell now runs and packages. Sprint 0 continues with security, typed
+> IPC, package boundaries, quality tooling, and test harnesses.
 
 ## The product
 
@@ -113,7 +113,7 @@ restrained gold accent is reserved for attention, selection, and current state.
 
 ## Architecture
 
-Showflow is planned as a local-first Electron application with a strict boundary
+Showflow is a local-first Electron application with a strict boundary
 between reusable product logic and desktop concerns.
 
 ```mermaid
@@ -134,8 +134,8 @@ flowchart LR
 
 | Area | Decision |
 |---|---|
-| Desktop runtime | Electron with Electron Forge |
-| Build pipeline | Vite entries for main, preload, and renderer |
+| Desktop runtime | Electron 43.3.0 with Electron Forge 7.11.2 |
+| Build pipeline | Vite 8.2.0 with separate main, preload, and renderer entries |
 | UI | React, TypeScript, hash-based React Router |
 | Workspace | pnpm workspaces with one root lockfile |
 | Validation | Zod at IPC, persistence, import, and settings boundaries |
@@ -236,33 +236,32 @@ pnpm --version # 11.4.0
 pnpm install --frozen-lockfile
 ```
 
-The pnpm workspace and internal package shells exist, but the Electron application
-scaffold does not yet. Start with the
-[Architecture PRD](docs/architecture-prd-v1.3.md), then follow the authority
-order above.
+The workspace includes the initial Electron desktop shell. Start it with
+`pnpm dev`; package it locally with `pnpm package`; or create the installer format
+for the current platform with `pnpm make`.
 
-### Planned development commands
+### Development commands
 
 The technical specification requires one obvious root command for each common
-task. These command contracts will become executable as their owning Sprint 0
-subtasks add the desktop application and code-quality tooling.
+task. Desktop build commands are available now; quality and test commands become
+executable as their owning Sprint 0 subtasks add the required tooling.
 
 ```bash
 pnpm dev
 ```
 
-| Command | Intended purpose |
-|---|---|
-| `pnpm dev` | Start the Electron desktop app in development mode |
-| `pnpm build` | Build every workspace package |
-| `pnpm typecheck` | Run strict TypeScript checks |
-| `pnpm lint` | Run the repository lint rules |
-| `pnpm format:check` | Verify formatting without modifying files |
-| `pnpm test` | Run workspace test suites |
-| `pnpm test:unit` | Run focused Vitest unit tests |
-| `pnpm test:e2e` | Run Playwright end-to-end tests |
-| `pnpm package` | Package the desktop app locally |
-| `pnpm make` | Produce platform installer artifacts |
+| Command | Purpose | Status |
+|---|---|---|
+| `pnpm dev` | Start the Electron desktop app in development mode | Available |
+| `pnpm build` | Build every workspace package | Available |
+| `pnpm package` | Package the desktop app locally | Available |
+| `pnpm make` | Produce platform installer artifacts | Available |
+| `pnpm typecheck` | Run strict TypeScript checks | Sprint 0.8 |
+| `pnpm lint` | Run the repository lint rules | Sprint 0.8 |
+| `pnpm format:check` | Verify formatting without modifying files | Sprint 0.8 |
+| `pnpm test` | Run workspace test suites | Sprint 0.9 |
+| `pnpm test:unit` | Run focused Vitest unit tests | Sprint 0.9 |
+| `pnpm test:e2e` | Run Playwright end-to-end tests | Sprint 0.9 |
 
 ## Roadmap
 

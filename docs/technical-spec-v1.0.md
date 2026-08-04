@@ -114,7 +114,7 @@ Future clients should be able to reuse TypeScript domain logic without importing
 Initial repository baseline:
 
 - Use a current stable Electron release.
-- At the time this document was written, Electron 43 is the reference stable line.
+- Electron `43.3.0` is the current exact repository pin.
 - Pin the exact working version in `pnpm-lock.yaml`.
 - Never use Electron nightly, alpha, or beta releases for the main branch.
 - Track Electron's supported release lines and security updates.
@@ -124,6 +124,8 @@ Initial repository baseline:
 **Electron Forge**
 
 Use the official Electron Forge Vite integration.
+
+The initial repository pins Electron Forge `7.11.2` and Vite `8.2.0`.
 
 Reasons:
 

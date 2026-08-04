@@ -1,3 +1,22 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# pnpm 11 reads non-registry project settings from this file. Keep the matching
+# .npmrc entry for Electron Forge compatibility and the Technical Specification.
+nodeLinker: hoisted
+
+# Approved for stable Electron Forge 7.11.2, whose @electron/rebuild dependency
+# pins @electron/node-gyp to an exact Electron-owned Git commit.
+blockExoticSubdeps: false
+
+# Electron's install script downloads the platform binary used by Forge.
+# electron-winstaller selects the bundled 7-Zip executable for the host
+# architecture; it is required by Forge's cross-platform maker dependency.
+allowBuilds:
+  electron: true
+  electron-winstaller: true
+
+# Electron is exact-pinned above the repository's configured release-age gate.
+minimumReleaseAgeExclude:
+  - electron@43.3.0
