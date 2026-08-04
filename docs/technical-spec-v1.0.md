@@ -621,6 +621,18 @@ Every `BrowserWindow` must use:
 - Use Electron fuses during packaging where appropriate.
 - Keep Electron within a supported release line.
 
+Initial secure-shell policy:
+
+- Packaged application content loads from the generated local renderer only.
+- Development content is restricted to credential-free loopback HTTP URLs.
+- New Electron windows are denied; credential-free HTTPS links may open only
+  through the operating-system browser.
+- Renderer and device permissions are denied until an owning feature introduces
+  a deliberate, sender-validated permission flow.
+- Production CSP excludes inline scripts, inline styles, remote connections,
+  frames, forms, objects, and manifests. Development adds only loopback Vite
+  hot-reload, React refresh preamble, and injected-style allowances.
+
 ## 8.2 IPC Security
 
 The renderer must call semantic methods:

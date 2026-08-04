@@ -32,9 +32,8 @@ that is exact-pinned in the root lockfile.
 
 - The renderer starts with React but has no direct Node.js or Electron access.
 - The initial main window explicitly enables context isolation and sandboxing and
-  disables Node integration. Subtask 0.5 still owns restrictive navigation,
-  external-link handling, Content Security Policy, and the complete security
-  acceptance checks.
+  disables Node integration. The complete initial window policy is recorded in
+  ADR 0003.
 - Desktop TypeScript validation skips checking dependency declaration internals
   because Electron Forge `7.11.2` publishes unresolved declaration references;
   strict checking remains enabled for Showflow source.

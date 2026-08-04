@@ -182,6 +182,8 @@ React component
 ```
 
 - The renderer has no direct Node.js access.
+- The main window loads local content only, denies child windows and unexpected
+  navigation, and sends approved HTTPS links to the operating-system browser.
 - Domain and application packages do not import Electron, React, Node file APIs,
   or SQLite.
 - Persistent mutations pass through application use cases.
