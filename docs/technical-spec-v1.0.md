@@ -159,6 +159,8 @@ Use React for the renderer only. Do not render UI from the Electron main process
 - Corepack or the `packageManager` field to pin pnpm
 - No Turborepo, Nx, Rush, or other monorepo orchestrator in the MVP
 
+The initial repository pin is pnpm `11.4.0`.
+
 Electron Forge expects dependencies to be available through a conventional `node_modules` layout. Configure:
 
 ```ini
@@ -2187,6 +2189,8 @@ Exact commands may vary, but the root must offer one obvious path for each commo
 ## 31.1 Node Tooling Version
 
 Use Node 24 LTS for repository tooling to stay close to the Node runtime used by the reference Electron line.
+
+The initial repository pin is Node `24.18.0`.
 
 Pin through:
 

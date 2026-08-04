@@ -217,9 +217,11 @@ A rendered UI alone is not completion.
 
 ## Repository commands
 
-Subtask 0.3 will create and pin the pnpm workspace and root scripts. Until then,
-these are required command contracts, not executable guarantees. After the root
-`package.json` exists, prefer these entry points rather than package-local variants:
+The workspace is pinned to Node 24.18.0 and pnpm 11.4.0. Use the exact versions in
+`.node-version` and the root `package.json`, and install with
+`pnpm install --frozen-lockfile`. The commands below are required root contracts;
+they become executable as their owning Sprint 0 subtasks add the desktop app and
+code-quality tooling. Once defined, prefer them over package-local variants:
 
 | Command | Purpose |
 |---|---|

@@ -147,7 +147,7 @@ flowchart LR
 | Drag and drop | `@dnd-kit`, subject to an early interaction spike |
 | Persistence | SQLite; validate `node:sqlite`, then use the approved fallback if needed |
 | Testing | Vitest, React Testing Library, Playwright, and a small Electron smoke suite |
-| Reference toolchain | Node 24 LTS; macOS on Apple Silicon is the quality-reference platform |
+| Reference toolchain | Node 24.18.0 and pnpm 11.4.0; macOS on Apple Silicon is the quality-reference platform |
 
 ### Required repository shape
 
@@ -223,28 +223,31 @@ versioning rules.
 
 ## Getting started
 
-### Today: explore the specifications
+### Bootstrap the workspace
 
 ```bash
 git clone <repository-url>
 cd showflow
 
-# List the specification set
-find docs -maxdepth 1 -type f -name '*.md' -print
+# Use the versions pinned by .node-version and package.json
+node --version # v24.18.0
+pnpm --version # 11.4.0
+
+pnpm install --frozen-lockfile
 ```
 
-No dependencies need to be installed yet because the application scaffold does
-not exist. Start with the [Architecture PRD](docs/architecture-prd-v1.3.md),
-then follow the authority order above.
+The pnpm workspace and internal package shells exist, but the Electron application
+scaffold does not yet. Start with the
+[Architecture PRD](docs/architecture-prd-v1.3.md), then follow the authority
+order above.
 
-### After Sprint 0: develop the desktop app
+### Planned development commands
 
 The technical specification requires one obvious root command for each common
-task. These are the planned command contracts; they are **not available yet**.
+task. These command contracts will become executable as their owning Sprint 0
+subtasks add the desktop application and code-quality tooling.
 
 ```bash
-corepack enable
-pnpm install --frozen-lockfile
 pnpm dev
 ```
 

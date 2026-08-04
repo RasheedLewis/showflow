@@ -22,6 +22,8 @@ editing code, user-facing behavior, architecture, or visual foundations.
 The implementation plan sequences the work. It does not override the four
 product and engineering specifications.
 
+Accepted implementation choices are recorded in [`decisions/`](decisions/).
+
 ## Authority order
 
 When documents overlap or appear to conflict, resolve them in this order:
