@@ -294,6 +294,7 @@ Use a pnpm workspace with this initial structure:
 
 ```text
 showflow/
+├── AGENTS.md
 ├── apps/
 │   └── desktop/
 │       ├── src/

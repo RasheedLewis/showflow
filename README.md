@@ -153,6 +153,7 @@ flowchart LR
 
 ```text
 showflow/
+├── AGENTS.md                # Repository-wide coding-agent instructions
 ├── apps/
 │   └── desktop/             # Electron main, preload, and React renderer
 ├── packages/
@@ -303,7 +304,8 @@ The full gates, subtasks, tests, and decision timing live in the
 ## Contributing
 
 This project is still establishing its foundation. Before proposing code or a
-specification change:
+specification change, read the repository-wide [agent instructions](AGENTS.md)
+and then:
 
 1. Read the authoritative documents relevant to the change.
 2. Preserve canonical terminology and Show-level ownership rules.
