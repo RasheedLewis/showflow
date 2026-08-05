@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./database": "./src/database/database-service.mts",
+    "./migrations": "./src/migrations/index.mts",
     "./spikes/node-sqlite": "./src/spikes/node-sqlite-spike.mts",
     "./spikes/node-sqlite-report": "./src/spikes/node-sqlite-spike-report.mts",
     "./testing": "./src/testing/create-test-database.mts"

@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerSquirrel } from "@electron-forge/maker-squirrel";
@@ -9,6 +11,7 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: "showflow",
+    extraResource: [path.resolve(import.meta.dirname, "../../migrations")],
   },
   rebuildConfig: {},
   makers: [
