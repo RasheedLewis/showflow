@@ -22,7 +22,10 @@ editing code, user-facing behavior, architecture, or visual foundations.
 The implementation plan sequences the work. It does not override the four
 product and engineering specifications.
 
-Accepted implementation choices are recorded in [`decisions/`](decisions/).
+Accepted implementation choices, product decision requests, and open
+specification issues are indexed in the
+[`decisions/` register](decisions/README.md). Its templates keep proposals,
+temporary defaults, and approved decisions distinct.
 
 ## Authority order
 
@@ -94,6 +97,22 @@ When work reaches an open area:
 > Implementation convenience is not a reason to redefine domain ownership,
 > create Episode-only Segments or Layouts, expose raw Electron APIs, or introduce
 > deferred broadcasting concepts.
+
+### Recording decisions and blockers
+
+Use the record that matches the authority and state of the work:
+
+- Copy the [ADR template](decisions/adr-template.md) for a material technical or
+  architectural choice that stays within the controlling specifications.
+- Copy the [Product Decision Request template](decisions/product-decision-request-template.md)
+  when an accountable product owner must choose product behavior.
+- Copy the [Open Specification Issue template](decisions/open-specification-issue-template.md)
+  when a specification is incomplete, contradictory, or explicitly marked
+  `OPEN SPECIFICATION` / `DECISION REQUIRED`.
+
+The [decision register](decisions/README.md) defines naming, statuses, approval,
+supersession, and follow-up. An open request, recommendation, or issue does not
+authorize implementation of permanent behavior.
 
 ## Updating documents and versions
 

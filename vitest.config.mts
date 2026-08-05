@@ -16,6 +16,7 @@ export default defineConfig({
     environment: "node",
     include: [
       "scripts/ci-workflows.test.mts",
+      "scripts/decision-templates.test.mts",
       "packages/**/*.{test,spec}.{ts,tsx,mts}",
       "apps/desktop/src/{main,preload}/**/*.{test,spec}.{ts,tsx,mts}",
     ],

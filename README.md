@@ -210,7 +210,9 @@ The [Detailed Implementation Plan v1.0](docs/implementation-plan-v1.0.md)
 defines delivery order, test gates, and decision timing. It must conform to the
 four specifications above and does not override them. See the
 [documentation guide](docs/README.md) for terminology, open-specification, and
-versioning rules.
+versioning rules. The [decision register](docs/decisions/README.md) indexes
+accepted ADRs and provides templates for product decision requests and open
+specification issues.
 
 > [!NOTE]
 > Items marked **OPEN SPECIFICATION** are not permission to invent permanent
@@ -225,7 +227,7 @@ versioning rules.
 | Implementing a feature | Architecture section → relevant UX section → Technical section → Design section → current Sprint |
 | Reviewing architecture | Architecture PRD → Technical Specification → implementation plan                                 |
 | Reviewing UI           | UX Specification → Design System → relevant acceptance criteria                                  |
-| Planning delivery      | Implementation Plan → decision register → deferred backlog                                       |
+| Planning delivery      | Implementation Plan → [decision register](docs/decisions/README.md) → deferred backlog           |
 
 ## Getting started
 
