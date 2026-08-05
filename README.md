@@ -147,7 +147,7 @@ flowchart LR
 | Accessible primitives    | Radix UI wrapped in Showflow components                                                   |
 | Styling                  | CSS Modules and centralized CSS custom-property tokens                                    |
 | Drag and drop            | `@dnd-kit`, subject to an early interaction spike                                         |
-| Persistence              | SQLite; validate `node:sqlite`, then use the approved fallback if needed                  |
+| Persistence              | `node:sqlite`, accepted by ADR 0011 and isolated behind persistence interfaces            |
 | Testing                  | Vitest, React Testing Library, Playwright, and a small Electron smoke suite               |
 | Reference toolchain      | Node 24.18.0 and pnpm 11.4.0; macOS on Apple Silicon is the quality-reference platform    |
 

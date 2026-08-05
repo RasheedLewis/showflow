@@ -608,7 +608,7 @@ Packaged spike passes on macOS, Windows, and Linux before the chosen adapter is 
 
 ## Exit Criteria
 
-- ADR-0001 records the approved SQLite adapter.
+- ADR-0011 records the approved SQLite adapter.
 - Migrations, transactions, and backups work.
 - The persistence API is hidden behind repositories.
 - Tests 1.T1–1.T12 pass.
