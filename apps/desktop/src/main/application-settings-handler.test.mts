@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   ApplicationSettingsService,
+  PersistenceFailureError,
   type ApplicationSettings,
   type ApplicationSettingsRepository,
   type UpdateNavigationSettings,
@@ -83,6 +84,66 @@ describe("application settings handlers", () => {
     ).resolves.toMatchObject({
       ok: false,
       error: { code: "IPC_INVALID_REQUEST" },
+    });
+  });
+
+  test("returns renderer-safe persistence failures without SQL or stack details", async () => {
+    const lowLevelFailure = new Error(
+      "SQLITE_ERROR near SELECT * FROM app_settings\n at database-service.mts:99",
+    );
+    const repository = new MemorySettingsRepository();
+    repository.get = async () => {
+      throw new PersistenceFailureError("read", lowLevelFailure);
+    };
+    repository.updateNavigation = async () => {
+      throw new PersistenceFailureError("write", lowLevelFailure);
+    };
+    const service = new ApplicationSettingsService(repository);
+
+    const readResult = await handleGetApplicationSettingsRequest(
+      undefined,
+      true,
+      service,
+    );
+    const writeResult = await handleUpdateNavigationSettingsRequest(
+      { lastRoute: "/studio/new", lastStudioId: null },
+      true,
+      service,
+    );
+
+    expect(readResult).toEqual({
+      ok: false,
+      error: {
+        code: "PERSISTENCE_FAILURE",
+        message:
+          "Showflow could not load application settings. Your saved settings were not changed. Restart Showflow and try again.",
+      },
+    });
+    expect(writeResult).toEqual({
+      ok: false,
+      error: {
+        code: "PERSISTENCE_FAILURE",
+        message:
+          "Showflow could not save navigation settings. Your previous settings are still saved. Try again.",
+      },
+    });
+    expect(JSON.stringify({ readResult, writeResult })).not.toMatch(
+      /SQLITE|SELECT|app_settings|database-service|stack/u,
+    );
+  });
+
+  test("maps unexpected service failures to an internal error", async () => {
+    const repository = new MemorySettingsRepository();
+    repository.get = async () => {
+      throw new Error("Unexpected private implementation detail.");
+    };
+    const service = new ApplicationSettingsService(repository);
+
+    await expect(
+      handleGetApplicationSettingsRequest(undefined, true, service),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "INTERNAL_ERROR" },
     });
   });
 });

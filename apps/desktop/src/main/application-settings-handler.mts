@@ -1,19 +1,26 @@
-import type { ApplicationSettingsService } from "@showflow/application";
+import {
+  ApplicationError,
+  type ApplicationSettingsService,
+} from "@showflow/application";
 import {
   ApplicationSettingsResultSchema,
   GetApplicationSettingsRequestSchema,
   UpdateNavigationSettingsRequestSchema,
+  type ApiErrorCode,
   type ApplicationSettingsResult,
 } from "@showflow/contracts";
 
 const createErrorResult = (
-  code: string,
+  code: ApiErrorCode,
   message: string,
 ): ApplicationSettingsResult =>
   ApplicationSettingsResultSchema.parse({
     ok: false,
     error: { code, message },
   });
+
+const getApplicationErrorCode = (error: unknown): ApiErrorCode =>
+  error instanceof ApplicationError ? error.code : "INTERNAL_ERROR";
 
 const createSuccessResult = (value: unknown): ApplicationSettingsResult => {
   const result = ApplicationSettingsResultSchema.safeParse({
@@ -50,10 +57,10 @@ export const handleGetApplicationSettingsRequest = async (
 
   try {
     return createSuccessResult(await service.get());
-  } catch {
+  } catch (error) {
     return createErrorResult(
-      "SETTINGS_READ_FAILED",
-      "Showflow could not load application settings.",
+      getApplicationErrorCode(error),
+      "Showflow could not load application settings. Your saved settings were not changed. Restart Showflow and try again.",
     );
   }
 };
@@ -82,10 +89,10 @@ export const handleUpdateNavigationSettingsRequest = async (
     return createSuccessResult(
       await service.updateNavigation(validRequest.data),
     );
-  } catch {
+  } catch (error) {
     return createErrorResult(
-      "SETTINGS_WRITE_FAILED",
-      "Showflow could not save navigation settings.",
+      getApplicationErrorCode(error),
+      "Showflow could not save navigation settings. Your previous settings are still saved. Try again.",
     );
   }
 };

@@ -3,6 +3,7 @@ import {
   GetRuntimeInfoRequestSchema,
   GetRuntimeInfoResultSchema,
   RuntimeInfoSchema,
+  type ApiErrorCode,
   type GetRuntimeInfoResult,
 } from "@showflow/contracts";
 
@@ -13,7 +14,7 @@ export interface RuntimeInfoSource {
 }
 
 const createErrorResult = (
-  code: string,
+  code: ApiErrorCode,
   message: string,
 ): GetRuntimeInfoResult =>
   GetRuntimeInfoResultSchema.parse({

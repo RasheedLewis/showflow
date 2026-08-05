@@ -4,6 +4,7 @@ import {
   ApplicationSettingsResultSchema,
   UpdateNavigationSettingsRequestSchema,
 } from "./application-settings.ts";
+import { ApiErrorSchema } from "./api-result.ts";
 
 describe("application settings contracts", () => {
   test("accepts serializable settings and navigation updates", () => {
@@ -42,6 +43,21 @@ describe("application settings contracts", () => {
             width: 0,
           },
         },
+      }).success,
+    ).toBe(false);
+  });
+
+  test("accepts stable error categories and rejects adapter-specific codes", () => {
+    expect(
+      ApiErrorSchema.safeParse({
+        code: "PERSISTENCE_FAILURE",
+        message: "Showflow could not load application settings.",
+      }).success,
+    ).toBe(true);
+    expect(
+      ApiErrorSchema.safeParse({
+        code: "SQLITE_CONSTRAINT",
+        message: "SQLITE_CONSTRAINT: app_settings failed",
       }).success,
     ).toBe(false);
   });

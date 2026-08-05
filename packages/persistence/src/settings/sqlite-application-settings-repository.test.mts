@@ -3,6 +3,9 @@ import os from "node:os";
 import path from "node:path";
 
 import { describe, expect, test } from "vitest";
+import { z } from "zod";
+
+import { PersistenceFailureError } from "@showflow/application";
 
 import { initializePersistence } from "../migrations/initialize-persistence.mjs";
 import type { MigrationLogger } from "../migrations/migration-model.mjs";
@@ -96,8 +99,98 @@ describe("SqliteApplicationSettingsRepository", () => {
         );
         const failure = await repository.get().catch((error: unknown) => error);
 
-        expect(failure).toBeInstanceOf(StoredApplicationSettingsError);
-        expect(failure).toMatchObject({ code: "STORED_SETTINGS_INVALID" });
+        expect(failure).toBeInstanceOf(PersistenceFailureError);
+        expect(failure).toMatchObject({
+          code: "PERSISTENCE_FAILURE",
+          operation: "read",
+        });
+        if (!(failure instanceof PersistenceFailureError)) {
+          throw new Error("Expected a mapped persistence failure.");
+        }
+        expect(failure.cause).toBeInstanceOf(StoredApplicationSettingsError);
+      } finally {
+        persistence.database.close();
+      }
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test("maps low-level read and write failures without copying database details", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-settings-error-mapping-test-"),
+    );
+
+    try {
+      const persistence = await openTestPersistence(temporaryDirectory);
+      try {
+        const repository = new SqliteApplicationSettingsRepository(
+          persistence.database,
+        );
+        persistence.database.executeScript("DROP TABLE app_settings");
+
+        const readFailure = await repository
+          .get()
+          .catch((error: unknown) => error);
+        const writeFailure = await repository
+          .updateNavigation({ lastRoute: "/studio/new", lastStudioId: null })
+          .catch((error: unknown) => error);
+
+        expect(readFailure).toMatchObject({
+          code: "PERSISTENCE_FAILURE",
+          operation: "read",
+        });
+        expect(writeFailure).toMatchObject({
+          code: "PERSISTENCE_FAILURE",
+          operation: "write",
+        });
+        if (
+          !(readFailure instanceof PersistenceFailureError) ||
+          !(writeFailure instanceof PersistenceFailureError)
+        ) {
+          throw new Error("Expected mapped persistence failures.");
+        }
+        expect(readFailure.message).not.toMatch(/app_settings|SELECT|SQLITE/u);
+        expect(writeFailure.message).not.toMatch(/app_settings|UPDATE|SQLITE/u);
+      } finally {
+        persistence.database.close();
+      }
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test("rolls back a settings write when the saved result cannot be mapped", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-settings-rollback-test-"),
+    );
+
+    try {
+      const persistence = await openTestPersistence(temporaryDirectory);
+      try {
+        persistence.database.run(
+          "UPDATE app_settings SET window_preferences_json = ? WHERE id = 1",
+          ['{"width":"wide","height":800,"isMaximized":false}'],
+        );
+        const repository = new SqliteApplicationSettingsRepository(
+          persistence.database,
+        );
+
+        await expect(
+          repository.updateNavigation({
+            lastRoute: "/studio/new",
+            lastStudioId: null,
+          }),
+        ).rejects.toMatchObject({
+          code: "PERSISTENCE_FAILURE",
+          operation: "write",
+        });
+        expect(
+          persistence.database.queryRequired(
+            "SELECT last_route AS lastRoute FROM app_settings WHERE id = 1",
+            z.object({ lastRoute: z.string() }).strict(),
+          ),
+        ).toEqual({ lastRoute: "/" });
       } finally {
         persistence.database.close();
       }

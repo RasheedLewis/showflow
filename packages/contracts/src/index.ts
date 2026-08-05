@@ -7,7 +7,12 @@ export {
   type GetRuntimeInfoResult,
   type RuntimeInfo,
 } from "./app-runtime.ts";
-export { ApiErrorSchema } from "./api-result.ts";
+export {
+  API_ERROR_CODES,
+  ApiErrorCodeSchema,
+  ApiErrorSchema,
+  type ApiErrorCode,
+} from "./api-result.ts";
 export {
   ApplicationRouteSchema,
   ApplicationSettingsResultSchema,
