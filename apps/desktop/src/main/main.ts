@@ -9,6 +9,7 @@ import {
   isApprovedExternalUrl,
   isTrustedApplicationNavigation,
 } from "./security.mjs";
+import { runRequestedNodeSqliteSpike } from "./node-sqlite-spike-entry.mjs";
 import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
 
 let mainWindow: BrowserWindow | null = null;
@@ -122,6 +123,11 @@ const createMainWindow = async (): Promise<void> => {
 app
   .whenReady()
   .then(async () => {
+    if (await runRequestedNodeSqliteSpike()) {
+      app.quit();
+      return;
+    }
+
     await createMainWindow();
 
     app.on("activate", () => {
