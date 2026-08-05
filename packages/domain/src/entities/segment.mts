@@ -50,7 +50,6 @@ export interface ActiveSegmentConfiguration {
   readonly hostCueIds: readonly HostCueId[];
 }
 
-/** The runtime enforcement for this fixed shape is added by Sprint 2.3. */
 export interface SegmentLifecycle extends EntityMetadata {
   readonly showSegmentId: ShowSegmentId;
   readonly prepare: readonly LifecycleAction[];
