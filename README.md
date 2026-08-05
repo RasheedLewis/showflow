@@ -50,33 +50,33 @@ Host the Show
 
 ### Core concepts
 
-| Concept | Responsibility |
-|---|---|
-| **Studio** | Top-level workspace for a creator, brand, or organization |
-| **Show** | Recurring production that owns reusable assets and Episodes |
-| **Show Blueprint** | Default ordered Storyboard copied into new Episodes |
-| **Show Segment** | Reusable definition for one meaningful part of a Show |
-| **Episode** | One specific production instance of a Show |
+| Concept             | Responsibility                                                     |
+| ------------------- | ------------------------------------------------------------------ |
+| **Studio**          | Top-level workspace for a creator, brand, or organization          |
+| **Show**            | Recurring production that owns reusable assets and Episodes        |
+| **Show Blueprint**  | Default ordered Storyboard copied into new Episodes                |
+| **Show Segment**    | Reusable definition for one meaningful part of a Show              |
+| **Episode**         | One specific production instance of a Show                         |
 | **Episode Segment** | Episode-specific content and approved overrides for a Show Segment |
-| **Layout** | Reusable, constrained screen composition |
-| **Slot** | Named position or region within a Layout |
-| **Component** | Reusable visual, media, or input element |
-| **Resource** | Image, video, audio, camera, text, font, or structured data |
-| **Host Cue** | Optional manual action while a Segment is active |
-| **Lifecycle** | Fixed `Prepare → Enter → Active → Exit → Cleanup` flow |
+| **Layout**          | Reusable, constrained screen composition                           |
+| **Slot**            | Named position or region within a Layout                           |
+| **Component**       | Reusable visual, media, or input element                           |
+| **Resource**        | Image, video, audio, camera, text, font, or structured data        |
+| **Host Cue**        | Optional manual action while a Segment is active                   |
+| **Lifecycle**       | Fixed `Prepare → Enter → Active → Exit → Cleanup` flow             |
 
 > The canonical product term is **Segment**. “Moment” is not a v1 domain term,
 > and “scene” or “source” should not appear in the primary user experience.
 
 ### MVP boundaries
 
-| Included in the Producing MVP | Deliberately deferred |
-|---|---|
-| Studios, Shows, Blueprints, and Episodes | Live streaming and recording |
-| Reusable Segments, Layouts, Components, and Resources | OBS or Restream integration |
-| Episode Storyboard editing | Cloud sync and collaboration |
-| Fixed Segment lifecycle and Layout activation | Remote guests and mobile apps |
-| Component enter/exit presets and Host Cues | Keyframes and multitrack timelines |
+| Included in the Producing MVP                           | Deliberately deferred                            |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| Studios, Shows, Blueprints, and Episodes                | Live streaming and recording                     |
+| Reusable Segments, Layouts, Components, and Resources   | OBS or Restream integration                      |
+| Episode Storyboard editing                              | Cloud sync and collaboration                     |
+| Fixed Segment lifecycle and Layout activation           | Remote guests and mobile apps                    |
+| Component enter/exit presets and Host Cues              | Keyframes and multitrack timelines               |
 | Preview, validation, autosave, undo/redo, and rehearsal | General vector design or post-production editing |
 
 <details>
@@ -132,22 +132,23 @@ flowchart LR
 
 ### Approved technical baseline
 
-| Area | Decision |
-|---|---|
-| Desktop runtime | Electron 43.3.0 with Electron Forge 7.11.2 |
-| Build pipeline | Vite 8.2.0 with separate main, preload, and renderer entries |
-| UI | React, TypeScript, hash-based React Router |
-| Workspace | pnpm workspaces with one root lockfile |
-| Validation | Zod at IPC, persistence, import, and settings boundaries |
-| Persisted renderer state | TanStack Query |
-| Transient editor state | Zustand |
-| Forms | React Hook Form where multi-field validation warrants it |
-| Accessible primitives | Radix UI wrapped in Showflow components |
-| Styling | CSS Modules and centralized CSS custom-property tokens |
-| Drag and drop | `@dnd-kit`, subject to an early interaction spike |
-| Persistence | SQLite; validate `node:sqlite`, then use the approved fallback if needed |
-| Testing | Vitest, React Testing Library, Playwright, and a small Electron smoke suite |
-| Reference toolchain | Node 24.18.0 and pnpm 11.4.0; macOS on Apple Silicon is the quality-reference platform |
+| Area                     | Decision                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| Desktop runtime          | Electron 43.3.0 with Electron Forge 7.11.2                                                |
+| Build pipeline           | Vite 8.2.0 with separate main, preload, and renderer entries                              |
+| UI                       | React, TypeScript, hash-based React Router                                                |
+| Workspace                | pnpm workspaces with one root lockfile                                                    |
+| Code quality             | Strict TypeScript, ESLint flat config, typescript-eslint, React Hooks rules, and Prettier |
+| Validation               | Zod at IPC, persistence, import, and settings boundaries                                  |
+| Persisted renderer state | TanStack Query                                                                            |
+| Transient editor state   | Zustand                                                                                   |
+| Forms                    | React Hook Form where multi-field validation warrants it                                  |
+| Accessible primitives    | Radix UI wrapped in Showflow components                                                   |
+| Styling                  | CSS Modules and centralized CSS custom-property tokens                                    |
+| Drag and drop            | `@dnd-kit`, subject to an early interaction spike                                         |
+| Persistence              | SQLite; validate `node:sqlite`, then use the approved fallback if needed                  |
+| Testing                  | Vitest, React Testing Library, Playwright, and a small Electron smoke suite               |
+| Reference toolchain      | Node 24.18.0 and pnpm 11.4.0; macOS on Apple Silicon is the quality-reference platform    |
 
 ### Required repository shape
 
@@ -217,13 +218,13 @@ versioning rules.
 
 ### Suggested reading paths
 
-| If you are… | Read in this order |
-|---|---|
-| New to the product | This README → Architecture PRD → UX Specification |
+| If you are…            | Read in this order                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| New to the product     | This README → Architecture PRD → UX Specification                                                |
 | Implementing a feature | Architecture section → relevant UX section → Technical section → Design section → current Sprint |
-| Reviewing architecture | Architecture PRD → Technical Specification → implementation plan |
-| Reviewing UI | UX Specification → Design System → relevant acceptance criteria |
-| Planning delivery | Implementation Plan → decision register → deferred backlog |
+| Reviewing architecture | Architecture PRD → Technical Specification → implementation plan                                 |
+| Reviewing UI           | UX Specification → Design System → relevant acceptance criteria                                  |
+| Planning delivery      | Implementation Plan → decision register → deferred backlog                                       |
 
 ## Getting started
 
@@ -247,26 +248,27 @@ for the current platform with `pnpm make`.
 ### Development commands
 
 The technical specification requires one obvious root command for each common
-task. Desktop build commands are available now; quality and test commands become
-executable as their owning Sprint 0 subtasks add the required tooling.
+task. Desktop build and code-quality commands are available now; test harness
+commands become executable in their owning Sprint 0 subtask.
 
 ```bash
 pnpm dev
 ```
 
-| Command | Purpose | Status |
-|---|---|---|
-| `pnpm dev` | Start the Electron desktop app in development mode | Available |
-| `pnpm build` | Build every workspace package | Available |
-| `pnpm package` | Package the desktop app locally | Available |
-| `pnpm make` | Produce platform installer artifacts | Available |
-| `pnpm test:boundaries` | Verify package and Electron process import boundaries | Available |
-| `pnpm typecheck` | Run strict TypeScript checks | Sprint 0.8 |
-| `pnpm lint` | Run the repository lint rules | Sprint 0.8 |
-| `pnpm format:check` | Verify formatting without modifying files | Sprint 0.8 |
-| `pnpm test` | Run workspace test suites | Sprint 0.9 |
-| `pnpm test:unit` | Run focused Vitest unit tests | Sprint 0.9 |
-| `pnpm test:e2e` | Run Playwright end-to-end tests | Sprint 0.9 |
+| Command                | Purpose                                               | Status     |
+| ---------------------- | ----------------------------------------------------- | ---------- |
+| `pnpm dev`             | Start the Electron desktop app in development mode    | Available  |
+| `pnpm build`           | Build every workspace package                         | Available  |
+| `pnpm package`         | Package the desktop app locally                       | Available  |
+| `pnpm make`            | Produce platform installer artifacts                  | Available  |
+| `pnpm test:boundaries` | Verify package and Electron process import boundaries | Available  |
+| `pnpm typecheck`       | Run strict TypeScript checks in every workspace       | Available  |
+| `pnpm lint`            | Run the repository lint rules                         | Available  |
+| `pnpm format`          | Format supported repository files                     | Available  |
+| `pnpm format:check`    | Verify formatting without modifying files             | Available  |
+| `pnpm test`            | Run workspace test suites                             | Sprint 0.9 |
+| `pnpm test:unit`       | Run focused Vitest unit tests                         | Sprint 0.9 |
+| `pnpm test:e2e`        | Run Playwright end-to-end tests                       | Sprint 0.9 |
 
 ## Roadmap
 
@@ -274,13 +276,13 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
-| Phase | Sprints | Outcome |
-|---|---:|---|
-| Foundation | 0–3 | Secure Electron shell, persistence proof, domain kernel, and design system |
-| Design a Show | 4–5 | Studios, Shows, Segment Catalog, and Show Blueprint |
-| Produce an Episode | 6–9 | Episode Storyboard, Segment editors, content, and Resources |
-| Compose and run | 10–14 | Layouts, Components, bindings, lifecycle, Host Cues, and rehearsal |
-| Release candidate | 15–16 | Accessibility, performance, security hardening, and cross-platform packages |
+| Phase              | Sprints | Outcome                                                                     |
+| ------------------ | ------: | --------------------------------------------------------------------------- |
+| Foundation         |     0–3 | Secure Electron shell, persistence proof, domain kernel, and design system  |
+| Design a Show      |     4–5 | Studios, Shows, Segment Catalog, and Show Blueprint                         |
+| Produce an Episode |     6–9 | Episode Storyboard, Segment editors, content, and Resources                 |
+| Compose and run    |   10–14 | Layouts, Components, bindings, lifecycle, Host Cues, and rehearsal          |
+| Release candidate  |   15–16 | Accessibility, performance, security hardening, and cross-platform packages |
 
 <details>
 <summary><strong>View the complete Sprint sequence</strong></summary>

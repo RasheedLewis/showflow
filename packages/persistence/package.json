@@ -6,5 +6,8 @@
   "description": "Showflow persistence adapters, migrations, and row mapping.",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

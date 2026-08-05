@@ -61,9 +61,7 @@ export const GetRuntimeInfoResultSchema = z.discriminatedUnion("ok", [
 ]);
 
 export type RuntimeInfo = z.infer<typeof RuntimeInfoSchema>;
-export type GetRuntimeInfoResult = z.infer<
-  typeof GetRuntimeInfoResultSchema
->;
+export type GetRuntimeInfoResult = z.infer<typeof GetRuntimeInfoResultSchema>;
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;

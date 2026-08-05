@@ -9,6 +9,7 @@
   "scripts": {
     "start": "electron-forge start",
     "build": "electron-forge package",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "test:security": "node --test --experimental-strip-types src/main/security.test.mts",

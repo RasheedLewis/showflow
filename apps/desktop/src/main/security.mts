@@ -81,7 +81,9 @@ export const isTrustedApplicationNavigation = (
     }
 
     if (trusted.protocol === "file:") {
-      return target.protocol === "file:" && target.pathname === trusted.pathname;
+      return (
+        target.protocol === "file:" && target.pathname === trusted.pathname
+      );
     }
 
     return target.origin === trusted.origin;

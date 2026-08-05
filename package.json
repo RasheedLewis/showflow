@@ -13,8 +13,21 @@
   "scripts": {
     "dev": "pnpm --filter @showflow/desktop start",
     "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test:boundaries": "node --test --experimental-strip-types scripts/import-boundaries.test.mts",
     "package": "pnpm --filter @showflow/desktop package",
     "make": "pnpm --filter @showflow/desktop make"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.8.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.9.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0"
   }
 }

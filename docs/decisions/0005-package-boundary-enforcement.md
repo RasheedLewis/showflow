@@ -20,19 +20,19 @@ ESLint in Subtask 0.8 or Vitest in Subtask 0.9.
 - Require workspace imports to use declared dependencies and public package roots.
 - Enforce these allowed inward edges:
 
-  | Consumer | Allowed Showflow dependencies |
-  |---|---|
-  | `domain` | None |
-  | `application` | `domain` |
-  | `contracts` | `domain` |
-  | `persistence` | `application`, `domain` |
-  | `resources` | `application`, `domain` |
-  | `execution-contracts` | `domain` |
-  | `ui` | `contracts`, `domain` |
-  | `test-fixtures` | `application`, `contracts`, `domain`, `execution-contracts` |
-  | Desktop main | All non-UI production packages |
-  | Desktop preload | `contracts` only |
-  | Renderer | `contracts`, `domain`, `execution-contracts`, `ui` |
+  | Consumer              | Allowed Showflow dependencies                               |
+  | --------------------- | ----------------------------------------------------------- |
+  | `domain`              | None                                                        |
+  | `application`         | `domain`                                                    |
+  | `contracts`           | `domain`                                                    |
+  | `persistence`         | `application`, `domain`                                     |
+  | `resources`           | `application`, `domain`                                     |
+  | `execution-contracts` | `domain`                                                    |
+  | `ui`                  | `contracts`, `domain`                                       |
+  | `test-fixtures`       | `application`, `contracts`, `domain`, `execution-contracts` |
+  | Desktop main          | All non-UI production packages                              |
+  | Desktop preload       | `contracts` only                                            |
+  | Renderer              | `contracts`, `domain`, `execution-contracts`, `ui`          |
 
 - Keep domain, application, contracts, resources, execution contracts, and test
   fixtures independent of Electron, React, Node APIs, and SQLite adapters. Allow

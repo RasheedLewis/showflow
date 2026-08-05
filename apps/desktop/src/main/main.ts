@@ -125,7 +125,7 @@ app
     await createMainWindow();
 
     app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
+      if (mainWindow === null) {
         void createMainWindow();
       }
     });

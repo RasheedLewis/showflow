@@ -1,0 +1,17 @@
+# Dependencies and generated output
+node_modules/
+**/out/
+**/.vite/
+**/coverage/
+**/dist/
+**/build/
+**/release/
+**/artifacts/
+**/playwright-report/
+**/test-results/
+
+# Machine-managed dependency resolution
+pnpm-lock.yaml
+
+# Approved, versioned product specifications retain their reviewed formatting.
+docs/*.md

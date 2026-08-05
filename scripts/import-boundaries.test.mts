@@ -27,7 +27,8 @@ const PACKAGE_NAMES = [
 ] as const;
 
 type PackageName = (typeof PACKAGE_NAMES)[number];
-type SourceLayer = PackageName | "desktop-main" | "desktop-preload" | "renderer";
+type SourceLayer =
+  PackageName | "desktop-main" | "desktop-preload" | "renderer";
 
 interface PackageManifest {
   readonly name: string;
@@ -138,7 +139,8 @@ const getImportSpecifiers = (filePath: string): string[] => {
       node.arguments[0] &&
       ts.isStringLiteral(node.arguments[0]) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === "require"))
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "require"))
     ) {
       specifiers.push(node.arguments[0].text);
     }
@@ -206,11 +208,17 @@ const getForbiddenExternalReason = (
     }
   }
 
-  if (layer === "persistence" && (specifier === "electron" || isReactImport(specifier))) {
+  if (
+    layer === "persistence" &&
+    (specifier === "electron" || isReactImport(specifier))
+  ) {
     return "persistence must remain independent of Electron and React";
   }
 
-  if (layer === "ui" && (specifier === "electron" || NODE_BUILTINS.has(specifier))) {
+  if (
+    layer === "ui" &&
+    (specifier === "electron" || NODE_BUILTINS.has(specifier))
+  ) {
     return "shared UI must remain independent of Electron and Node APIs";
   }
 
@@ -258,7 +266,9 @@ test("every workspace package exposes an explicit source entry point", () => {
       violations.push(`${expectedName} must export ${expectedExport}`);
     }
 
-    if (!fs.existsSync(path.join(PACKAGES_ROOT, packageName, "src", "index.ts"))) {
+    if (
+      !fs.existsSync(path.join(PACKAGES_ROOT, packageName, "src", "index.ts"))
+    ) {
       violations.push(`${expectedName} is missing src/index.ts`);
     }
   }
@@ -297,7 +307,9 @@ test("source imports respect package and Electron process boundaries", () => {
       const sourceText = fs.readFileSync(filePath, "utf8");
 
       if (layer === "renderer" && /\bipcRenderer\b/u.test(sourceText)) {
-        violations.push(`${relativeFile}: renderer must not reference ipcRenderer`);
+        violations.push(
+          `${relativeFile}: renderer must not reference ipcRenderer`,
+        );
       }
 
       for (const specifier of getImportSpecifiers(filePath)) {
@@ -342,7 +354,9 @@ test("source imports respect package and Electron process boundaries", () => {
         }
 
         if (specifier.startsWith("@showflow/")) {
-          violations.push(`${relativeFile}: ${specifier} is not a known package`);
+          violations.push(
+            `${relativeFile}: ${specifier} is not a known package`,
+          );
           continue;
         }
 
@@ -365,7 +379,9 @@ test("workspace package dependencies are acyclic and follow the inward graph", (
     const manifest = readManifest(packageName);
     const internalDependencies = Object.keys(manifest.dependencies ?? {})
       .map(getShowflowPackageName)
-      .filter((dependency): dependency is PackageName => dependency !== undefined);
+      .filter(
+        (dependency): dependency is PackageName => dependency !== undefined,
+      );
 
     graph.set(packageName, internalDependencies);
 
