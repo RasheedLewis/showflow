@@ -80,6 +80,11 @@ const getActionStep = (
   return step;
 };
 
+const getActionSteps = (
+  steps: UnknownRecord[],
+  action: string,
+): UnknownRecord[] => steps.filter((candidate) => candidate["uses"] === action);
+
 const expectReadOnlyWorkflow = (workflow: UnknownRecord): void => {
   expect(requireRecord(workflow["permissions"], "permissions")).toEqual({
     contents: "read",
@@ -166,25 +171,56 @@ describe("GitHub Actions workflows", () => {
     expect(getStringValues(steps, "run")).toEqual([
       "pnpm install --frozen-lockfile",
       "pnpm package",
+      "pnpm test:spike:node-sqlite",
+      "xvfb-run -a pnpm test:spike:node-sqlite",
     ]);
     expectPinnedActions(steps, [
       PINNED_CHECKOUT,
       PINNED_PNPM_SETUP,
       PINNED_UPLOAD_ARTIFACT,
+      PINNED_UPLOAD_ARTIFACT,
     ]);
     expectPinnedToolchain(steps);
+    const spikeSteps = steps.filter((step) =>
+      [
+        "Run packaged node:sqlite spike",
+        "Run packaged node:sqlite spike on Linux",
+      ].includes(String(step["name"])),
+    );
+    expect(spikeSteps).toEqual([
+      expect.objectContaining({
+        if: "runner.os != 'Linux'",
+        env: {
+          SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: "test-results/persistence-spike",
+        },
+      }),
+      expect.objectContaining({
+        if: "runner.os == 'Linux'",
+        env: {
+          SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: "test-results/persistence-spike",
+        },
+      }),
+    ]);
+    const uploadSteps = getActionSteps(steps, PINNED_UPLOAD_ARTIFACT);
+    expect(uploadSteps).toHaveLength(2);
     expect(
-      requireRecord(
-        getActionStep(steps, PINNED_UPLOAD_ARTIFACT)["with"],
-        "artifact inputs",
-      ),
-    ).toEqual({
-      name: "${{ matrix.artifact }}",
-      path: "apps/desktop/out/**",
-      "if-no-files-found": "error",
-      "retention-days": 7,
-      "compression-level": 0,
-    });
+      uploadSteps.map((step) => requireRecord(step["with"], "artifact inputs")),
+    ).toEqual([
+      {
+        name: "${{ matrix.artifact }}-node-sqlite-spike",
+        path: "test-results/persistence-spike/**",
+        "if-no-files-found": "error",
+        "retention-days": 7,
+        "compression-level": 0,
+      },
+      {
+        name: "${{ matrix.artifact }}",
+        path: "apps/desktop/out/**",
+        "if-no-files-found": "error",
+        "retention-days": 7,
+        "compression-level": 0,
+      },
+    ]);
     expectReadOnlyWorkflow(data);
     expect(source).not.toMatch(/secrets\./u);
     expect(source).not.toMatch(

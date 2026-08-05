@@ -1,7 +1,7 @@
 import { _electron as electron, expect, test } from "@playwright/test";
 import type { ShowflowDesktopApi } from "@showflow/contracts";
 
-import { getPackagedExecutablePath } from "../support/packaged-executable.js";
+import { getPackagedExecutablePath } from "../../scripts/support/packaged-executable.mjs";
 
 type ElectronRendererWindow = Window & {
   readonly process?: {

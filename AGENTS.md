@@ -223,24 +223,25 @@ The workspace is pinned to Node 24.18.0 and pnpm 11.4.0. Use the exact versions 
 they become executable as their owning Sprint 0 subtasks add the desktop app and
 code-quality tooling. Once defined, prefer them over package-local variants:
 
-| Command                  | Purpose                                               |
-| ------------------------ | ----------------------------------------------------- |
-| `pnpm dev`               | Start the Electron desktop app in development mode    |
-| `pnpm build`             | Build all workspace packages                          |
-| `pnpm typecheck`         | Run strict TypeScript checks                          |
-| `pnpm lint`              | Run lint checks                                       |
-| `pnpm format`            | Format repository files                               |
-| `pnpm format:check`      | Check formatting without edits                        |
-| `pnpm test`              | Run workspace test suites                             |
-| `pnpm test:unit`         | Run focused Vitest unit tests                         |
-| `pnpm test:renderer`     | Run renderer tests with Testing Library and jsdom     |
-| `pnpm test:coverage`     | Generate unit and renderer coverage reports           |
-| `pnpm test:boundaries`   | Verify package and Electron process import boundaries |
-| `pnpm test:e2e`          | Run Playwright end-to-end tests                       |
-| `pnpm test:e2e:browser`  | Run the browser renderer smoke suite                  |
-| `pnpm test:e2e:electron` | Package and run the Electron smoke suite              |
-| `pnpm package`           | Package the desktop app locally                       |
-| `pnpm make`              | Create platform installer artifacts                   |
+| Command                       | Purpose                                               |
+| ----------------------------- | ----------------------------------------------------- |
+| `pnpm dev`                    | Start the Electron desktop app in development mode    |
+| `pnpm build`                  | Build all workspace packages                          |
+| `pnpm typecheck`              | Run strict TypeScript checks                          |
+| `pnpm lint`                   | Run lint checks                                       |
+| `pnpm format`                 | Format repository files                               |
+| `pnpm format:check`           | Check formatting without edits                        |
+| `pnpm test`                   | Run workspace test suites                             |
+| `pnpm test:unit`              | Run focused Vitest unit tests                         |
+| `pnpm test:renderer`          | Run renderer tests with Testing Library and jsdom     |
+| `pnpm test:coverage`          | Generate unit and renderer coverage reports           |
+| `pnpm test:boundaries`        | Verify package and Electron process import boundaries |
+| `pnpm test:spike:node-sqlite` | Run the packaged `node:sqlite` persistence proof      |
+| `pnpm test:e2e`               | Run Playwright end-to-end tests                       |
+| `pnpm test:e2e:browser`       | Run the browser renderer smoke suite                  |
+| `pnpm test:e2e:electron`      | Package and run the Electron smoke suite              |
+| `pnpm package`                | Package the desktop app locally                       |
+| `pnpm make`                   | Create platform installer artifacts                   |
 
 When commands change, keep the root `package.json`, this file, the root README,
 and the Technical Specification aligned.

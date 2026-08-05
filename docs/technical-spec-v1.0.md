@@ -2223,6 +2223,7 @@ Root scripts should provide predictable commands:
     "test:coverage:unit": "vitest run --config vitest.config.mts --coverage",
     "test:coverage:renderer": "vitest run --config vitest.renderer.config.mts --coverage",
     "test:boundaries": "node --test --experimental-strip-types scripts/import-boundaries.test.mts",
+    "test:spike:node-sqlite": "node --experimental-strip-types scripts/run-packaged-node-sqlite-spike.mts",
     "test:e2e": "pnpm build && playwright test",
     "test:e2e:browser": "playwright test --project=browser",
     "test:e2e:electron": "pnpm build && playwright test --project=electron",

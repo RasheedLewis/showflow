@@ -1,4 +1,4 @@
-name: Unsigned Platform Packages
+name: Platform Packages and Persistence Spike
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   package:
-    name: Package ${{ matrix.artifact }}
+    name: Package and test ${{ matrix.artifact }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -40,6 +40,27 @@ jobs:
 
       - name: Package application
         run: pnpm package
+
+      - name: Run packaged node:sqlite spike
+        if: runner.os != 'Linux'
+        run: pnpm test:spike:node-sqlite
+        env:
+          SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: test-results/persistence-spike
+
+      - name: Run packaged node:sqlite spike on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test:spike:node-sqlite
+        env:
+          SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: test-results/persistence-spike
+
+      - name: Upload node:sqlite spike evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ matrix.artifact }}-node-sqlite-spike
+          path: test-results/persistence-spike/**
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
 
       - name: Upload nonrelease package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

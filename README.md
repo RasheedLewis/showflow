@@ -263,24 +263,25 @@ commands are available from the repository root.
 pnpm dev
 ```
 
-| Command                  | Purpose                                               | Status    |
-| ------------------------ | ----------------------------------------------------- | --------- |
-| `pnpm dev`               | Start the Electron desktop app in development mode    | Available |
-| `pnpm build`             | Build every workspace package                         | Available |
-| `pnpm package`           | Package the desktop app locally                       | Available |
-| `pnpm make`              | Produce platform installer artifacts                  | Available |
-| `pnpm test:boundaries`   | Verify package and Electron process import boundaries | Available |
-| `pnpm typecheck`         | Run strict TypeScript checks in every workspace       | Available |
-| `pnpm lint`              | Run the repository lint rules                         | Available |
-| `pnpm format`            | Format supported repository files                     | Available |
-| `pnpm format:check`      | Verify formatting without modifying files             | Available |
-| `pnpm test`              | Run unit and renderer test suites                     | Available |
-| `pnpm test:unit`         | Run focused Vitest unit tests                         | Available |
-| `pnpm test:renderer`     | Run Testing Library renderer tests                    | Available |
-| `pnpm test:coverage`     | Generate unit and renderer coverage reports           | Available |
-| `pnpm test:e2e`          | Build and run all Playwright tests                    | Available |
-| `pnpm test:e2e:browser`  | Run the browser renderer suite                        | Available |
-| `pnpm test:e2e:electron` | Package and run the Electron smoke suite              | Available |
+| Command                       | Purpose                                               | Status    |
+| ----------------------------- | ----------------------------------------------------- | --------- |
+| `pnpm dev`                    | Start the Electron desktop app in development mode    | Available |
+| `pnpm build`                  | Build every workspace package                         | Available |
+| `pnpm package`                | Package the desktop app locally                       | Available |
+| `pnpm make`                   | Produce platform installer artifacts                  | Available |
+| `pnpm test:boundaries`        | Verify package and Electron process import boundaries | Available |
+| `pnpm typecheck`              | Run strict TypeScript checks in every workspace       | Available |
+| `pnpm lint`                   | Run the repository lint rules                         | Available |
+| `pnpm format`                 | Format supported repository files                     | Available |
+| `pnpm format:check`           | Verify formatting without modifying files             | Available |
+| `pnpm test`                   | Run unit and renderer test suites                     | Available |
+| `pnpm test:unit`              | Run focused Vitest unit tests                         | Available |
+| `pnpm test:renderer`          | Run Testing Library renderer tests                    | Available |
+| `pnpm test:coverage`          | Generate unit and renderer coverage reports           | Available |
+| `pnpm test:spike:node-sqlite` | Run the packaged `node:sqlite` proof                  | Available |
+| `pnpm test:e2e`               | Build and run all Playwright tests                    | Available |
+| `pnpm test:e2e:browser`       | Run the browser renderer suite                        | Available |
+| `pnpm test:e2e:electron`      | Package and run the Electron smoke suite              | Available |
 
 ### Continuous integration
 
@@ -289,9 +290,10 @@ runs frozen installation, formatting, linting, strict typechecking, unit and
 renderer tests, architecture boundaries, and the production build. It runs for
 pull requests and updates to `main`.
 
-The [Unsigned Platform Packages workflow](.github/workflows/package-platforms.yml)
-is a manual placeholder that packages nonrelease artifacts on macOS arm64,
-Windows x64, and Linux x64. It does not publish, sign, or notarize releases.
+The [Platform Packages and Persistence Spike workflow](.github/workflows/package-platforms.yml)
+manually packages nonrelease artifacts and runs the packaged `node:sqlite` proof
+on macOS arm64, Windows x64, and Linux x64. It uploads both the packages and
+structured spike evidence without publishing, signing, or notarizing releases.
 
 ## Roadmap
 
