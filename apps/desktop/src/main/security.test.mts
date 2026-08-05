@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "vitest";
 
 import {
   DEVELOPMENT_CONTENT_SECURITY_POLICY,
@@ -11,7 +10,7 @@ import {
 } from "./security.mts";
 
 test("secure web preferences isolate the renderer", () => {
-  assert.deepEqual(createSecureWebPreferences("/trusted/preload.js"), {
+  expect(createSecureWebPreferences("/trusted/preload.js")).toEqual({
     preload: "/trusted/preload.js",
     nodeIntegration: false,
     contextIsolation: true,
@@ -24,16 +23,13 @@ test("secure web preferences isolate the renderer", () => {
 });
 
 test("development content is restricted to loopback HTTP", () => {
-  assert.equal(
-    getTrustedDevelopmentUrl("http://localhost:5173"),
+  expect(getTrustedDevelopmentUrl("http://localhost:5173")).toBe(
     "http://localhost:5173/",
   );
-  assert.equal(
-    getTrustedDevelopmentUrl("http://127.0.0.1:5173"),
+  expect(getTrustedDevelopmentUrl("http://127.0.0.1:5173")).toBe(
     "http://127.0.0.1:5173/",
   );
-  assert.equal(
-    getTrustedDevelopmentUrl("http://[::1]:5173"),
+  expect(getTrustedDevelopmentUrl("http://[::1]:5173")).toBe(
     "http://[::1]:5173/",
   );
 
@@ -43,12 +39,12 @@ test("development content is restricted to loopback HTTP", () => {
     "http://user:password@localhost:5173",
     "file:///tmp/index.html",
   ]) {
-    assert.throws(() => getTrustedDevelopmentUrl(untrustedUrl));
+    expect(() => getTrustedDevelopmentUrl(untrustedUrl)).toThrow();
   }
 });
 
 test("only credential-free HTTPS URLs may open externally", () => {
-  assert.equal(isApprovedExternalUrl("https://showflow.example/docs"), true);
+  expect(isApprovedExternalUrl("https://showflow.example/docs")).toBe(true);
 
   for (const unapprovedUrl of [
     "http://showflow.example",
@@ -58,46 +54,41 @@ test("only credential-free HTTPS URLs may open externally", () => {
     "mailto:hello@showflow.example",
     "not a url",
   ]) {
-    assert.equal(isApprovedExternalUrl(unapprovedUrl), false);
+    expect(isApprovedExternalUrl(unapprovedUrl)).toBe(false);
   }
 });
 
 test("application navigation stays on its trusted local entry", () => {
-  assert.equal(
+  expect(
     isTrustedApplicationNavigation(
       "http://localhost:5173/another-route",
       "http://localhost:5173/",
     ),
-    true,
-  );
-  assert.equal(
+  ).toBe(true);
+  expect(
     isTrustedApplicationNavigation(
       "http://127.0.0.1:5173/",
       "http://localhost:5173/",
     ),
-    false,
-  );
-  assert.equal(
+  ).toBe(false);
+  expect(
     isTrustedApplicationNavigation(
       "http://user:password@localhost:5173/",
       "http://localhost:5173/",
     ),
-    false,
-  );
-  assert.equal(
+  ).toBe(false);
+  expect(
     isTrustedApplicationNavigation(
       "file:///Applications/Showflow/index.html#show",
       "file:///Applications/Showflow/index.html",
     ),
-    true,
-  );
-  assert.equal(
+  ).toBe(true);
+  expect(
     isTrustedApplicationNavigation(
       "file:///Applications/Showflow/other.html",
       "file:///Applications/Showflow/index.html",
     ),
-    false,
-  );
+  ).toBe(false);
 });
 
 test("the renderer CSP denies executable and embedded remote content", () => {
@@ -105,19 +96,18 @@ test("the renderer CSP denies executable and embedded remote content", () => {
     PRODUCTION_CONTENT_SECURITY_POLICY,
     DEVELOPMENT_CONTENT_SECURITY_POLICY,
   ]) {
-    assert.match(policy, /default-src 'self'/);
-    assert.match(policy, /frame-src 'none'/);
-    assert.match(policy, /object-src 'none'/);
-    assert.match(policy, /script-src 'self'/);
-    assert.doesNotMatch(policy, /unsafe-eval/);
-    assert.doesNotMatch(policy, /https?:\/\/\*/);
+    expect(policy).toMatch(/default-src 'self'/);
+    expect(policy).toMatch(/frame-src 'none'/);
+    expect(policy).toMatch(/object-src 'none'/);
+    expect(policy).toMatch(/script-src 'self'/);
+    expect(policy).not.toMatch(/unsafe-eval/);
+    expect(policy).not.toMatch(/https?:\/\/\*/);
   }
 
-  assert.doesNotMatch(PRODUCTION_CONTENT_SECURITY_POLICY, /unsafe-inline/);
-  assert.doesNotMatch(PRODUCTION_CONTENT_SECURITY_POLICY, /ws:\/\//);
-  assert.match(DEVELOPMENT_CONTENT_SECURITY_POLICY, /ws:\/\/localhost:\*/);
-  assert.match(
-    DEVELOPMENT_CONTENT_SECURITY_POLICY,
+  expect(PRODUCTION_CONTENT_SECURITY_POLICY).not.toMatch(/unsafe-inline/);
+  expect(PRODUCTION_CONTENT_SECURITY_POLICY).not.toMatch(/ws:\/\//);
+  expect(DEVELOPMENT_CONTENT_SECURITY_POLICY).toMatch(/ws:\/\/localhost:\*/);
+  expect(DEVELOPMENT_CONTENT_SECURITY_POLICY).toMatch(
     /script-src 'self' 'unsafe-inline'/,
   );
 });

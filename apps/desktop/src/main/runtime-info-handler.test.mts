@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "vitest";
 
 import { DESKTOP_API_VERSION } from "@showflow/contracts";
 
@@ -12,7 +11,7 @@ const validRuntime = {
 } as const;
 
 test("the handler returns validated runtime information", () => {
-  assert.deepEqual(handleGetRuntimeInfoRequest(undefined, true, validRuntime), {
+  expect(handleGetRuntimeInfoRequest(undefined, true, validRuntime)).toEqual({
     ok: true,
     data: {
       applicationVersion: "0.0.0",
@@ -26,9 +25,9 @@ test("the handler returns validated runtime information", () => {
 test("the handler rejects an untrusted sender", () => {
   const result = handleGetRuntimeInfoRequest(undefined, false, validRuntime);
 
-  assert.equal(result.ok, false);
+  expect(result.ok).toBe(false);
   if (!result.ok) {
-    assert.equal(result.error.code, "IPC_UNTRUSTED_SENDER");
+    expect(result.error.code).toBe("IPC_UNTRUSTED_SENDER");
   }
 });
 
@@ -39,9 +38,9 @@ test("the handler rejects an unexpected request payload", () => {
     validRuntime,
   );
 
-  assert.equal(result.ok, false);
+  expect(result.ok).toBe(false);
   if (!result.ok) {
-    assert.equal(result.error.code, "IPC_INVALID_REQUEST");
+    expect(result.error.code).toBe("IPC_INVALID_REQUEST");
   }
 });
 
@@ -52,8 +51,8 @@ test("the handler returns a structured error for an invalid response", () => {
     architecture: "unknown",
   });
 
-  assert.equal(result.ok, false);
+  expect(result.ok).toBe(false);
   if (!result.ok) {
-    assert.equal(result.error.code, "IPC_INVALID_RESPONSE");
+    expect(result.error.code).toBe("IPC_INVALID_RESPONSE");
   }
 });

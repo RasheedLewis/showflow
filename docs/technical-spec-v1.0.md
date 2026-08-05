@@ -2204,14 +2204,22 @@ Root scripts should provide predictable commands:
 {
   "scripts": {
     "dev": "pnpm --filter @showflow/desktop start",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm typecheck:tools && pnpm -r --if-present typecheck",
+    "typecheck:tools": "tsc -p tsconfig.tools.json --noEmit",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "pnpm -r test",
-    "test:unit": "vitest run",
-    "test:e2e": "playwright test",
+    "test": "pnpm test:unit && pnpm test:renderer",
+    "test:unit": "vitest run --config vitest.config.mts",
+    "test:renderer": "vitest run --config vitest.renderer.config.mts",
+    "test:coverage": "pnpm test:coverage:unit && pnpm test:coverage:renderer",
+    "test:coverage:unit": "vitest run --config vitest.config.mts --coverage",
+    "test:coverage:renderer": "vitest run --config vitest.renderer.config.mts --coverage",
+    "test:boundaries": "node --test --experimental-strip-types scripts/import-boundaries.test.mts",
+    "test:e2e": "pnpm build && playwright test",
+    "test:e2e:browser": "playwright test --project=browser",
+    "test:e2e:electron": "pnpm build && playwright test --project=electron",
     "package": "pnpm --filter @showflow/desktop package",
     "make": "pnpm --filter @showflow/desktop make"
   }

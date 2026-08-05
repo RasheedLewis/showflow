@@ -248,27 +248,31 @@ for the current platform with `pnpm make`.
 ### Development commands
 
 The technical specification requires one obvious root command for each common
-task. Desktop build and code-quality commands are available now; test harness
-commands become executable in their owning Sprint 0 subtask.
+task. Desktop build, code-quality, Vitest, Testing Library, and Playwright
+commands are available from the repository root.
 
 ```bash
 pnpm dev
 ```
 
-| Command                | Purpose                                               | Status     |
-| ---------------------- | ----------------------------------------------------- | ---------- |
-| `pnpm dev`             | Start the Electron desktop app in development mode    | Available  |
-| `pnpm build`           | Build every workspace package                         | Available  |
-| `pnpm package`         | Package the desktop app locally                       | Available  |
-| `pnpm make`            | Produce platform installer artifacts                  | Available  |
-| `pnpm test:boundaries` | Verify package and Electron process import boundaries | Available  |
-| `pnpm typecheck`       | Run strict TypeScript checks in every workspace       | Available  |
-| `pnpm lint`            | Run the repository lint rules                         | Available  |
-| `pnpm format`          | Format supported repository files                     | Available  |
-| `pnpm format:check`    | Verify formatting without modifying files             | Available  |
-| `pnpm test`            | Run workspace test suites                             | Sprint 0.9 |
-| `pnpm test:unit`       | Run focused Vitest unit tests                         | Sprint 0.9 |
-| `pnpm test:e2e`        | Run Playwright end-to-end tests                       | Sprint 0.9 |
+| Command                  | Purpose                                               | Status    |
+| ------------------------ | ----------------------------------------------------- | --------- |
+| `pnpm dev`               | Start the Electron desktop app in development mode    | Available |
+| `pnpm build`             | Build every workspace package                         | Available |
+| `pnpm package`           | Package the desktop app locally                       | Available |
+| `pnpm make`              | Produce platform installer artifacts                  | Available |
+| `pnpm test:boundaries`   | Verify package and Electron process import boundaries | Available |
+| `pnpm typecheck`         | Run strict TypeScript checks in every workspace       | Available |
+| `pnpm lint`              | Run the repository lint rules                         | Available |
+| `pnpm format`            | Format supported repository files                     | Available |
+| `pnpm format:check`      | Verify formatting without modifying files             | Available |
+| `pnpm test`              | Run unit and renderer test suites                     | Available |
+| `pnpm test:unit`         | Run focused Vitest unit tests                         | Available |
+| `pnpm test:renderer`     | Run Testing Library renderer tests                    | Available |
+| `pnpm test:coverage`     | Generate unit and renderer coverage reports           | Available |
+| `pnpm test:e2e`          | Build and run all Playwright tests                    | Available |
+| `pnpm test:e2e:browser`  | Run the browser renderer suite                        | Available |
+| `pnpm test:e2e:electron` | Package and run the Electron smoke suite              | Available |
 
 ## Roadmap
 

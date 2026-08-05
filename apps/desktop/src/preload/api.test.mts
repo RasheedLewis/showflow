@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "vitest";
 
 import { DESKTOP_API_VERSION } from "@showflow/contracts";
 
@@ -18,7 +17,7 @@ const validResult = {
 test("the preload API validates and returns runtime information", async () => {
   const api = createShowflowDesktopApi(async () => validResult);
 
-  assert.deepEqual(await api.app.getRuntimeInfo(), validResult);
+  await expect(api.app.getRuntimeInfo()).resolves.toEqual(validResult);
 });
 
 test("the preload API rejects an invalid runtime response", async () => {
@@ -27,16 +26,16 @@ test("the preload API rejects an invalid runtime response", async () => {
     data: { platform: "browser" },
   }));
 
-  await assert.rejects(api.app.getRuntimeInfo());
+  await expect(api.app.getRuntimeInfo()).rejects.toThrow();
 });
 
 test("the preload exposes no generic invocation surface", () => {
   const api = createShowflowDesktopApi(async () => validResult);
 
-  assert.deepEqual(Object.keys(api), ["apiVersion", "app"]);
-  assert.deepEqual(Object.keys(api.app), ["getRuntimeInfo"]);
-  assert.equal("invoke" in api, false);
-  assert.equal("invoke" in api.app, false);
-  assert.equal(Object.isFrozen(api), true);
-  assert.equal(Object.isFrozen(api.app), true);
+  expect(Object.keys(api)).toEqual(["apiVersion", "app"]);
+  expect(Object.keys(api.app)).toEqual(["getRuntimeInfo"]);
+  expect("invoke" in api).toBe(false);
+  expect("invoke" in api.app).toBe(false);
+  expect(Object.isFrozen(api)).toBe(true);
+  expect(Object.isFrozen(api.app)).toBe(true);
 });

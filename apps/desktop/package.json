@@ -12,8 +12,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "test:security": "node --test --experimental-strip-types src/main/security.test.mts",
-    "test:ipc": "node --test --experimental-strip-types ../../packages/contracts/src/app-runtime.test.mts src/main/runtime-info-handler.test.mts src/preload/api.test.mts"
+    "test:security": "vitest run --config ../../vitest.config.mts security.test.mts",
+    "test:ipc": "vitest run --config ../../vitest.config.mts app-runtime.test.mts runtime-info-handler.test.mts api.test.mts"
   },
   "config": {
     "forge": "./forge.config.ts"
@@ -31,12 +31,17 @@
     "@electron-forge/maker-zip": "7.11.2",
     "@electron-forge/plugin-vite": "7.11.2",
     "@electron-forge/shared-types": "7.11.2",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.0",
+    "@testing-library/react": "16.3.2",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.0.5",
     "electron": "43.3.0",
+    "jsdom": "30.0.1",
     "typescript": "5.9.3",
-    "vite": "8.2.0"
+    "vite": "8.2.0",
+    "vitest": "4.1.10"
   }
 }

@@ -1,5 +1,4 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import { expect, test } from "vitest";
 
 import {
   DESKTOP_API_VERSION,
@@ -17,7 +16,7 @@ test("a valid runtime-info result passes the shared response contract", () => {
     },
   });
 
-  assert.equal(result.ok, true);
+  expect(result.ok).toBe(true);
 });
 
 test("an invalid runtime-info result is rejected", () => {
@@ -31,5 +30,5 @@ test("an invalid runtime-info result is rejected", () => {
     },
   });
 
-  assert.equal(result.success, false);
+  expect(result.success).toBe(false);
 });
