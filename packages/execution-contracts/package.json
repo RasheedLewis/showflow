@@ -2,5 +2,9 @@
   "name": "@showflow/execution-contracts",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "description": "Engine-neutral Showflow preview and rehearsal instructions.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
 }

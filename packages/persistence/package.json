@@ -2,5 +2,9 @@
   "name": "@showflow/persistence",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "description": "Showflow persistence adapters, migrations, and row mapping.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
 }

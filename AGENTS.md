@@ -233,6 +233,7 @@ code-quality tooling. Once defined, prefer them over package-local variants:
 | `pnpm format:check` | Check formatting without edits |
 | `pnpm test` | Run workspace test suites |
 | `pnpm test:unit` | Run focused Vitest unit tests |
+| `pnpm test:boundaries` | Verify package and Electron process import boundaries |
 | `pnpm test:e2e` | Run Playwright end-to-end tests |
 | `pnpm package` | Package the desktop app locally |
 | `pnpm make` | Create platform installer artifacts |

@@ -506,6 +506,11 @@ React component
 → SQLite adapter
 ```
 
+The initial repository enforces this graph with `pnpm test:boundaries`. The test
+parses static imports, exports, dynamic imports, and `require` calls; rejects
+undeclared or disallowed workspace edges and deep imports; preserves main,
+preload, and renderer isolation; and fails on workspace dependency cycles.
+
 ---
 
 # 7. Electron Process Architecture

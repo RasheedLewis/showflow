@@ -2,5 +2,9 @@
   "name": "@showflow/application",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "description": "Showflow application use cases, ports, commands, and queries.",
+  "exports": {
+    ".": "./src/index.ts"
+  }
 }

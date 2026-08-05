@@ -260,6 +260,7 @@ pnpm dev
 | `pnpm build` | Build every workspace package | Available |
 | `pnpm package` | Package the desktop app locally | Available |
 | `pnpm make` | Produce platform installer artifacts | Available |
+| `pnpm test:boundaries` | Verify package and Electron process import boundaries | Available |
 | `pnpm typecheck` | Run strict TypeScript checks | Sprint 0.8 |
 | `pnpm lint` | Run the repository lint rules | Sprint 0.8 |
 | `pnpm format:check` | Verify formatting without modifying files | Sprint 0.8 |
