@@ -1,17 +1,7 @@
 :root {
-  color-scheme: dark;
-  font-family: Geist, "SF Pro Display", "Segoe UI", sans-serif;
+  font-family: var(--sf-font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --foundation-surface: Canvas;
-  --foundation-text: CanvasText;
-  --foundation-muted: color-mix(in srgb, CanvasText 64%, transparent);
-  --foundation-border: color-mix(in srgb, CanvasText 16%, transparent);
-  --foundation-radius: 0.75rem;
-  --foundation-space-2: 0.5rem;
-  --foundation-space-3: 0.75rem;
-  --foundation-space-6: 1.5rem;
-  --foundation-space-10: 2.5rem;
 }
 
 * {
@@ -22,8 +12,8 @@ body {
   margin: 0;
   min-width: 20rem;
   min-height: 100vh;
-  background: var(--foundation-surface);
-  color: var(--foundation-text);
+  background: var(--sf-bg-canvas);
+  color: var(--sf-text-primary);
 }
 
 button,
@@ -37,19 +27,20 @@ select {
   display: grid;
   min-height: 100vh;
   place-items: center;
-  padding: var(--foundation-space-10);
+  padding: var(--sf-space-10);
 }
 
 .status-panel {
   width: min(100%, 38rem);
-  padding: var(--foundation-space-10);
-  border: 1px solid var(--foundation-border);
-  border-radius: var(--foundation-radius);
+  padding: var(--sf-space-10);
+  border: 1px solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-panel);
 }
 
 .eyebrow {
-  margin: 0 0 var(--foundation-space-3);
-  color: var(--foundation-muted);
+  margin: 0 0 var(--sf-space-3);
+  color: var(--sf-text-tertiary);
   font-size: 0.875rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -63,7 +54,7 @@ h1 {
 }
 
 .status-copy {
-  margin: var(--foundation-space-6) 0 var(--foundation-space-2);
+  margin: var(--sf-space-6) 0 var(--sf-space-2);
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -71,7 +62,7 @@ h1 {
 .status-detail {
   max-width: 32rem;
   margin: 0;
-  color: var(--foundation-muted);
+  color: var(--sf-text-secondary);
   font-size: 1rem;
   line-height: 1.6;
 }

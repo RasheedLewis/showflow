@@ -151,6 +151,11 @@ flowchart LR
 | Testing                  | Vitest, React Testing Library, Playwright, and a small Electron smoke suite               |
 | Reference toolchain      | Node 24.18.0 and pnpm 11.4.0; macOS on Apple Silicon is the quality-reference platform    |
 
+The initial dark visual foundation is exposed by `@showflow/ui` through the
+[central token stylesheet](packages/ui/src/tokens.css). Renderer styles consume
+semantic `--sf-*` custom properties rather than maintaining feature-local color,
+spacing, radius, or motion values.
+
 ### Required repository shape
 
 ```text

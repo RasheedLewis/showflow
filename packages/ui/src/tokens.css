@@ -1,0 +1,85 @@
+:root {
+  color-scheme: dark;
+
+  /* Neutral surfaces */
+  --sf-bg-canvas: #0d0f10;
+  --sf-bg-base: #111315;
+  --sf-bg-panel: #171a1d;
+  --sf-bg-card: #1b1f22;
+  --sf-bg-card-hover: #21262a;
+  --sf-bg-elevated: #252b30;
+  --sf-bg-input: #131619;
+  --sf-bg-scrim: rgba(0, 0, 0, 0.62);
+
+  /* Borders and dividers */
+  --sf-border-subtle: rgba(255, 255, 255, 0.06);
+  --sf-border-default: rgba(255, 255, 255, 0.1);
+  --sf-border-strong: rgba(255, 255, 255, 0.18);
+  --sf-divider: rgba(255, 255, 255, 0.08);
+  --sf-grid-line: rgba(255, 255, 255, 0.045);
+
+  /* Text */
+  --sf-text-primary: #f4f3ef;
+  --sf-text-secondary: #b9bdc1;
+  --sf-text-tertiary: #81878d;
+  --sf-text-disabled: #5f656b;
+  --sf-text-inverse: #111315;
+
+  /* Provisional brand accent */
+  --sf-accent: #d6b24a;
+  --sf-accent-hover: #e1c15e;
+  --sf-accent-pressed: #c49d36;
+  --sf-accent-muted: rgba(214, 178, 74, 0.14);
+  --sf-accent-border: rgba(214, 178, 74, 0.62);
+  --sf-accent-focus: rgba(214, 178, 74, 0.38);
+
+  /* Semantic state */
+  --sf-success: #62b589;
+  --sf-success-muted: rgba(98, 181, 137, 0.14);
+  --sf-warning: #d9a441;
+  --sf-warning-muted: rgba(217, 164, 65, 0.14);
+  --sf-error: #d96a6a;
+  --sf-error-muted: rgba(217, 106, 106, 0.14);
+  --sf-info: #6f9fd8;
+  --sf-info-muted: rgba(111, 159, 216, 0.14);
+  --sf-inactive: #72787e;
+  --sf-inactive-muted: rgba(114, 120, 126, 0.12);
+
+  /* Typography families */
+  --sf-font-sans:
+    "Geist", "Geist Sans", system-ui, -apple-system, "BlinkMacSystemFont",
+    "Segoe UI", sans-serif;
+  --sf-font-mono:
+    "Geist Mono", ui-monospace, "SFMono-Regular", "Consolas", "Liberation Mono",
+    monospace;
+
+  /* Comfortable 4 px spacing grid */
+  --sf-space-1: 4px;
+  --sf-space-2: 8px;
+  --sf-space-3: 12px;
+  --sf-space-4: 16px;
+  --sf-space-5: 20px;
+  --sf-space-6: 24px;
+  --sf-space-8: 32px;
+  --sf-space-10: 40px;
+  --sf-space-12: 48px;
+  --sf-space-16: 64px;
+  --sf-space-20: 80px;
+
+  /* Shape */
+  --sf-radius-sm: 6px;
+  --sf-radius-md: 8px;
+  --sf-radius-lg: 12px;
+  --sf-radius-xl: 16px;
+  --sf-radius-round: 999px;
+
+  /* Motion */
+  --sf-motion-instant: 80ms;
+  --sf-motion-fast: 140ms;
+  --sf-motion-standard: 220ms;
+  --sf-motion-slow: 320ms;
+  --sf-motion-emphasis: 420ms;
+  --sf-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --sf-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --sf-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}

@@ -37,4 +37,31 @@ test("the development screen renders with the typed mock desktop API", async ({
     apiVersion: DEFAULT_RUNTIME_INFO_RESULT.data.desktopApiVersion,
     runtimeInfo: DEFAULT_RUNTIME_INFO_RESULT,
   });
+
+  const visualFoundation = await page.evaluate(() => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const bodyStyles = getComputedStyle(document.body);
+    const panel = document.querySelector<HTMLElement>(".status-panel");
+
+    if (!panel) {
+      throw new Error("The Showflow status panel is missing.");
+    }
+
+    return {
+      accent: rootStyles.getPropertyValue("--sf-accent").trim(),
+      background: bodyStyles.backgroundColor,
+      fontFamily: bodyStyles.fontFamily,
+      panelBackground: getComputedStyle(panel).backgroundColor,
+      text: bodyStyles.color,
+    };
+  });
+
+  expect(visualFoundation).toMatchObject({
+    accent: "#d6b24a",
+    background: "rgb(13, 15, 16)",
+    panelBackground: "rgb(23, 26, 29)",
+    text: "rgb(244, 243, 239)",
+  });
+  expect(visualFoundation.fontFamily).toMatch(/^Geist, "Geist Sans"/u);
+  expect(visualFoundation.fontFamily).toContain("system-ui");
 });

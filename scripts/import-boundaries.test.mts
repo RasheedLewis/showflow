@@ -332,9 +332,16 @@ test("source imports respect package and Electron process boundaries", () => {
         const internalPackage = getShowflowPackageName(specifier);
 
         if (internalPackage) {
-          if (specifier !== `@showflow/${internalPackage}`) {
+          const packageSpecifier = `@showflow/${internalPackage}`;
+          const exportKey =
+            specifier === packageSpecifier
+              ? "."
+              : `.${specifier.slice(packageSpecifier.length)}`;
+          const internalManifest = readManifest(internalPackage);
+
+          if (!(exportKey in (internalManifest.exports ?? {}))) {
             violations.push(
-              `${relativeFile}: ${specifier} bypasses the package's public entry point`,
+              `${relativeFile}: ${specifier} is not an explicit public package export`,
             );
           }
 

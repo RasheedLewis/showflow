@@ -17,6 +17,7 @@ export default defineConfig({
     include: [
       "scripts/ci-workflows.test.mts",
       "scripts/decision-templates.test.mts",
+      "scripts/design-tokens.test.mts",
       "packages/**/*.{test,spec}.{ts,tsx,mts}",
       "apps/desktop/src/{main,preload}/**/*.{test,spec}.{ts,tsx,mts}",
     ],

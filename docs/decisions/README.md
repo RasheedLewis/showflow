@@ -89,6 +89,7 @@ remains reviewable. Template files are not records and do not receive numbers.
 |                  [0007](0007-test-harnesses.md) | Accepted | Test harnesses                     |
 | [0008](0008-continuous-integration-skeleton.md) | Accepted | Continuous integration skeleton    |
 |      [0009](0009-decision-record-governance.md) | Accepted | Decision record governance         |
+|   [0010](0010-initial-design-token-contract.md) | Accepted | Initial design token contract      |
 
 ## Product Decision Request register
 
