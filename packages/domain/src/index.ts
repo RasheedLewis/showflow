@@ -10,6 +10,7 @@ export * from "./entities/episode.mjs";
 export * from "./entities/host-cue.mjs";
 export * from "./entities/layout.mjs";
 export * from "./entities/lifecycle.mjs";
+export * from "./entities/ownership.mjs";
 export * from "./entities/resource.mjs";
 export * from "./entities/segment.mjs";
 export * from "./entities/studio.mjs";
