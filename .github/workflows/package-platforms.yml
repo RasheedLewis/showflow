@@ -52,6 +52,7 @@ jobs:
         run: xvfb-run -a pnpm test:spike:node-sqlite
         env:
           SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: test-results/persistence-spike
+          SHOWFLOW_SPIKE_DISABLE_CHROMIUM_SANDBOX: "1"
 
       - name: Upload node:sqlite spike evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

@@ -198,6 +198,7 @@ describe("GitHub Actions workflows", () => {
         if: "runner.os == 'Linux'",
         env: {
           SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY: "test-results/persistence-spike",
+          SHOWFLOW_SPIKE_DISABLE_CHROMIUM_SANDBOX: "1",
         },
       }),
     ]);

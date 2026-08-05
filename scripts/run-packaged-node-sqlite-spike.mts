@@ -15,20 +15,24 @@ const NODE_SQLITE_SPIKE_REPORT_ENV =
   "SHOWFLOW_NODE_SQLITE_SPIKE_REPORT_PATH" as const;
 const SPIKE_EVIDENCE_DIRECTORY_ENV =
   "SHOWFLOW_SPIKE_EVIDENCE_DIRECTORY" as const;
+const SPIKE_DISABLE_CHROMIUM_SANDBOX_ENV =
+  "SHOWFLOW_SPIKE_DISABLE_CHROMIUM_SANDBOX" as const;
 const SPIKE_TIMEOUT_MS = 30_000;
 
 export interface PackagedNodeSqliteSpikeEvidence {
   readonly evidenceDirectory: string;
+  readonly executableArguments: readonly string[];
   readonly report: NodeSqliteSpikeReport;
   readonly stderr: string;
 }
 
 const waitForExit = async (
   executablePath: string,
+  executableArguments: readonly string[],
   reportPath: string,
 ): Promise<{ code: number | null; stderr: string }> =>
   new Promise((resolve, reject) => {
-    const child = spawn(executablePath, [], {
+    const child = spawn(executablePath, executableArguments, {
       env: {
         ...process.env,
         [NODE_SQLITE_SPIKE_REPORT_ENV]: reportPath,
@@ -67,10 +71,27 @@ export const runPackagedNodeSqliteSpike = async (
     path.join(evidenceRootDirectory, `${process.platform}-${process.arch}-`),
   );
   const reportPath = path.join(evidenceDirectory, "report.json");
+  const launcherPath = path.join(evidenceDirectory, "launcher.json");
   const stderrPath = path.join(evidenceDirectory, "stderr.log");
-  const result = await waitForExit(getPackagedExecutablePath(), reportPath);
+  const executableArguments =
+    process.env[SPIKE_DISABLE_CHROMIUM_SANDBOX_ENV] === "1"
+      ? ["--no-sandbox"]
+      : [];
+  const result = await waitForExit(
+    getPackagedExecutablePath(),
+    executableArguments,
+    reportPath,
+  );
+  const stabilityWarnings = result.stderr
+    .split(/\r?\n/u)
+    .filter((line) => line.trim().length > 0);
 
   await fs.writeFile(stderrPath, result.stderr, "utf8");
+  await fs.writeFile(
+    launcherPath,
+    `${JSON.stringify({ executableArguments, stabilityWarnings }, null, 2)}\n`,
+    "utf8",
+  );
 
   if (result.code !== 0) {
     throw new Error(
@@ -90,7 +111,12 @@ export const runPackagedNodeSqliteSpike = async (
     );
   }
 
-  return { evidenceDirectory, report, stderr: result.stderr };
+  return {
+    evidenceDirectory,
+    executableArguments,
+    report,
+    stderr: result.stderr,
+  };
 };
 
 const runCommand = async (): Promise<void> => {
@@ -109,6 +135,7 @@ const runCommand = async (): Promise<void> => {
       `${JSON.stringify(
         {
           evidenceDirectory: evidence.evidenceDirectory,
+          executableArguments: evidence.executableArguments,
           report: evidence.report,
           stabilityWarnings: evidence.stderr
             .split(/\r?\n/u)
