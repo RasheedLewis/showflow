@@ -11,6 +11,7 @@ prepare, preview, and rehearse recurring shows.
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
+[![Quality](https://github.com/RasheedLewis/showflow/actions/workflows/quality.yml/badge.svg)](https://github.com/RasheedLewis/showflow/actions/workflows/quality.yml)
 
 [Product](#the-product) · [Architecture](#architecture) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
@@ -19,8 +20,8 @@ prepare, preview, and rehearse recurring shows.
 > [!IMPORTANT]
 > **Showflow is building its engineering foundation.** The authoritative product
 > specifications and delivery plan are in place, and the Electron, Vite, and React
-> desktop shell now runs and packages. Sprint 0 continues with security, typed
-> IPC, package boundaries, quality tooling, and test harnesses.
+> desktop shell now runs and packages. Security, typed IPC, package boundaries,
+> quality tooling, test harnesses, and continuous integration are in place.
 
 ## The product
 
@@ -273,6 +274,17 @@ pnpm dev
 | `pnpm test:e2e`          | Build and run all Playwright tests                    | Available |
 | `pnpm test:e2e:browser`  | Run the browser renderer suite                        | Available |
 | `pnpm test:e2e:electron` | Package and run the Electron smoke suite              | Available |
+
+### Continuous integration
+
+The read-only [Pull Request Quality workflow](.github/workflows/quality.yml)
+runs frozen installation, formatting, linting, strict typechecking, unit and
+renderer tests, architecture boundaries, and the production build. It runs for
+pull requests and updates to `main`.
+
+The [Unsigned Platform Packages workflow](.github/workflows/package-platforms.yml)
+is a manual placeholder that packages nonrelease artifacts on macOS arm64,
+Windows x64, and Linux x64. It does not publish, sign, or notarize releases.
 
 ## Roadmap
 

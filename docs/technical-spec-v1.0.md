@@ -2171,6 +2171,9 @@ Run on a primary Linux runner:
 - Repository tests
 - Build packages
 
+The initial implementation is `.github/workflows/quality.yml`. It also runs on
+updates to `main` so the workflow can prove the clean-branch CI gate.
+
 ## 29.2 Platform Build Workflow
 
 Use a matrix:
@@ -2180,6 +2183,9 @@ Use a matrix:
 - Ubuntu x64
 
 Produce nonrelease artifacts for smoke testing.
+
+The initial `.github/workflows/package-platforms.yml` workflow is manual and
+unsigned. It must not publish artifacts as releases or access signing secrets.
 
 ## 29.3 Release Workflow
 
