@@ -24,8 +24,34 @@ select {
 }
 
 .app-shell {
-  display: grid;
   min-height: 100vh;
+}
+
+.app-bar {
+  display: flex;
+  min-height: var(--sf-space-16);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sf-space-6);
+  padding: 0 var(--sf-space-8);
+  border-bottom: 1px solid var(--sf-border-subtle);
+  background: var(--sf-bg-base);
+}
+
+.wordmark {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.app-bar-context {
+  color: var(--sf-text-tertiary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.app-content {
+  display: grid;
+  min-height: calc(100vh - var(--sf-space-16));
   place-items: center;
   padding: var(--sf-space-10);
 }
@@ -53,15 +79,9 @@ h1 {
   line-height: 1;
 }
 
-.status-copy {
-  margin: var(--sf-space-6) 0 var(--sf-space-2);
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
 .status-detail {
   max-width: 32rem;
-  margin: 0;
+  margin: var(--sf-space-6) 0 0;
   color: var(--sf-text-secondary);
   font-size: 1rem;
   line-height: 1.6;

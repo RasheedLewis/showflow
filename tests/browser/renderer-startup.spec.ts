@@ -19,10 +19,13 @@ test("the development screen renders with the typed mock desktop API", async ({
 }) => {
   await page.goto("/");
 
+  const appBar = page.getByRole("banner", { name: "Showflow application" });
+
+  await expect(appBar.getByText("Showflow", { exact: true })).toBeVisible();
+  await expect(appBar.getByText("Desktop foundation")).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Showflow" }),
+    page.getByRole("heading", { level: 1, name: "Showflow is ready." }),
   ).toBeVisible();
-  await expect(page.getByText("Showflow is ready.")).toBeVisible();
 
   const mockState = await page.evaluate(async () => {
     const showflow = (window as unknown as BrowserShowflowWindow).showflow;
@@ -42,13 +45,18 @@ test("the development screen renders with the typed mock desktop API", async ({
     const rootStyles = getComputedStyle(document.documentElement);
     const bodyStyles = getComputedStyle(document.body);
     const panel = document.querySelector<HTMLElement>(".status-panel");
+    const appBar = document.querySelector<HTMLElement>(".app-bar");
 
-    if (!panel) {
-      throw new Error("The Showflow status panel is missing.");
+    if (!appBar || !panel) {
+      throw new Error("The Showflow application shell is incomplete.");
     }
+
+    const appBarStyles = getComputedStyle(appBar);
 
     return {
       accent: rootStyles.getPropertyValue("--sf-accent").trim(),
+      appBarBackground: appBarStyles.backgroundColor,
+      appBarHeight: appBarStyles.height,
       background: bodyStyles.backgroundColor,
       fontFamily: bodyStyles.fontFamily,
       panelBackground: getComputedStyle(panel).backgroundColor,
@@ -58,6 +66,8 @@ test("the development screen renders with the typed mock desktop API", async ({
 
   expect(visualFoundation).toMatchObject({
     accent: "#d6b24a",
+    appBarBackground: "rgb(17, 19, 21)",
+    appBarHeight: "64px",
     background: "rgb(13, 15, 16)",
     panelBackground: "rgb(23, 26, 29)",
     text: "rgb(244, 243, 239)",
