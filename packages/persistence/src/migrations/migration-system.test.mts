@@ -1,10 +1,13 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { z } from "zod";
 import { describe, expect, test } from "vitest";
 
+import { BackupError } from "../backup/backup-service.mjs";
+import { openShowflowDatabase } from "../database/database-service.mjs";
 import { initializePersistence } from "./initialize-persistence.mjs";
 import { loadMigrations } from "./migration-loader.mjs";
 import {
@@ -200,6 +203,93 @@ describe("migration system", () => {
     }
   });
 
+  test("backs up the database before pending migrations and not on an idempotent startup", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-pre-migration-backup-test-"),
+    );
+    const databasePath = path.join(temporaryDirectory, "showflow.sqlite");
+    const backupsDirectory = path.join(temporaryDirectory, "backups");
+    const migrationsDirectory = await createMigrationDirectory(
+      { temporaryDirectory },
+      {
+        "001_create_storyboard_state.sql": `
+          CREATE TABLE storyboard_state (value TEXT NOT NULL) STRICT;
+          INSERT INTO storyboard_state (value) VALUES ('before second migration');
+        `,
+      },
+    );
+    const logger = createCapturingLogger().logger;
+
+    try {
+      const firstStartup = await initializePersistence({
+        backup: { backupsDirectory, retentionCount: 3 },
+        databasePath,
+        logger,
+        migrationsDirectory,
+        now: () => "2026-08-05T06:30:00.000Z",
+      });
+      firstStartup.database.close();
+
+      await fs.writeFile(
+        path.join(migrationsDirectory, "002_update_storyboard_state.sql"),
+        "UPDATE storyboard_state SET value = 'after second migration';",
+        "utf8",
+      );
+      const secondStartup = await initializePersistence({
+        backup: { backupsDirectory, retentionCount: 3 },
+        databasePath,
+        logger,
+        migrationsDirectory,
+        now: () => "2026-08-05T06:31:00.000Z",
+      });
+      expect(
+        secondStartup.database.queryRequired(
+          "SELECT value FROM storyboard_state",
+          TextRowSchema,
+        ),
+      ).toEqual({ value: "after second migration" });
+      secondStartup.database.close();
+
+      const preMigrationBackup = new DatabaseSync(
+        path.join(
+          backupsDirectory,
+          "showflow-backup-20260805T063100000Z.sqlite",
+        ),
+        { readOnly: true },
+      );
+      try {
+        expect(
+          TextRowSchema.parse(
+            preMigrationBackup
+              .prepare("SELECT value FROM storyboard_state")
+              .get(),
+          ),
+        ).toEqual({ value: "before second migration" });
+      } finally {
+        preMigrationBackup.close();
+      }
+
+      const idempotentStartup = await initializePersistence({
+        backup: { backupsDirectory, retentionCount: 3 },
+        databasePath,
+        logger,
+        migrationsDirectory,
+        now: () => "2026-08-05T06:32:00.000Z",
+      });
+      idempotentStartup.database.close();
+      expect(
+        (await fs.readdir(backupsDirectory))
+          .filter((fileName) => fileName.endsWith(".sqlite"))
+          .sort(),
+      ).toEqual([
+        "showflow-backup-20260805T063000000Z.sqlite",
+        "showflow-backup-20260805T063100000Z.sqlite",
+      ]);
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
   test("rolls back a failed migration and reports a startup failure", async () => {
     const testDatabase = await createTestDatabase();
     const migrationsDirectory = await createMigrationDirectory(testDatabase, {
@@ -280,6 +370,10 @@ describe("migration system", () => {
     try {
       await expect(
         initializePersistence({
+          backup: {
+            backupsDirectory: path.join(temporaryDirectory, "backups"),
+            retentionCount: 2,
+          },
           databasePath,
           logger,
           migrationsDirectory,
@@ -288,6 +382,53 @@ describe("migration system", () => {
       ).rejects.toMatchObject({ code: "MIGRATION_APPLY_FAILED" });
 
       await expect(fs.rm(databasePath)).resolves.toBeUndefined();
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
+  test("does not apply pending migrations when the required backup fails", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-backup-failure-test-"),
+    );
+    const databasePath = path.join(temporaryDirectory, "showflow.sqlite");
+    const backupsDirectory = path.join(temporaryDirectory, "backups");
+    const migrationsDirectory = await createMigrationDirectory(
+      { temporaryDirectory },
+      {
+        "001_create_blocked_table.sql":
+          "CREATE TABLE blocked_table (value TEXT NOT NULL) STRICT;",
+      },
+    );
+    await fs.writeFile(backupsDirectory, "not a directory", "utf8");
+    const logger = createCapturingLogger().logger;
+
+    try {
+      const failure = await initializePersistence({
+        backup: { backupsDirectory, retentionCount: 2 },
+        databasePath,
+        logger,
+        migrationsDirectory,
+        now: () => FIXED_TIMESTAMP,
+      }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(BackupError);
+      expect(failure).toMatchObject({ code: "BACKUP_CREATE_FAILED" });
+
+      const database = await openShowflowDatabase({ databasePath });
+      try {
+        expect(
+          database.queryRequired(
+            `
+              SELECT COUNT(*) AS count
+              FROM sqlite_master
+              WHERE type = 'table' AND name = 'blocked_table'
+            `,
+            CountRowSchema,
+          ),
+        ).toEqual({ count: 0 });
+      } finally {
+        database.close();
+      }
     } finally {
       await fs.rm(temporaryDirectory, { force: true, recursive: true });
     }

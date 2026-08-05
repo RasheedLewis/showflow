@@ -6,6 +6,7 @@
   "description": "Showflow persistence adapters, migrations, and row mapping.",
   "exports": {
     ".": "./src/index.ts",
+    "./backup": "./src/backup/index.mts",
     "./database": "./src/database/database-service.mts",
     "./migrations": "./src/migrations/index.mts",
     "./spikes/node-sqlite": "./src/spikes/node-sqlite-spike.mts",

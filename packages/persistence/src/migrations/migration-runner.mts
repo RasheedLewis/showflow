@@ -11,6 +11,7 @@ import {
 import type { ShowflowDatabase } from "../database/database-service.mjs";
 
 export interface RunMigrationsOptions {
+  readonly beforeApplyingMigrations?: () => Promise<void>;
   readonly database: ShowflowDatabase;
   readonly logger: MigrationLogger;
   readonly migrationsDirectory: string;
@@ -35,6 +36,9 @@ const AppliedMigrationRowSchema = z
     version: z.number().int().positive(),
   })
   .strict();
+const MigrationHistoryTableRowSchema = z
+  .object({ count: z.number().int().min(0).max(1) })
+  .strict();
 
 const SCHEMA_MIGRATIONS_SQL = `
   CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -54,6 +58,11 @@ const APPLIED_MIGRATIONS_QUERY = `
   FROM schema_migrations
   ORDER BY version
 `;
+const MIGRATION_HISTORY_TABLE_QUERY = `
+  SELECT COUNT(*) AS count
+  FROM sqlite_master
+  WHERE type = 'table' AND name = 'schema_migrations'
+`;
 
 const getErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Unknown migration failure.";
@@ -71,6 +80,23 @@ const initializeMigrationHistory = (database: ShowflowDatabase): void => {
       cause: error,
       code: "MIGRATION_INITIALIZATION_FAILED",
       message: "Showflow could not initialize migration history.",
+    });
+  }
+};
+
+const hasMigrationHistory = (database: ShowflowDatabase): boolean => {
+  try {
+    return (
+      database.queryRequired(
+        MIGRATION_HISTORY_TABLE_QUERY,
+        MigrationHistoryTableRowSchema,
+      ).count === 1
+    );
+  } catch (error) {
+    throw new MigrationError({
+      cause: error,
+      code: "MIGRATION_HISTORY_INVALID",
+      message: "Showflow migration history could not be inspected.",
     });
   }
 };
@@ -170,14 +196,28 @@ export const runMigrations = async (
   options: RunMigrationsOptions,
 ): Promise<MigrationRunResult> => {
   const migrations = await loadMigrations(options.migrationsDirectory);
-  initializeMigrationHistory(options.database);
-  const previouslyApplied = readAppliedMigrations(options.database);
+  const historyExists = hasMigrationHistory(options.database);
+  const previouslyApplied = historyExists
+    ? readAppliedMigrations(options.database)
+    : [];
   validateMigrationHistory(migrations, previouslyApplied);
+  const pendingMigrations = migrations.slice(previouslyApplied.length);
+
+  if (
+    pendingMigrations.length > 0 &&
+    options.beforeApplyingMigrations !== undefined
+  ) {
+    await options.beforeApplyingMigrations();
+  }
+
+  if (!historyExists) {
+    initializeMigrationHistory(options.database);
+  }
 
   const now = options.now ?? (() => new Date().toISOString());
   const appliedMigrations: AppliedMigration[] = [];
 
-  for (const migration of migrations.slice(previouslyApplied.length)) {
+  for (const migration of pendingMigrations) {
     appliedMigrations.push(
       applyMigration(options.database, migration, options.logger, now),
     );
