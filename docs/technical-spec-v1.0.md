@@ -890,6 +890,11 @@ However, the Node 24 `node:sqlite` API is a release-candidate API rather than a 
 
 Therefore, before building persistence-dependent features, complete the spike in Section 11.4.
 
+The required packaged-app spike passed on macOS arm64, Windows x64, and Linux
+x64. [ADR 0011](decisions/0011-node-sqlite-adapter.md) accepts `node:sqlite` for
+the production persistence adapter while retaining the specified fallback
+behind unchanged application interfaces.
+
 ## 11.4 REQUIRED PERSISTENCE SPIKE
 
 Create a minimal branch or test application that verifies all of the following in the packaged Electron application:
@@ -2353,7 +2358,7 @@ The coding agent must not silently finalize these areas.
 | Area | Current handling |
 |---|---|
 | Final Showflow Design System | Central neutral tokens until specified |
-| `node:sqlite` production suitability | Complete required packaged-app spike |
+| `node:sqlite` production suitability | Accepted by ADR 0011 after the required packaged-app spike |
 | Persistence fallback | `better-sqlite3` behind same repository interfaces |
 | Portable project export/import | Deferred |
 | Managed media library | Linked files in MVP |

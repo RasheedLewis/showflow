@@ -97,7 +97,8 @@ becoming the production adapter accidentally.
 
 ## Follow-up gate
 
-The cross-platform gate is satisfied. Subtask 1.3 must now apply its documented
-decision rule and record the SQLite adapter choice in ADR-0001 before Subtask
-1.4 begins. This spike records evidence for that decision; it does not make the
-decision itself.
+The cross-platform gate is satisfied. Subtask 1.3 applied its documented
+decision rule and accepted `node:sqlite` in
+[ADR 0011](../decisions/0011-node-sqlite-adapter.md). Persistence implementation
+may proceed to Subtask 1.4 behind the application-owned interfaces required by
+that decision.

@@ -483,7 +483,7 @@ Decision rule:
 Create ADR:
 
 ```text
-ADR-0001 SQLite adapter
+ADR-0011 SQLite adapter
 ```
 
 This decision must be made before Subtask 1.4.
