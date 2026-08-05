@@ -33,12 +33,33 @@ test("the development screen renders with the typed mock desktop API", async ({
     return {
       apiVersion: showflow.apiVersion,
       runtimeInfo: await showflow.app.getRuntimeInfo(),
+      settingsAfterUpdate: await showflow.app.updateNavigation({
+        lastRoute: "/studio/new",
+        lastStudioId: null,
+      }),
+      settingsAfterReload: await showflow.app.getApplicationSettings(),
     };
   });
 
   expect(mockState).toEqual({
     apiVersion: DEFAULT_RUNTIME_INFO_RESULT.data.desktopApiVersion,
     runtimeInfo: DEFAULT_RUNTIME_INFO_RESULT,
+    settingsAfterUpdate: {
+      ok: true,
+      data: {
+        lastRoute: "/studio/new",
+        lastStudioId: null,
+        windowPreferences: null,
+      },
+    },
+    settingsAfterReload: {
+      ok: true,
+      data: {
+        lastRoute: "/studio/new",
+        lastStudioId: null,
+        windowPreferences: null,
+      },
+    },
   });
 
   const visualFoundation = await page.evaluate(() => {

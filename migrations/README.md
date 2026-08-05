@@ -12,5 +12,4 @@ Migration files must:
 - remain immutable after they have been applied.
 
 Add schema changes as new numbered files. Never rename, reorder, or edit an
-applied migration. The first feature schema migration will be introduced with
-the repository slice that owns those tables.
+applied migration.

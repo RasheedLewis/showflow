@@ -13,12 +13,13 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "test:security": "vitest run --config ../../vitest.config.mts security.test.mts",
-    "test:ipc": "vitest run --config ../../vitest.config.mts app-runtime.test.mts runtime-info-handler.test.mts api.test.mts"
+    "test:ipc": "vitest run --config ../../vitest.config.mts app-runtime.test.mts application-settings.test.mts application-settings-handler.test.mts runtime-info-handler.test.mts api.test.mts"
   },
   "config": {
     "forge": "./forge.config.ts"
   },
   "dependencies": {
+    "@showflow/application": "workspace:*",
     "@showflow/contracts": "workspace:*",
     "@showflow/persistence": "workspace:*",
     "@showflow/ui": "workspace:*",

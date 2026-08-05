@@ -65,6 +65,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@showflow/application':
+        specifier: workspace:*
+        version: link:../../packages/application
       '@showflow/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -142,7 +145,14 @@ importers:
         specifier: 4.1.10
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@8.2.0(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
 
-  packages/application: {}
+  packages/application:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      vitest:
+        specifier: 4.1.10
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@8.2.0(@types/node@24.13.3)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
 
   packages/contracts:
     dependencies:
@@ -163,6 +173,9 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@showflow/application':
+        specifier: workspace:*
+        version: link:../application
       zod:
         specifier: 4.4.3
         version: 4.4.3

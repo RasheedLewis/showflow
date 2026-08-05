@@ -13,4 +13,14 @@ test("packages the canonical migration directory", async () => {
 
   expect(migrationReadme).toContain("Showflow database migrations");
   expect(migrationReadme).toContain("forward-only SQLite schema migrations");
+  await expect(
+    fs.readFile(
+      path.join(
+        getPackagedResourcesPath(),
+        "migrations",
+        "001_application_settings.sql",
+      ),
+      "utf8",
+    ),
+  ).resolves.toContain("CREATE TABLE app_settings");
 });

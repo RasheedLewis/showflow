@@ -1,8 +1,16 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { ApplicationSettingsService } from "@showflow/application";
+import {
+  initializePersistence,
+  SqliteApplicationSettingsRepository,
+  type InitializedPersistence,
+  type MigrationLogger,
+} from "@showflow/persistence";
 import { app, BrowserWindow, shell, type Session } from "electron";
 
+import { registerApplicationSettingsIpc } from "./application-settings-ipc.mjs";
 import {
   createSecureWebPreferences,
   getTrustedDevelopmentUrl,
@@ -13,7 +21,25 @@ import { runRequestedNodeSqliteSpike } from "./node-sqlite-spike-entry.mjs";
 import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
 
 let mainWindow: BrowserWindow | null = null;
+let initializedPersistence: InitializedPersistence | null = null;
 const securedSessions = new WeakSet<Session>();
+const MVP_BACKUP_RETENTION_COUNT = 5;
+
+interface DesktopServices {
+  readonly applicationSettings: ApplicationSettingsService;
+  readonly persistence: InitializedPersistence;
+}
+
+const migrationLogger: MigrationLogger = {
+  log(event): void {
+    if (event.type === "migration-failed") {
+      console.error("Showflow migration failed.", event);
+      return;
+    }
+
+    console.info("Showflow migration event.", event);
+  },
+};
 
 type MainWindowContent =
   | Readonly<{ kind: "file"; path: string; trustedUrl: string }>
@@ -35,6 +61,32 @@ const getMainWindowContent = (): MainWindowContent => {
     kind: "file",
     path: rendererPath,
     trustedUrl: pathToFileURL(rendererPath).href,
+  };
+};
+
+const getMigrationsDirectory = (): string =>
+  app.isPackaged
+    ? path.join(process.resourcesPath, "migrations")
+    : path.resolve(app.getAppPath(), "../../migrations");
+
+const initializeDesktopServices = async (): Promise<DesktopServices> => {
+  const userDataDirectory = app.getPath("userData");
+  const persistence = await initializePersistence({
+    backup: {
+      backupsDirectory: path.join(userDataDirectory, "backups"),
+      retentionCount: MVP_BACKUP_RETENTION_COUNT,
+    },
+    databasePath: path.join(userDataDirectory, "showflow.sqlite"),
+    logger: migrationLogger,
+    migrationsDirectory: getMigrationsDirectory(),
+  });
+  const repository = new SqliteApplicationSettingsRepository(
+    persistence.database,
+  );
+
+  return {
+    applicationSettings: new ApplicationSettingsService(repository),
+    persistence,
   };
 };
 
@@ -90,11 +142,15 @@ const configureNavigationPolicy = (
   });
 };
 
-const createMainWindow = async (): Promise<void> => {
+const createMainWindow = async (
+  applicationSettings: ApplicationSettingsService,
+): Promise<void> => {
   const content = getMainWindowContent();
+  const settings = await applicationSettings.get();
+  const windowPreferences = settings.windowPreferences;
   const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: windowPreferences?.width ?? 1280,
+    height: windowPreferences?.height ?? 800,
     minWidth: 960,
     minHeight: 640,
     show: false,
@@ -106,8 +162,31 @@ const createMainWindow = async (): Promise<void> => {
   configurePermissionPolicy(window.webContents.session);
   configureNavigationPolicy(window, content.trustedUrl);
   registerRuntimeInfoIpc(window, content.trustedUrl);
+  registerApplicationSettingsIpc(
+    window,
+    content.trustedUrl,
+    applicationSettings,
+  );
+
+  window.on("close", () => {
+    const bounds = window.getNormalBounds();
+
+    void applicationSettings
+      .updateWindowPreferences({
+        height: bounds.height,
+        isMaximized: window.isMaximized(),
+        width: bounds.width,
+      })
+      .catch((error: unknown) => {
+        console.error("Showflow could not save window preferences.", error);
+      });
+  });
 
   window.once("ready-to-show", () => {
+    if (windowPreferences?.isMaximized === true) {
+      window.maximize();
+    }
+
     window.show();
   });
 
@@ -128,11 +207,17 @@ app
       return;
     }
 
-    await createMainWindow();
+    const services = await initializeDesktopServices();
+    initializedPersistence = services.persistence;
+    await createMainWindow(services.applicationSettings);
 
     app.on("activate", () => {
       if (mainWindow === null) {
-        void createMainWindow();
+        void createMainWindow(services.applicationSettings).catch(
+          (error: unknown) => {
+            console.error("Showflow could not reopen its window.", error);
+          },
+        );
       }
     });
   })
@@ -147,4 +232,9 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("will-quit", () => {
+  initializedPersistence?.database.close();
+  initializedPersistence = null;
 });

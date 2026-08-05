@@ -4,3 +4,4 @@
 export * from "./backup/index.mjs";
 export * from "./database/database-service.mjs";
 export * from "./migrations/index.mjs";
+export * from "./settings/index.mjs";
