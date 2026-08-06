@@ -23,6 +23,7 @@ import { StudioCreationPage } from "./features/studios/StudioCreationPage";
 import { StudioHomeDestination } from "./features/studios/StudioHomeDestination";
 import { ShowCreationPage } from "./features/shows/ShowCreationPage";
 import { DesignShowDestination } from "./features/shows/DesignShowDestination";
+import { StartupDestination } from "./features/startup/StartupDestination";
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
@@ -91,6 +92,7 @@ export const ApplicationFoundation = () => (
 
 const AppRoutes = () => (
   <Routes>
+    <Route element={<StartupDestination />} path="/" />
     <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
     <Route
       element={<ApplicationFoundation />}
@@ -100,7 +102,7 @@ const AppRoutes = () => (
     <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
     <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
     <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
-    <Route element={<Navigate replace to={STUDIO_CREATION_ROUTE} />} path="*" />
+    <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>
 );
 

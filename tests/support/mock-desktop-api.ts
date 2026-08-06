@@ -216,11 +216,15 @@ export const installMockDesktopApi = async (
 ): Promise<void> => {
   const runtimeInfoResult = await api.app.getRuntimeInfo();
   const applicationSettingsResult = await api.app.getApplicationSettings();
+  const studiosResult = await api.studios.list();
+  const initialStudios = studiosResult.ok ? studiosResult.data : [];
 
   await page.addInitScript(
-    ({ apiVersion, applicationSettings, runtimeInfo }) => {
+    ({ apiVersion, applicationSettings, initialStudios, runtimeInfo }) => {
       let settingsResult = applicationSettings;
-      const studios = new Map();
+      const studios = new Map(
+        initialStudios.map((studio) => [studio.id, studio]),
+      );
       const studioIds = [
         "8d9df01f-2584-4b9a-ad13-a96d673918e9",
         "f4f47461-e2c8-44a8-a301-5465655aeb36",
@@ -409,6 +413,7 @@ export const installMockDesktopApi = async (
     {
       apiVersion: api.apiVersion,
       applicationSettings: applicationSettingsResult,
+      initialStudios,
       runtimeInfo: runtimeInfoResult,
     },
   );

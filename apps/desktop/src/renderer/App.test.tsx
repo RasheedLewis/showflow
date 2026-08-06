@@ -19,6 +19,7 @@ import {
 import {
   createMockDesktopApi,
   DEFAULT_STUDIO_ID,
+  SECOND_STUDIO_ID,
 } from "../../../../tests/support/mock-desktop-api";
 
 const installDesktopApi = (api: ShowflowDesktopApi): void => {
@@ -152,6 +153,50 @@ describe("App", () => {
     expect(
       screen.getByText("You can add a logo later from Studio settings."),
     ).toBeVisible();
+  });
+
+  it("opens the selected persisted Studio instead of Studio creation", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.studios.create({ name: "Field Notes" });
+    await api.app.updateNavigation({
+      lastRoute: `/studio/${SECOND_STUDIO_ID}`,
+      lastStudioId: SECOND_STUDIO_ID,
+    });
+    renderApp("/", api);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Field Notes" }),
+    ).toBeVisible();
+    fireEvent.pointerDown(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Field Notes",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    expect(
+      await screen.findByRole("menuitem", { name: "Public Sphere" }),
+    ).toBeVisible();
+  });
+
+  it("falls back to the first persisted Studio and saves its selection", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    renderApp("/", api);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Public Sphere",
+      }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
   });
 
   it("creates, selects, and opens a Studio", async () => {
