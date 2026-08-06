@@ -1,70 +1,46 @@
-import { ApplicationShell, Button, Skeleton } from "@showflow/ui";
-import { useEffect, useState } from "react";
+import {
+  ApplicationShell,
+  Button,
+  EmptyState,
+  Skeleton,
+  TextInput,
+} from "@showflow/ui";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { StudioDto } from "@showflow/contracts";
-
 import { StudioSwitcher } from "./StudioSwitcher";
+import { loadStudio, studioQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
 
-type StudioLoadState =
-  | { readonly status: "loading" }
-  | { readonly status: "success"; readonly studio: StudioDto }
-  | { readonly status: "error"; readonly message: string };
+const incompleteStudioRouteMessage =
+  "This Studio route is incomplete. Return to Studio setup.";
 
 export const StudioHomeDestination = () => {
   const navigate = useNavigate();
   const { studioId } = useParams<{ studioId: string }>();
-  const [loadState, setLoadState] = useState<StudioLoadState>({
-    status: "loading",
+  const studioQuery = useQuery({
+    queryFn: () => {
+      if (studioId === undefined) throw new Error(incompleteStudioRouteMessage);
+
+      return loadStudio(studioId);
+    },
+    queryKey: studioQueryKey(studioId ?? "incomplete"),
+    retry: false,
   });
   const [selectionError, setSelectionError] = useState<string>();
-
-  useEffect(() => {
-    let active = true;
-
-    const loadStudio = async (): Promise<void> => {
-      if (studioId === undefined) {
-        setLoadState({
-          status: "error",
-          message: "This Studio route is incomplete. Return to Studio setup.",
-        });
-        return;
-      }
-
-      try {
-        const result = await window.showflow.studios.get({ studioId });
-        if (!active) return;
-
-        setLoadState(
-          result.ok
-            ? { status: "success", studio: result.data }
-            : { status: "error", message: result.error.message },
-        );
-      } catch {
-        if (active) {
-          setLoadState({
-            status: "error",
-            message:
-              "Showflow could not load this Studio. Your saved work was not changed. Try again.",
-          });
-        }
-      }
-    };
-
-    void loadStudio();
-    return () => {
-      active = false;
-    };
-  }, [studioId]);
-
-  const studio = loadState.status === "success" ? loadState.studio : undefined;
+  const studio = studioQuery.data;
+  const loadErrorMessage = studioQuery.isError
+    ? studioQuery.error instanceof Error
+      ? studioQuery.error.message
+      : "Showflow could not load this Studio. Your saved work was not changed. Try again."
+    : undefined;
 
   return (
     <ApplicationShell
       breadcrumb={<span>Studio</span>}
       primaryAction={
-        loadState.status === "error" ? (
+        studioQuery.isError ? (
           <Button onClick={() => navigate("/studio/new")} variant="primary">
             Return to Studio setup
           </Button>
@@ -86,18 +62,22 @@ export const StudioHomeDestination = () => {
       }
       title={studio?.name ?? "Studio Home"}
     >
-      <div className={styles.workspace}>
+      <div
+        className={
+          studio === undefined ? styles.workspace : styles.homeWorkspace
+        }
+      >
         {selectionError ? (
           <p className={styles.switcherError} role="alert">
             {selectionError}
           </p>
         ) : null}
-        {loadState.status === "loading" ? (
+        {studioQuery.isPending ? (
           <section aria-label="Loading Studio" className={styles.card}>
             <Skeleton label="Loading Studio" />
             <Skeleton label="Loading Studio details" />
           </section>
-        ) : loadState.status === "error" ? (
+        ) : studioQuery.isError ? (
           <section
             aria-labelledby="studio-error-heading"
             className={styles.card}
@@ -107,29 +87,51 @@ export const StudioHomeDestination = () => {
               Showflow could not open this Studio
             </h2>
             <p className={styles.message} role="alert">
-              {loadState.message}
+              {loadErrorMessage}
             </p>
           </section>
         ) : (
-          <section
-            aria-labelledby="studio-ready-heading"
-            className={styles.card}
-          >
-            <p className={styles.eyebrow}>Studio created</p>
-            <h2 className={styles.heading} id="studio-ready-heading">
-              {loadState.studio.name} is ready
-            </h2>
-            <p className={styles.description}>
-              This Studio is selected. Its Shows, brand assets, and production
-              resources will live here.
-            </p>
-            <div className={styles.homeDetails}>
-              <p className={styles.homeLabel}>Studio Home</p>
-              <p className={styles.description}>
-                Your Show collection will appear in this workspace.
+          <>
+            <header className={styles.homeHeader}>
+              <div className={styles.homeIntro}>
+                <p className={styles.eyebrow}>Studio Home</p>
+                <h2 className={styles.heading}>Shows</h2>
+                <p className={styles.description}>
+                  Design reusable productions and create new Episodes from them.
+                </p>
+              </div>
+              <div className={styles.showSearch}>
+                <TextInput
+                  disabled
+                  helpText="Create a Show to start searching."
+                  label="Search Shows"
+                  placeholder="Search Shows"
+                  type="search"
+                />
+              </div>
+            </header>
+            <section aria-label="Shows" className={styles.showGrid}>
+              <EmptyState
+                action={
+                  <Button
+                    aria-describedby="new-show-availability"
+                    disabled
+                    leadingIcon="plus"
+                    variant="primary"
+                  >
+                    New Show
+                  </Button>
+                }
+                className={styles.emptyShowState}
+                description="Design a reusable production once, then create new Episodes from it."
+                heading="Create your first Show"
+                icon="plus"
+              />
+              <p className={styles.availability} id="new-show-availability">
+                Show creation will be available soon.
               </p>
-            </div>
-          </section>
+            </section>
+          </>
         )}
       </div>
     </ApplicationShell>

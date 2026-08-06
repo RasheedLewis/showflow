@@ -165,13 +165,24 @@ describe("App", () => {
 
     expect(
       await screen.findByRole("heading", {
-        level: 2,
-        name: "Public Sphere is ready",
+        level: 1,
+        name: "Public Sphere",
       }),
     ).toBeVisible();
     expect(
-      screen.getByText("This Studio is selected.", { exact: false }),
+      screen.getByRole("heading", { level: 2, name: "Create your first Show" }),
     ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Design a reusable production once, then create new Episodes from it.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("region", { name: "Shows" })).toBeVisible();
+    expect(
+      screen.getByRole("searchbox", { name: "Search Shows" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "New Show" })).toBeDisabled();
+    expect(screen.queryByText("Recent Episodes")).not.toBeInTheDocument();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
       data: {
@@ -189,7 +200,7 @@ describe("App", () => {
       target: { value: "Public Sphere" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
-    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
 
     fireEvent.pointerDown(
       screen.getByRole("button", {
@@ -214,7 +225,7 @@ describe("App", () => {
       target: { value: "Field Notes" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
-    await screen.findByRole("heading", { name: "Field Notes is ready" });
+    await screen.findByRole("heading", { level: 1, name: "Field Notes" });
 
     fireEvent.pointerDown(
       screen.getByRole("button", {
@@ -225,7 +236,10 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Public Sphere" }));
 
     expect(
-      await screen.findByRole("heading", { name: "Public Sphere is ready" }),
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Public Sphere",
+      }),
     ).toBeVisible();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
@@ -255,7 +269,7 @@ describe("App", () => {
     }) satisfies ShowflowDesktopApi;
     renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
 
-    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
     fireEvent.pointerDown(
       screen.getByRole("button", {
         name: "Switch Studio. Current Studio: Public Sphere",
@@ -270,10 +284,10 @@ describe("App", () => {
       "The current Studio remains open. Try again.",
     );
     expect(
-      screen.getByRole("heading", { name: "Public Sphere is ready" }),
+      screen.getByRole("heading", { level: 1, name: "Public Sphere" }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("heading", { name: "Field Notes is ready" }),
+      screen.queryByRole("heading", { level: 1, name: "Field Notes" }),
     ).not.toBeInTheDocument();
   });
 
@@ -295,7 +309,7 @@ describe("App", () => {
     }) satisfies ShowflowDesktopApi;
     renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
 
-    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
     fireEvent.pointerDown(
       screen.getByRole("button", {
         name: "Switch Studio. Current Studio: Public Sphere",
@@ -367,7 +381,7 @@ describe("App", () => {
       expect(screen.getByRole("button", { name: "Open Studio" })).toBeEnabled(),
     );
     expect(
-      screen.queryByRole("heading", { name: "Public Sphere is ready" }),
+      screen.queryByRole("heading", { level: 1, name: "Public Sphere" }),
     ).not.toBeInTheDocument();
   });
 });

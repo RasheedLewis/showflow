@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import type { StudioDto } from "@showflow/contracts";
 
 import { getStudioHomeRoute } from "../../app-routes.mts";
-import { loadStudios, studiosQueryKey } from "./studio-queries";
+import { loadStudios, studioQueryKey, studiosQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
 
 export const StudioCreationPage = () => {
@@ -85,6 +85,7 @@ export const StudioCreationPage = () => {
             ? studios
             : [...studios, result.data],
       );
+      queryClient.setQueryData(studioQueryKey(result.data.id), result.data);
       await selectAndOpenStudio(result.data);
     } catch {
       setRequestError(

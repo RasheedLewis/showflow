@@ -38,8 +38,26 @@ test("creates, selects, and opens the first Studio", async ({ page }) => {
     new RegExp(`/#/studio/${DEFAULT_STUDIO_ID}$`, "u"),
   );
   await expect(
-    page.getByRole("heading", { level: 2, name: "Public Sphere is ready" }),
+    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Create your first Show" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Design a reusable production once, then create new Episodes from it.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "Shows" })).toBeVisible();
+  await expect(
+    page.getByRole("searchbox", { name: "Search Shows" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: "New Show" })).toBeDisabled();
+
+  const studioHomeAccessibility = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(studioHomeAccessibility.violations).toEqual([]);
 
   const persistedSelection = await page.evaluate(async () => {
     return window.showflow.app.getApplicationSettings();
@@ -75,7 +93,7 @@ test("creates another Studio and switches back while persisting selection", asyn
     .fill("Public Sphere");
   await page.getByRole("button", { name: "Create Studio" }).click();
   await expect(
-    page.getByRole("heading", { name: "Public Sphere is ready" }),
+    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
   ).toBeVisible();
 
   await page
@@ -119,7 +137,7 @@ test("creates another Studio and switches back while persisting selection", asyn
     new RegExp(`/#/studio/${DEFAULT_STUDIO_ID}$`, "u"),
   );
   await expect(
-    page.getByRole("heading", { name: "Public Sphere is ready" }),
+    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
   ).toBeVisible();
   await expect
     .poll(() =>
