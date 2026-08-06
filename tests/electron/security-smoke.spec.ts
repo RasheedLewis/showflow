@@ -30,7 +30,13 @@ test("the packaged app preserves the renderer security boundary", async () => {
       const page = await application.firstWindow();
 
       await expect(
-        page.getByRole("heading", { level: 1, name: "Showflow is ready." }),
+        page.getByRole("heading", { level: 1, name: "Create Studio" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", {
+          level: 2,
+          name: "Create your first Studio",
+        }),
       ).toBeVisible();
       await expect(
         page.getByRole("banner", { name: "Showflow application" }),

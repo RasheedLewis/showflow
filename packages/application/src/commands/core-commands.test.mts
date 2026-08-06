@@ -416,6 +416,23 @@ describe("Studio and Show commands", () => {
     expect(context.saved.studios).toHaveLength(2);
   });
 
+  test("normalizes Studio names and rejects empty creation", async () => {
+    const context = createRepositories();
+    const command = new CreateStudioCommand(
+      context.repositories.studios,
+      commandDependencies(),
+    );
+
+    await expect(
+      command.execute({ name: "  Public Sphere  " }),
+    ).resolves.toMatchObject({
+      name: "Public Sphere",
+    });
+    await expect(command.execute({ name: "   " })).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+  });
+
   test("creates a Show and empty Blueprint in one transaction", async () => {
     const data = createTestData();
     const context = createRepositories({ studios: [data.studio] });

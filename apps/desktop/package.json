@@ -21,6 +21,7 @@
   "dependencies": {
     "@showflow/application": "workspace:*",
     "@showflow/contracts": "workspace:*",
+    "@showflow/domain": "workspace:*",
     "@showflow/persistence": "workspace:*",
     "@showflow/ui": "workspace:*",
     "react": "19.2.8",

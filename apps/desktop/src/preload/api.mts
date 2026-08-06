@@ -1,7 +1,10 @@
 import {
   ApplicationSettingsResultSchema,
   DESKTOP_API_VERSION,
+  CreateStudioRequestSchema,
+  GetStudioRequestSchema,
   GetRuntimeInfoResultSchema,
+  StudioResultSchema,
   UpdateNavigationSettingsRequestSchema,
   type ShowflowDesktopApi,
 } from "@showflow/contracts";
@@ -9,6 +12,8 @@ import {
 export interface DesktopApiTransports {
   readonly getApplicationSettings: () => Promise<unknown>;
   readonly getRuntimeInfo: () => Promise<unknown>;
+  readonly createStudio: (request: unknown) => Promise<unknown>;
+  readonly getStudio: (request: unknown) => Promise<unknown>;
   readonly updateNavigation: (request: unknown) => Promise<unknown>;
 }
 
@@ -29,9 +34,22 @@ export const createShowflowDesktopApi = (
       );
     },
   });
+  const studiosApi = Object.freeze({
+    create: async (request: unknown) => {
+      const validRequest = CreateStudioRequestSchema.parse(request);
+      return StudioResultSchema.parse(
+        await transports.createStudio(validRequest),
+      );
+    },
+    get: async (request: unknown) => {
+      const validRequest = GetStudioRequestSchema.parse(request);
+      return StudioResultSchema.parse(await transports.getStudio(validRequest));
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
     app: appApi,
+    studios: studiosApi,
   });
 };

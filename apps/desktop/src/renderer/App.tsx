@@ -6,10 +6,16 @@ import {
   NotesPanel,
   SaveStateIndicator,
 } from "@showflow/ui";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
+import {
+  APPLICATION_FOUNDATION_ROUTE,
+  STUDIO_CREATION_ROUTE,
+} from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
+import { StudioCreationPage } from "./features/studios/StudioCreationPage";
+import { StudioHomeDestination } from "./features/studios/StudioHomeDestination";
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
@@ -79,6 +85,12 @@ export const ApplicationFoundation = () => (
 export const App = () => (
   <Routes>
     <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
-    <Route element={<ApplicationFoundation />} path="*" />
+    <Route
+      element={<ApplicationFoundation />}
+      path={APPLICATION_FOUNDATION_ROUTE}
+    />
+    <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
+    <Route element={<StudioHomeDestination />} path="/studio/:studioId" />
+    <Route element={<Navigate replace to={STUDIO_CREATION_ROUTE} />} path="*" />
   </Routes>
 );

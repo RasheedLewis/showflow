@@ -74,6 +74,9 @@ importers:
       '@showflow/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@showflow/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@showflow/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence

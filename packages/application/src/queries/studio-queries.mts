@@ -19,6 +19,21 @@ export class ListStudiosQuery {
   }
 }
 
+export class GetStudioQuery {
+  readonly #repository: StudioRepository;
+
+  constructor(repository: StudioRepository) {
+    this.#repository = repository;
+  }
+
+  async execute(studioId: StudioId): Promise<Studio> {
+    return requireQueryEntity(
+      await this.#repository.getById(studioId),
+      "Studio",
+    );
+  }
+}
+
 export interface StudioHomeShow {
   readonly show: Show;
   readonly episodeCount: number;

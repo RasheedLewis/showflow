@@ -1,10 +1,15 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { ApplicationSettingsService } from "@showflow/application";
+import {
+  ApplicationSettingsService,
+  CreateStudioCommand,
+  GetStudioQuery,
+} from "@showflow/application";
 import {
   initializePersistence,
   SqliteApplicationSettingsRepository,
+  SqliteStudioRepository,
   type InitializedPersistence,
   type MigrationLogger,
 } from "@showflow/persistence";
@@ -19,6 +24,7 @@ import {
 } from "./security.mjs";
 import { runRequestedNodeSqliteSpike } from "./node-sqlite-spike-entry.mjs";
 import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
+import { registerStudioIpc, type StudioIpcOperations } from "./studio-ipc.mjs";
 
 let mainWindow: BrowserWindow | null = null;
 let initializedPersistence: InitializedPersistence | null = null;
@@ -28,6 +34,7 @@ const MVP_BACKUP_RETENTION_COUNT = 5;
 interface DesktopServices {
   readonly applicationSettings: ApplicationSettingsService;
   readonly persistence: InitializedPersistence;
+  readonly studios: StudioIpcOperations;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -80,13 +87,18 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     logger: migrationLogger,
     migrationsDirectory: getMigrationsDirectory(),
   });
-  const repository = new SqliteApplicationSettingsRepository(
+  const settingsRepository = new SqliteApplicationSettingsRepository(
     persistence.database,
   );
+  const studioRepository = new SqliteStudioRepository(persistence.database);
 
   return {
-    applicationSettings: new ApplicationSettingsService(repository),
+    applicationSettings: new ApplicationSettingsService(settingsRepository),
     persistence,
+    studios: {
+      create: new CreateStudioCommand(studioRepository),
+      get: new GetStudioQuery(studioRepository),
+    },
   };
 };
 
@@ -144,6 +156,7 @@ const configureNavigationPolicy = (
 
 const createMainWindow = async (
   applicationSettings: ApplicationSettingsService,
+  studios: StudioIpcOperations,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -167,6 +180,7 @@ const createMainWindow = async (
     content.trustedUrl,
     applicationSettings,
   );
+  registerStudioIpc(window, content.trustedUrl, studios);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -209,15 +223,16 @@ app
 
     const services = await initializeDesktopServices();
     initializedPersistence = services.persistence;
-    await createMainWindow(services.applicationSettings);
+    await createMainWindow(services.applicationSettings, services.studios);
 
     app.on("activate", () => {
       if (mainWindow === null) {
-        void createMainWindow(services.applicationSettings).catch(
-          (error: unknown) => {
-            console.error("Showflow could not reopen its window.", error);
-          },
-        );
+        void createMainWindow(
+          services.applicationSettings,
+          services.studios,
+        ).catch((error: unknown) => {
+          console.error("Showflow could not reopen its window.", error);
+        });
       }
     });
   })

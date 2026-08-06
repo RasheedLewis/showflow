@@ -32,6 +32,7 @@ import {
   GetBlueprintQuery,
   GetEpisodeStoryboardQuery,
   GetShowDetailQuery,
+  GetStudioQuery,
   GetStudioHomeQuery,
   ListSegmentCatalogQuery,
   ListStudiosQuery,
@@ -250,6 +251,17 @@ const episodeRepository = (episodes: readonly Episode[]): EpisodeRepository => {
 };
 
 describe("Studio queries", () => {
+  test("gets one Studio and returns a stable not-found error", async () => {
+    const data = createQueryTestData();
+    const query = new GetStudioQuery(studioRepository([data.studio]));
+
+    await expect(query.execute(data.studio.id)).resolves.toEqual(data.studio);
+    await expect(query.execute(entityId<"studio">(999))).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Studio was not found.",
+    });
+  });
+
   test("lists Studios in repository order", async () => {
     const data = createQueryTestData();
     const anotherStudio = {

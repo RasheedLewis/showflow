@@ -6,6 +6,11 @@ import type {
   DESKTOP_API_VERSION,
   GetRuntimeInfoResult,
 } from "./app-runtime.ts";
+import type {
+  CreateStudioRequest,
+  GetStudioRequest,
+  StudioResult,
+} from "./studio.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -15,5 +20,9 @@ export interface ShowflowDesktopApi {
     updateNavigation: (
       request: UpdateNavigationSettingsRequest,
     ) => Promise<ApplicationSettingsResult>;
+  }>;
+  readonly studios: Readonly<{
+    create: (request: CreateStudioRequest) => Promise<StudioResult>;
+    get: (request: GetStudioRequest) => Promise<StudioResult>;
   }>;
 }

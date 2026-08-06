@@ -24,10 +24,23 @@ const validSettingsResult = {
     windowPreferences: null,
   },
 } as const satisfies ApplicationSettingsResult;
+const validStudioResult = {
+  ok: true,
+  data: {
+    archivedAt: null,
+    createdAt: "2026-08-06T14:30:00.000Z",
+    id: "8d9df01f-2584-4b9a-ad13-a96d673918e9",
+    logoResourceId: null,
+    name: "Public Sphere",
+    updatedAt: "2026-08-06T14:30:00.000Z",
+  },
+} as const;
 
 const createValidTransports = () => ({
+  createStudio: async () => validStudioResult,
   getApplicationSettings: async () => validSettingsResult,
   getRuntimeInfo: async () => validResult,
+  getStudio: async () => validStudioResult,
   updateNavigation: async () => validSettingsResult,
 });
 
@@ -78,10 +91,28 @@ test("the preload validates settings requests and responses", async () => {
   ).rejects.toThrow();
 });
 
+test("the preload validates Studio requests and responses", async () => {
+  const api = createShowflowDesktopApi(createValidTransports());
+
+  await expect(api.studios.create({ name: "Public Sphere" })).resolves.toEqual(
+    validStudioResult,
+  );
+  await expect(
+    api.studios.get({ studioId: validStudioResult.data.id }),
+  ).resolves.toEqual(validStudioResult);
+  await expect(api.studios.create({ name: "   " })).rejects.toThrow();
+  await expect(
+    createShowflowDesktopApi({
+      ...createValidTransports(),
+      getStudio: async () => ({ ok: true, data: { id: "invalid" } }),
+    }).studios.get({ studioId: validStudioResult.data.id }),
+  ).rejects.toThrow();
+});
+
 test("the preload exposes no generic invocation surface", () => {
   const api = createShowflowDesktopApi(createValidTransports());
 
-  expect(Object.keys(api)).toEqual(["apiVersion", "app"]);
+  expect(Object.keys(api)).toEqual(["apiVersion", "app", "studios"]);
   expect(Object.keys(api.app)).toEqual([
     "getApplicationSettings",
     "getRuntimeInfo",
@@ -89,6 +120,9 @@ test("the preload exposes no generic invocation surface", () => {
   ]);
   expect("invoke" in api).toBe(false);
   expect("invoke" in api.app).toBe(false);
+  expect(Object.keys(api.studios)).toEqual(["create", "get"]);
+  expect("invoke" in api.studios).toBe(false);
   expect(Object.isFrozen(api)).toBe(true);
   expect(Object.isFrozen(api.app)).toBe(true);
+  expect(Object.isFrozen(api.studios)).toBe(true);
 });

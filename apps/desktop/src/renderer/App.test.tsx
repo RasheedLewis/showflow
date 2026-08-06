@@ -1,19 +1,41 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
+import type { ShowflowDesktopApi } from "@showflow/contracts";
+
 import { App } from "./App";
+import { APPLICATION_FOUNDATION_ROUTE } from "./app-routes.mts";
 import {
   COMPONENT_GALLERY_ROUTE,
   GALLERY_COMPONENTS,
 } from "./development/component-gallery-contract.mts";
+import { createMockDesktopApi } from "../../../../tests/support/mock-desktop-api";
 
-const renderApp = (route = "/") =>
-  render(
+const installDesktopApi = (api: ShowflowDesktopApi): void => {
+  Object.defineProperty(window, "showflow", {
+    configurable: true,
+    value: api,
+  });
+};
+
+const renderApp = (
+  route = APPLICATION_FOUNDATION_ROUTE,
+  api = createMockDesktopApi(),
+) => {
+  installDesktopApi(api);
+  return render(
     <MemoryRouter initialEntries={[route]}>
       <App />
     </MemoryRouter>,
   );
+};
 
 describe("App", () => {
   it("renders the Showflow application shell accessibly", () => {
@@ -112,5 +134,110 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Keyboard focus" }),
     ).toHaveAttribute("data-gallery-focus", "true");
+  });
+
+  it("routes first launch to Studio creation", async () => {
+    renderApp("/");
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create your first Studio",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("textbox", { name: "Studio name" })).toBeVisible();
+    expect(
+      screen.getByText("You can add a logo later from Studio settings."),
+    ).toBeVisible();
+  });
+
+  it("creates, selects, and opens a Studio", async () => {
+    const api = createMockDesktopApi();
+    renderApp("/studio/new", api);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Studio name" }), {
+      target: { value: "  Public Sphere  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Public Sphere is ready",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("This Studio is selected.", { exact: false }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: "/studio/8d9df01f-2584-4b9a-ad13-a96d673918e9",
+        lastStudioId: "8d9df01f-2584-4b9a-ad13-a96d673918e9",
+      },
+    });
+  });
+
+  it("validates the required Studio name without crossing the desktop API", async () => {
+    renderApp("/studio/new");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
+
+    expect(await screen.findByText("Enter a Studio name.")).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Studio name" }),
+    ).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("shows an actionable error when a Studio route cannot be loaded", async () => {
+    renderApp("/studio/8d9df01f-2584-4b9a-ad13-a96d673918e9");
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Showflow could not open this Studio",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "This Studio is no longer available",
+    );
+    expect(
+      screen.getByRole("button", { name: "Return to Studio setup" }),
+    ).toBeVisible();
+  });
+
+  it("does not navigate until Studio selection is saved", async () => {
+    const baseApi = createMockDesktopApi();
+    const api = Object.freeze({
+      ...baseApi,
+      app: Object.freeze({
+        ...baseApi.app,
+        updateNavigation: async () => ({
+          ok: false as const,
+          error: {
+            code: "PERSISTENCE_FAILURE" as const,
+            message: "Showflow could not save navigation settings.",
+          },
+        }),
+      }),
+    }) satisfies ShowflowDesktopApi;
+    renderApp("/studio/new", api);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Studio name" }), {
+      target: { value: "Public Sphere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
+
+    expect(
+      await screen.findByText(
+        "The Studio was created, but Showflow could not select it. Try opening it again.",
+      ),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Open Studio" })).toBeEnabled(),
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Public Sphere is ready" }),
+    ).not.toBeInTheDocument();
   });
 });

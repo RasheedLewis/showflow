@@ -18,6 +18,7 @@ import {
   requireEntity,
   touchEntity,
 } from "./command-support.mjs";
+import { ApplicationError } from "../errors/application-error.mjs";
 import type {
   ApplicationRepositories,
   ShowRepository,
@@ -25,6 +26,19 @@ import type {
 } from "../repositories/repositories.mjs";
 
 export type CreateStudioCommandInput = CreateStudioInput;
+
+const normalizeStudioName = (name: string): string => {
+  const normalizedName = name.trim();
+
+  if (normalizedName.length === 0 || normalizedName.length > 200) {
+    throw new ApplicationError(
+      "VALIDATION_ERROR",
+      "Studio name must contain between 1 and 200 characters.",
+    );
+  }
+
+  return normalizedName;
+};
 
 export class CreateStudioCommand {
   readonly #repository: StudioRepository;
@@ -39,7 +53,10 @@ export class CreateStudioCommand {
   }
 
   async execute(input: CreateStudioCommandInput): Promise<Studio> {
-    const studio = createStudio(input, this.#dependencies);
+    const studio = createStudio(
+      { name: normalizeStudioName(input.name) },
+      this.#dependencies,
+    );
     await this.#repository.save(studio);
     return studio;
   }
@@ -68,7 +85,7 @@ export class RenameStudioCommand {
       "Studio",
     );
     const studio = touchEntity(
-      { ...current, name: input.name },
+      { ...current, name: normalizeStudioName(input.name) },
       this.#dependencies,
     );
     await this.#repository.save(studio);
