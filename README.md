@@ -7,7 +7,7 @@
 Showflow is a local-first desktop production workspace for creators who design,
 prepare, preview, and rehearse recurring shows.
 
-![Project status](https://img.shields.io/badge/status-foundation%20in%20progress-D6A84B?style=flat-square)
+![Project status](https://img.shields.io/badge/status-foundation%20complete-2F855A?style=flat-square)
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
@@ -18,10 +18,12 @@ prepare, preview, and rehearse recurring shows.
 </div>
 
 > [!IMPORTANT]
-> **Showflow is building its engineering foundation.** The authoritative product
-> specifications and delivery plan are in place, and the Electron, Vite, and React
-> desktop shell now runs and packages. Security, typed IPC, package boundaries,
-> quality tooling, test harnesses, and continuous integration are in place.
+> **The Showflow Foundation phase (Sprints 0–3) is complete.** The repository now
+> includes the secure Electron desktop runtime, SQLite persistence foundation,
+> pure domain and application kernel, typed IPC and settings boundaries, shared
+> dark design system, responsive application shell, quality gates, test harnesses,
+> and continuous integration. Sprint 4 begins the user-facing Studio and Show
+> workflows.
 
 ## The product
 
@@ -200,8 +202,9 @@ React component
   or SQLite.
 - Persistent mutations pass through application use cases.
 - IPC exposes narrow semantic methods, never a generic arbitrary channel.
-- The versioned preload bridge currently exposes only
-  `window.showflow.app.getRuntimeInfo()` and validates its result at runtime.
+- The versioned preload bridge exposes runtime information and application
+  navigation settings through `window.showflow.app`; boundary requests and
+  responses are validated at runtime.
 - IDs are stable UUIDs; timestamps are ISO 8601 UTC strings.
 - Episode creation from a Blueprint is transactional.
 - Preview and rehearsal share deterministic, cancellable runtime logic.
@@ -254,9 +257,10 @@ pnpm --version # 11.4.0
 pnpm install --frozen-lockfile
 ```
 
-The workspace includes the initial Electron desktop shell. Start it with
-`pnpm dev`; package it locally with `pnpm package`; or create the installer format
-for the current platform with `pnpm make`.
+The workspace includes the secure Electron desktop shell and Sprint 3 design
+system foundation. Start it with `pnpm dev`; package it locally with
+`pnpm package`; or create the installer format for the current platform with
+`pnpm make`.
 
 During development, the internal component acceptance gallery is available at
 `/#/_development/components`. It renders every shared design-system component and
@@ -310,6 +314,9 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
+**Current milestone:** The Foundation phase is complete. Sprint 4—Studios, Shows,
+and Show Detail—is next.
+
 | Phase              | Sprints | Outcome                                                                     |
 | ------------------ | ------: | --------------------------------------------------------------------------- |
 | Foundation         |     0–3 | Secure Electron shell, persistence proof, domain kernel, and design system  |
@@ -321,10 +328,10 @@ next Sprint begins.
 <details>
 <summary><strong>View the complete Sprint sequence</strong></summary>
 
-- [ ] **Sprint 0:** Repository and secure Electron foundation
-- [ ] **Sprint 1:** Persistence proof and database foundation
-- [ ] **Sprint 2:** Domain and application kernel
-- [ ] **Sprint 3:** Design system foundation and application shell
+- [x] **Sprint 0:** Repository and secure Electron foundation
+- [x] **Sprint 1:** Persistence proof and database foundation
+- [x] **Sprint 2:** Domain and application kernel
+- [x] **Sprint 3:** Design system foundation and application shell
 - [ ] **Sprint 4:** Studios, Shows, and Show Detail
 - [ ] **Sprint 5:** Segment Catalog and Show Blueprint
 - [ ] **Sprint 6:** Episodes and Episode Storyboard
