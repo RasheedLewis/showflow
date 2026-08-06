@@ -11,7 +11,10 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     executableName: "showflow",
-    extraResource: [path.resolve(import.meta.dirname, "../../migrations")],
+    extraResource: [
+      path.resolve(import.meta.dirname, "../../migrations"),
+      path.resolve(import.meta.dirname, "../../THIRD_PARTY_NOTICES.md"),
+    ],
   },
   rebuildConfig: {},
   makers: [

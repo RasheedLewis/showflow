@@ -146,6 +146,7 @@ flowchart LR
 | Forms                    | React Hook Form where multi-field validation warrants it                                  |
 | Accessible primitives    | Radix UI wrapped in Showflow components                                                   |
 | Styling                  | CSS Modules and centralized CSS custom-property tokens                                    |
+| Typography               | Self-hosted Geist Sans and Geist Mono variable WOFF2 assets                               |
 | Drag and drop            | `@dnd-kit`, subject to an early interaction spike                                         |
 | Persistence              | `node:sqlite`, accepted by ADR 0011 and isolated behind persistence interfaces            |
 | Testing                  | Vitest, React Testing Library, Playwright, and a small Electron smoke suite               |
@@ -154,7 +155,9 @@ flowchart LR
 The initial dark visual foundation is exposed by `@showflow/ui` through the
 [central token stylesheet](packages/ui/src/tokens.css). Renderer styles consume
 semantic `--sf-*` custom properties rather than maintaining feature-local color,
-spacing, radius, or motion values.
+spacing, radius, or motion values. That stylesheet also loads pinned, locally
+bundled Geist variable fonts; system sans and monospace stacks remain explicit
+fallbacks.
 
 ### Required repository shape
 

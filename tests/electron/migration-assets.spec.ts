@@ -24,3 +24,14 @@ test("packages the canonical migration directory", async () => {
     ),
   ).resolves.toContain("CREATE TABLE app_settings");
 });
+
+test("packages the Geist font license notice", async () => {
+  const notices = await fs.readFile(
+    path.join(getPackagedResourcesPath(), "THIRD_PARTY_NOTICES.md"),
+    "utf8",
+  );
+
+  expect(notices).toContain("Geist and Geist Mono");
+  expect(notices).toContain("SIL OPEN FONT LICENSE Version 1.1");
+  expect(notices).toContain("Copyright 2024 The Geist Project Authors");
+});

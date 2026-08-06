@@ -73,12 +73,26 @@ test("the development screen renders with the typed mock desktop API", async ({
     }
 
     const appBarStyles = getComputedStyle(appBar);
+    const duration = document.createElement("span");
+
+    duration.className = "sf-duration";
+    duration.textContent = "01:30";
+    document.body.append(duration);
+
+    const durationStyles = getComputedStyle(duration);
+    const durationTypography = {
+      fontFamily: durationStyles.fontFamily,
+      fontVariantNumeric: durationStyles.fontVariantNumeric,
+    };
+
+    duration.remove();
 
     return {
       accent: rootStyles.getPropertyValue("--sf-accent").trim(),
       appBarBackground: appBarStyles.backgroundColor,
       appBarHeight: appBarStyles.height,
       background: bodyStyles.backgroundColor,
+      durationTypography,
       fontFamily: bodyStyles.fontFamily,
       panelBackground: getComputedStyle(panel).backgroundColor,
       text: bodyStyles.color,
@@ -90,9 +104,31 @@ test("the development screen renders with the typed mock desktop API", async ({
     appBarBackground: "rgb(17, 19, 21)",
     appBarHeight: "64px",
     background: "rgb(13, 15, 16)",
+    durationTypography: {
+      fontVariantNumeric: "tabular-nums",
+    },
     panelBackground: "rgb(23, 26, 29)",
     text: "rgb(244, 243, 239)",
   });
-  expect(visualFoundation.fontFamily).toMatch(/^Geist, "Geist Sans"/u);
+  expect(visualFoundation.fontFamily).toMatch(
+    /^"Geist Variable", Geist, "Geist Sans"/u,
+  );
   expect(visualFoundation.fontFamily).toContain("system-ui");
+  expect(visualFoundation.durationTypography.fontFamily).toMatch(
+    /^"Geist Mono Variable", "Geist Mono"/u,
+  );
+
+  const loadedFonts = await page.evaluate(async () => {
+    await Promise.all([
+      document.fonts.load('400 16px "Geist Variable"', "Showflow"),
+      document.fonts.load('500 16px "Geist Mono Variable"', "01:30"),
+    ]);
+
+    return {
+      mono: document.fonts.check('500 16px "Geist Mono Variable"', "01:30"),
+      sans: document.fonts.check('400 16px "Geist Variable"', "Showflow"),
+    };
+  });
+
+  expect(loadedFonts).toEqual({ mono: true, sans: true });
 });

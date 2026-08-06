@@ -99,13 +99,24 @@ describe("initial design token contract", () => {
     });
   });
 
-  test("defines Geist stacks, comfortable spacing, shape, and motion", () => {
+  test("loads Geist and defines its semantic font stacks", () => {
+    expect(source).toContain('@import "@fontsource-variable/geist/wght.css";');
+    expect(source).toContain(
+      '@import "@fontsource-variable/geist-mono/wght.css";',
+    );
     expect(tokens.get("--sf-font-sans")).toMatch(
-      /^"Geist", "Geist Sans", system-ui,/u,
+      /^"Geist Variable", "Geist", "Geist Sans", system-ui,/u,
     );
     expect(tokens.get("--sf-font-mono")).toMatch(
-      /^"Geist Mono", ui-monospace,/u,
+      /^"Geist Mono Variable", "Geist Mono", ui-monospace,/u,
     );
+    expect(source).toMatch(
+      /:where\(\.sf-duration, \.sf-timecode, \.sf-measurement, \.sf-shortcut\)\s*\{\s*font-family: var\(--sf-font-mono\);\s*\}/u,
+    );
+    expect(source).not.toContain(".sf-font-mono");
+  });
+
+  test("defines comfortable spacing, shape, and motion", () => {
     expectTokenGroup(tokens, {
       "--sf-space-1": "4px",
       "--sf-space-2": "8px",
@@ -152,6 +163,10 @@ describe("initial design token contract", () => {
 
     expect(uiManifest.exports).toMatchObject({
       "./tokens.css": "./src/tokens.css",
+    });
+    expect(uiManifest.dependencies).toMatchObject({
+      "@fontsource-variable/geist": "5.3.0",
+      "@fontsource-variable/geist-mono": "5.3.0",
     });
     expect(desktopManifest.dependencies).toMatchObject({
       "@showflow/ui": "workspace:*",
