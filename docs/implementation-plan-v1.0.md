@@ -966,6 +966,9 @@ This may be a custom gallery rather than Storybook.
 
 ### D3.1 — Exact Icon Library `[DECISION REQUIRED BEFORE 3.3 FINALIZATION]`
 
+**Decision recorded 2026-08-06:** Use Lucide React through the local `Icon`
+adapter. See [ADR 0014](decisions/0014-lucide-icon-library.md).
+
 Choose one library before foundational icon buttons are considered stable.
 
 Selection criteria:

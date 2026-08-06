@@ -5,13 +5,19 @@ export default defineConfig({
   test: {
     coverage: {
       exclude: ["**/*.d.ts", "**/*.test.*", "**/*.spec.*", "**/renderer.tsx"],
-      include: ["apps/desktop/src/renderer/**/*.{ts,tsx}"],
+      include: [
+        "apps/desktop/src/renderer/**/*.{ts,tsx}",
+        "packages/ui/src/**/*.{ts,tsx}",
+      ],
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "coverage/renderer",
     },
     environment: "jsdom",
-    include: ["apps/desktop/src/renderer/**/*.{test,spec}.{ts,tsx,mts}"],
+    include: [
+      "apps/desktop/src/renderer/**/*.{test,spec}.{ts,tsx,mts}",
+      "packages/ui/src/**/*.{test,spec}.{ts,tsx,mts}",
+    ],
     setupFiles: ["apps/desktop/src/renderer/test/setup.ts"],
   },
 });

@@ -93,6 +93,7 @@ remains reviewable. Template files are not records and do not receive numbers.
 |             [0011](0011-node-sqlite-adapter.md) | Accepted | `node:sqlite` persistence adapter  |
 |         [0012](0012-self-hosted-geist-fonts.md) | Accepted | Self-hosted Geist font assets      |
 |  [0013](0013-semantic-design-token-contract.md) | Accepted | Complete semantic token contract   |
+|             [0014](0014-lucide-icon-library.md) | Accepted | Lucide icon library                |
 
 ## Product Decision Request register
 

@@ -126,6 +126,20 @@
   --sf-focus-ring-width: 2px;
   --sf-focus-ring-offset: 2px;
 
+  /* Foundational control dimensions */
+  --sf-control-height-sm: 36px;
+  --sf-control-height-md: 44px;
+  --sf-control-height-lg: 52px;
+  --sf-control-padding-sm: 12px;
+  --sf-control-padding-md: 16px;
+  --sf-control-padding-lg: 20px;
+  --sf-status-height: 24px;
+  --sf-menu-item-height: 40px;
+  --sf-menu-min-width: 200px;
+  --sf-dialog-width-sm: 480px;
+  --sf-dialog-width-md: 600px;
+  --sf-drawer-width: 360px;
+
   /* Elevation */
   --sf-elevation-none: none;
   --sf-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.24);

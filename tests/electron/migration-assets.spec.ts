@@ -25,7 +25,7 @@ test("packages the canonical migration directory", async () => {
   ).resolves.toContain("CREATE TABLE app_settings");
 });
 
-test("packages the Geist font license notice", async () => {
+test("packages third-party license notices", async () => {
   const notices = await fs.readFile(
     path.join(getPackagedResourcesPath(), "THIRD_PARTY_NOTICES.md"),
     "utf8",
@@ -34,4 +34,7 @@ test("packages the Geist font license notice", async () => {
   expect(notices).toContain("Geist and Geist Mono");
   expect(notices).toContain("SIL OPEN FONT LICENSE Version 1.1");
   expect(notices).toContain("Copyright 2024 The Geist Project Authors");
+  expect(notices).toContain("Lucide Icons and Contributors");
+  expect(notices).toContain("Radix UI Primitives");
+  expect(notices).toContain("Floating UI contributors");
 });

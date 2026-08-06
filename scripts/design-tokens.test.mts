@@ -186,6 +186,18 @@ describe("semantic design token contract", () => {
       "--sf-border-width-default": "1px",
       "--sf-focus-ring-width": "2px",
       "--sf-focus-ring-offset": "2px",
+      "--sf-control-height-sm": "36px",
+      "--sf-control-height-md": "44px",
+      "--sf-control-height-lg": "52px",
+      "--sf-control-padding-sm": "12px",
+      "--sf-control-padding-md": "16px",
+      "--sf-control-padding-lg": "20px",
+      "--sf-status-height": "24px",
+      "--sf-menu-item-height": "40px",
+      "--sf-menu-min-width": "200px",
+      "--sf-dialog-width-sm": "480px",
+      "--sf-dialog-width-md": "600px",
+      "--sf-drawer-width": "360px",
     });
   });
 
@@ -230,6 +242,10 @@ describe("semantic design token contract", () => {
       path.join(REPOSITORY_ROOT, "apps/desktop/src/renderer/styles.css"),
       "utf8",
     );
+    const foundationStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/foundations.module.css"),
+      "utf8",
+    );
 
     expect(uiManifest.exports).toMatchObject({
       "./tokens.css": "./src/tokens.css",
@@ -237,17 +253,25 @@ describe("semantic design token contract", () => {
     expect(uiManifest.dependencies).toMatchObject({
       "@fontsource-variable/geist": "5.3.0",
       "@fontsource-variable/geist-mono": "5.3.0",
+      "@radix-ui/react-dialog": "1.1.23",
+      "@radix-ui/react-dropdown-menu": "2.1.24",
+      "@radix-ui/react-tabs": "1.1.21",
+      "@radix-ui/react-tooltip": "1.2.16",
+      "lucide-react": "1.28.0",
     });
     expect(desktopManifest.dependencies).toMatchObject({
       "@showflow/ui": "workspace:*",
     });
     expect(rendererEntry).toContain('import "@showflow/ui/tokens.css";');
     expect(rendererStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
+    expect(foundationStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(rendererStyles).not.toContain("--foundation-");
+    expect(foundationStyles).not.toContain("--foundation-");
 
     const tokenReferences = [
       ...source.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...rendererStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+      ...foundationStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
     ].map((match) => match[1]);
 
     for (const tokenName of tokenReferences) {
@@ -257,5 +281,29 @@ describe("semantic design token contract", () => {
     expect(rendererStyles).not.toMatch(
       /(?:font-size|font-weight|line-height|letter-spacing):\s*(?:\d|clamp\()/gu,
     );
+  });
+
+  test("keeps foundational visual states semantic and icon imports isolated", () => {
+    const foundationStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/foundations.module.css"),
+      "utf8",
+    );
+    const uiSourceDirectory = path.join(REPOSITORY_ROOT, "packages/ui/src");
+    const directIconImports = fs
+      .readdirSync(uiSourceDirectory)
+      .filter((fileName) => fileName.endsWith(".tsx"))
+      .filter((fileName) =>
+        fs
+          .readFileSync(path.join(uiSourceDirectory, fileName), "utf8")
+          .includes('from "lucide-react"'),
+      );
+
+    expect(foundationStyles).toContain(":hover:not(:disabled)");
+    expect(foundationStyles).toContain(":focus-visible");
+    expect(foundationStyles).toContain(":disabled");
+    expect(foundationStyles).toContain(".inputError");
+    expect(foundationStyles).toContain('[data-state="active"]');
+    expect(foundationStyles).toContain("[data-highlighted]");
+    expect(directIconImports).toEqual(["icon.tsx"]);
   });
 });

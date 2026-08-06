@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   root: import.meta.dirname,
@@ -14,6 +14,10 @@ export default defineConfig({
       reportsDirectory: "coverage/unit",
     },
     environment: "node",
+    exclude: [
+      ...configDefaults.exclude,
+      "packages/ui/src/**/*.{test,spec}.{ts,tsx,mts}",
+    ],
     include: [
       "scripts/ci-workflows.test.mts",
       "scripts/decision-templates.test.mts",
