@@ -420,7 +420,7 @@
 @media (prefers-reduced-motion: reduce) {
   .objectCard,
   .objectActions {
-    transition-duration: var(--sf-motion-instant);
+    transition-duration: var(--sf-motion-reduced);
   }
 
   .objectCard[data-dragging="true"] {

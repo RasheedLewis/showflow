@@ -146,6 +146,20 @@ while open, and overlays return focus to the control that opened them. Applicati
 support panels follow the same Escape and focus-return contract. Do not add custom
 global shortcuts until the open shortcut vocabulary is approved.
 
+## Reduced motion contract
+
+The token stylesheet responds to `prefers-reduced-motion: reduce` by resolving
+every foundation duration token to the 1 ms reduced-motion token. The nonzero
+duration preserves completion events for state and lifecycle logic while making
+the visual change effectively immediate. Smooth scrolling is disabled globally.
+
+Component styles also remove motion that duration alone cannot neutralize:
+buttons stop lifting, dragging cards stop scaling, the skip link snaps into place
+with opacity as its only transition, and skeletons stop pulsing. State, focus,
+overlay dismissal, and focus restoration remain unchanged. New motion must use
+the semantic duration and easing tokens and add a reduced-motion rule whenever a
+spatial transform or repeating animation is introduced.
+
 All component values live in `tokens.css` and `foundations.module.css`. Feature
 styles must not override these components with raw color, type, spacing, radius,
 motion, or stacking values.

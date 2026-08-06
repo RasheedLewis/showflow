@@ -244,3 +244,60 @@ test("keyboard focus remains visible and critical targets meet the minimum size"
     expect(target?.width).toBeGreaterThanOrEqual(44);
   }
 });
+
+test("reduced motion keeps the shell functional while making motion immediate", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+
+  const motion = await page.evaluate(() => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const foundationalControl = document.querySelector<HTMLElement>("button");
+    const skipLink = document.querySelector<HTMLElement>(
+      'a[href^="#sf-main-"]',
+    );
+
+    if (!foundationalControl || !skipLink) {
+      throw new Error("The reduced-motion foundation controls are missing.");
+    }
+
+    const controlStyles = getComputedStyle(foundationalControl);
+
+    return {
+      durationTokens: [
+        "--sf-motion-instant",
+        "--sf-motion-fast",
+        "--sf-motion-standard",
+        "--sf-motion-slow",
+        "--sf-motion-emphasis",
+      ].map((token) => controlStyles.getPropertyValue(token).trim()),
+      mediaMatches: window.matchMedia("(prefers-reduced-motion: reduce)")
+        .matches,
+      controlTransitionDurations: controlStyles.transitionDuration.split(", "),
+      reducedToken: rootStyles.getPropertyValue("--sf-motion-reduced").trim(),
+      skipLinkTransitionProperties:
+        getComputedStyle(skipLink).transitionProperty.split(", "),
+    };
+  });
+
+  expect(motion).toEqual({
+    durationTokens: ["1ms", "1ms", "1ms", "1ms", "1ms"],
+    mediaMatches: true,
+    controlTransitionDurations: ["0.001s"],
+    reducedToken: "1ms",
+    skipLinkTransitionProperties: ["opacity"],
+  });
+
+  const inspectorTrigger = page.getByRole("button", { name: "Hide Inspector" });
+  await inspectorTrigger.click();
+  await expect(
+    page.getByRole("complementary", { name: "Inspector" }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "Show Inspector" }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("main", { name: "Showflow is ready." }),
+  ).toBeVisible();
+});

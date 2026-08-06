@@ -19,8 +19,16 @@ const readManifest = (filePath: string): PackageManifest =>
 const parseTokens = (source: string): Map<string, string> => {
   const tokens = new Map<string, string>();
   const declaration = /(--sf-[a-z0-9-]+):\s*([^;]+);/gu;
+  const rootStart = source.search(/:root\s*\{/u);
+  const rootEnd = source.indexOf("}", rootStart);
 
-  for (const match of source.matchAll(declaration)) {
+  if (rootStart < 0 || rootEnd < 0) {
+    throw new Error("The canonical :root token registry is missing.");
+  }
+
+  const rootSource = source.slice(rootStart, rootEnd);
+
+  for (const match of rootSource.matchAll(declaration)) {
     const name = match[1];
     const value = match[2];
 
@@ -223,6 +231,7 @@ describe("semantic design token contract", () => {
       "--sf-motion-standard": "220ms",
       "--sf-motion-slow": "320ms",
       "--sf-motion-emphasis": "420ms",
+      "--sf-motion-reduced": "1ms",
       "--sf-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
       "--sf-ease-enter": "cubic-bezier(0, 0, 0.2, 1)",
       "--sf-ease-exit": "cubic-bezier(0.4, 0, 1, 1)",
@@ -309,6 +318,60 @@ describe("semantic design token contract", () => {
     expect(rendererStyles).not.toMatch(
       /(?:font-size|font-weight|line-height|letter-spacing):\s*(?:\d|clamp\()/gu,
     );
+  });
+
+  test("centralizes the reduced-motion fallback without losing completion events", () => {
+    const rendererStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "apps/desktop/src/renderer/styles.css"),
+      "utf8",
+    );
+    const foundationStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/foundations.module.css"),
+      "utf8",
+    );
+    const productionStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/production.module.css"),
+      "utf8",
+    );
+    const shellStyles = fs.readFileSync(
+      path.join(
+        REPOSITORY_ROOT,
+        "packages/ui/src/application-shell.module.css",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(source).toContain("--sf-motion-reduced: 1ms");
+    for (const duration of [
+      "instant",
+      "fast",
+      "standard",
+      "slow",
+      "emphasis",
+    ]) {
+      expect(source).toContain(
+        `--sf-motion-${duration}: var(--sf-motion-reduced)`,
+      );
+    }
+    expect(source).toContain("scroll-behavior: auto !important");
+    expect(rendererStyles).not.toContain(
+      "@media (prefers-reduced-motion: reduce)",
+    );
+
+    expect(foundationStyles).toContain(
+      "transition-duration: var(--sf-motion-reduced)",
+    );
+    expect(foundationStyles).toContain("transform: none");
+    expect(foundationStyles).toContain("animation: none");
+    expect(productionStyles).toContain(
+      "transition-duration: var(--sf-motion-reduced)",
+    );
+    expect(productionStyles).toContain("transform: none");
+    expect(shellStyles).toContain(
+      "transition-duration: var(--sf-motion-reduced)",
+    );
+    expect(shellStyles).toContain("transition-property: opacity");
   });
 
   test("keeps foundational visual states semantic and icon imports isolated", () => {

@@ -616,7 +616,7 @@
   .input,
   .toggleTrack,
   .toggleThumb {
-    transition-duration: var(--sf-motion-instant);
+    transition-duration: var(--sf-motion-reduced);
   }
 
   .control:hover:not(:disabled) {

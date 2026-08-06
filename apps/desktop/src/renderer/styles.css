@@ -76,11 +76,3 @@ select {
   font-size: var(--sf-font-size-body-sm);
   line-height: var(--sf-line-height-body-sm);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-  }
-}

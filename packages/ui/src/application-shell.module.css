@@ -285,6 +285,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skipLink {
-    transition-duration: var(--sf-motion-instant);
+    transition-duration: var(--sf-motion-reduced);
+    transition-property: opacity;
   }
 }
