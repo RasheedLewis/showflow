@@ -48,6 +48,7 @@ import {
   ReorderEpisodeSegmentsCommand,
 } from "./index.mjs";
 import type { EpisodeFromBlueprintCreator } from "./index.mjs";
+import type { EpisodeCreationRepositories } from "./index.mjs";
 import type {
   ApplicationRepositories,
   TransactionRepositories,
@@ -617,7 +618,7 @@ describe("Episode commands", () => {
       { showId: data.show.id, title: "Episode 2" },
       factoryDependencies(80, updatedAt),
     );
-    let receivedRepositories: TransactionRepositories | undefined;
+    let receivedRepositories: EpisodeCreationRepositories | undefined;
     let receivedDependencies: DomainFactoryDependencies | undefined;
     const creator: EpisodeFromBlueprintCreator = {
       create: async (_input, repositories, dependencies) => {
@@ -630,13 +631,70 @@ describe("Episode commands", () => {
     const dependencies = commandDependencies();
     const created = await new CreateEpisodeFromBlueprintCommand(
       context.repositories,
-      creator,
       dependencies,
+      creator,
     ).execute({ showId: data.show.id, title: "Episode 2" });
 
     expect(created).toBe(mappedEpisode);
     expect(receivedRepositories).toBeDefined();
     expect(receivedDependencies).toBe(dependencies);
+    expect(context.getTransactionCount()).toBe(1);
+  });
+
+  test("creates a complete Episode from the Blueprint through the default mapper", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const created = await new CreateEpisodeFromBlueprintCommand(
+      context.repositories,
+      commandDependencies(),
+    ).execute({ showId: data.show.id, title: "Episode 2" });
+
+    expect(created.id).toBe(entityId<"episode">(500));
+    expect(created.segments).toEqual([
+      expect.objectContaining({
+        id: entityId<"episodeSegment">(501),
+        sourceShowSegmentId: data.firstSegment.id,
+        position: 0,
+        label: "Cold open",
+        fieldValues: { lowerThirdTitle: "This week" },
+        expectedDurationOverrideMs: 60_000,
+      }),
+      expect.objectContaining({
+        id: entityId<"episodeSegment">(502),
+        sourceShowSegmentId: data.secondSegment.id,
+        position: 1,
+        fieldValues: {},
+      }),
+    ]);
+    expect(context.saved.episodes).toEqual([created]);
+    expect(context.getTransactionCount()).toBe(1);
+  });
+
+  test("2.T12 leaves no partial Episode when Segment creation fails in the transaction", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    let idCallCount = 0;
+    const dependencies: DomainFactoryDependencies = {
+      clock: createFixedClock(updatedAt),
+      createId: <TEntity extends EntityIdKind>(): EntityId<TEntity> => {
+        idCallCount += 1;
+        if (idCallCount === 3) {
+          throw new Error("Episode Segment creation failed.");
+        }
+        return entityId<TEntity>(500 + idCallCount);
+      },
+    };
+
+    await expect(
+      new CreateEpisodeFromBlueprintCommand(
+        context.repositories,
+        dependencies,
+      ).execute({ showId: data.show.id, title: "Episode 2" }),
+    ).rejects.toThrow("Episode Segment creation failed.");
+
+    expect(context.saved.episodes).toEqual([]);
+    expect(context.episodes.size).toBe(1);
+    expect(context.episodes.get(data.episode.id)).toBe(data.episode);
     expect(context.getTransactionCount()).toBe(1);
   });
 

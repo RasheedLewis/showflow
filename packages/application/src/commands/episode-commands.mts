@@ -8,6 +8,8 @@ import type {
   EpisodeSegmentId,
 } from "@showflow/domain";
 
+import { RepositoryEpisodeFromBlueprintCreator } from "./episode-creation.mjs";
+import type { EpisodeFromBlueprintCreator } from "./episode-creation.mjs";
 import {
   DEFAULT_COMMAND_DEPENDENCIES,
   orderEntitiesById,
@@ -32,13 +34,8 @@ const saveEpisode = async (
 
 export type CreateEpisodeFromBlueprintCommandInput = CreateEpisodeInput;
 
-export interface EpisodeFromBlueprintCreator {
-  create(
-    input: CreateEpisodeFromBlueprintCommandInput,
-    repositories: TransactionRepositories,
-    dependencies: DomainFactoryDependencies,
-  ): Promise<Episode>;
-}
+const DEFAULT_EPISODE_FROM_BLUEPRINT_CREATOR =
+  new RepositoryEpisodeFromBlueprintCreator();
 
 export class CreateEpisodeFromBlueprintCommand {
   readonly #repositories: ApplicationRepositories;
@@ -47,8 +44,8 @@ export class CreateEpisodeFromBlueprintCommand {
 
   constructor(
     repositories: ApplicationRepositories,
-    creator: EpisodeFromBlueprintCreator,
     dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
+    creator: EpisodeFromBlueprintCreator = DEFAULT_EPISODE_FROM_BLUEPRINT_CREATOR,
   ) {
     this.#repositories = repositories;
     this.#creator = creator;
