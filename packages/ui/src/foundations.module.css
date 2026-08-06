@@ -1,5 +1,6 @@
 .control {
   display: inline-flex;
+  min-width: var(--sf-target-size-min);
   align-items: center;
   justify-content: center;
   gap: var(--sf-space-2);
@@ -45,7 +46,7 @@
 }
 
 .control-small {
-  min-height: var(--sf-control-height-sm);
+  min-height: max(var(--sf-control-height-sm), var(--sf-target-size-min));
   padding: 0 var(--sf-control-padding-sm);
   font-size: var(--sf-font-size-body-sm);
 }
@@ -111,7 +112,7 @@
 }
 
 .iconButton.control-small {
-  width: var(--sf-control-height-sm);
+  width: max(var(--sf-control-height-sm), var(--sf-target-size-min));
 }
 
 .iconButton.control-large {
@@ -201,6 +202,7 @@
 .checkControl,
 .toggleControl {
   display: inline-flex;
+  min-width: var(--sf-target-size-min);
   min-height: var(--sf-control-height-md);
   align-items: center;
   gap: var(--sf-space-3);
@@ -268,6 +270,7 @@
 
 .tabTrigger {
   position: relative;
+  min-width: var(--sf-target-size-min);
   min-height: var(--sf-control-height-md);
   padding: 0;
   border: 0;
@@ -371,7 +374,7 @@
 
 .menuItem {
   display: flex;
-  min-height: var(--sf-menu-item-height);
+  min-height: max(var(--sf-menu-item-height), var(--sf-target-size-min));
   align-items: center;
   justify-content: space-between;
   gap: var(--sf-space-6);

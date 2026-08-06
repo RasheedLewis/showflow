@@ -208,3 +208,39 @@ test("the application shell preserves its workspace across desktop widths", asyn
   await expect(inspector).toHaveCSS("position", "fixed");
   await expect(main).toBeVisible();
 });
+
+test("keyboard focus remains visible and critical targets meet the minimum size", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1440 });
+  await page.goto("/");
+
+  await page.keyboard.press("Tab");
+  const skipLink = page.getByRole("link", { name: "Skip to workspace" });
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await expect(skipLink).toHaveCSS("outline-width", "2px");
+
+  await skipLink.press("Enter");
+  const main = page.getByRole("main", { name: "Showflow is ready." });
+  await expect(main).toBeFocused();
+  await expect(main).toHaveCSS("outline-width", "2px");
+
+  const primaryAction = page.getByRole("button", { name: "Create Studio" });
+  await primaryAction.focus();
+  await expect(primaryAction).toHaveCSS("outline-width", "2px");
+
+  const targets = await Promise.all(
+    [
+      page.getByRole("button", { name: "Studio switcher" }),
+      page.getByRole("button", { name: "Create Studio" }),
+      page.getByRole("button", { name: "Application menu" }),
+    ].map(async (locator) => locator.boundingBox()),
+  );
+
+  for (const target of targets) {
+    expect(target).not.toBeNull();
+    expect(target?.height).toBeGreaterThanOrEqual(44);
+    expect(target?.width).toBeGreaterThanOrEqual(44);
+  }
+});

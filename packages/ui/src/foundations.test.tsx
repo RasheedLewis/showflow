@@ -159,12 +159,32 @@ describe("foundational navigation and overlays", () => {
     const trigger = screen.getByRole("button", { name: "Show actions" });
     trigger.focus();
     fireEvent.keyDown(trigger, { key: "Enter" });
-    const menu = await screen.findByRole("menu");
+    const menu = await screen.findByRole("menu", { name: "Show actions" });
     const item = within(menu).getByRole("menuitem", {
       name: /Duplicate Segment/u,
     });
-    fireEvent.click(item);
+    await waitFor(() => expect(item).toHaveFocus());
+    fireEvent.keyDown(item, {
+      code: "Enter",
+      key: "Enter",
+      keyCode: 13,
+      which: 13,
+    });
     expect(onSelect).toHaveBeenCalledOnce();
+    await waitFor(() => expect(menu).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
+
+    fireEvent.keyDown(trigger, { key: "Enter" });
+    const reopenedMenu = await screen.findByRole("menu", {
+      name: "Show actions",
+    });
+    fireEvent.keyDown(reopenedMenu, {
+      code: "Escape",
+      key: "Escape",
+      keyCode: 27,
+    });
+    await waitFor(() => expect(reopenedMenu).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it.each([
@@ -198,6 +218,45 @@ describe("foundational navigation and overlays", () => {
       await waitFor(() => expect(trigger).toHaveFocus());
     },
   );
+
+  it("traps focus inside dialogs until Escape restores the opener", async () => {
+    render(
+      <>
+        <Button>Outside action</Button>
+        <Dialog
+          description="Confirm the reusable production change."
+          footer={<Button>Confirm change</Button>}
+          title="Confirm Segment change"
+          trigger={<Button>Review change</Button>}
+        >
+          <Button>Cancel change</Button>
+        </Dialog>
+      </>,
+    );
+
+    const outsideAction = screen.getByRole("button", {
+      name: "Outside action",
+    });
+    const trigger = screen.getByRole("button", { name: "Review change" });
+    fireEvent.click(trigger);
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Confirm Segment change",
+    });
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    );
+
+    outsideAction.focus();
+    await waitFor(() => {
+      expect(outsideAction).not.toHaveFocus();
+      expect(dialog.contains(document.activeElement)).toBe(true);
+    });
+
+    fireEvent.keyDown(dialog, { code: "Escape", key: "Escape", keyCode: 27 });
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
 
   it("shows tooltip content from a labelled trigger", async () => {
     render(

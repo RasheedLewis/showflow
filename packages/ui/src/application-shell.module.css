@@ -28,8 +28,10 @@
   z-index: var(--sf-z-toast);
 }
 
-.skipLink:focus {
+.skipLink:focus-visible {
   opacity: 1;
+  outline: var(--sf-focus-ring-width) solid var(--sf-accent-focus);
+  outline-offset: var(--sf-focus-ring-offset);
   pointer-events: auto;
   transform: translateY(0);
 }
@@ -209,6 +211,11 @@
 
 .panelScrim {
   display: none;
+}
+
+.panelScrim:focus-visible {
+  outline: var(--sf-focus-ring-width) solid var(--sf-accent-focus);
+  outline-offset: calc(var(--sf-focus-ring-width) * -1);
 }
 
 @media (max-width: 1279px) {

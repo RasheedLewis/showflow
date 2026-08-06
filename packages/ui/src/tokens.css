@@ -133,6 +133,7 @@
   --sf-control-padding-sm: 12px;
   --sf-control-padding-md: 16px;
   --sf-control-padding-lg: 20px;
+  --sf-target-size-min: 44px;
   --sf-status-height: 24px;
   --sf-menu-item-height: 40px;
   --sf-menu-min-width: 200px;

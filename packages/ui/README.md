@@ -132,6 +132,20 @@ Always provide production-language titles and descriptions. Destructive actions
 belong in a separated destructive `MenuItem` or an explicit confirmation flow;
 do not make routine editing modal.
 
+## Focus and keyboard contract
+
+Every interactive foundation exposes a visible 2 px accent focus ring without
+removing its semantic role. Standard controls and inputs are at least 44 px in
+both target dimensions; nominal 36 px compact buttons and 40 px menu rows expand
+to the same accessible target minimum. Icon-only controls require both a label
+and tooltip, and menus inherit the accessible name of their required trigger.
+
+Radix-backed menus, tabs, dialogs, and drawers retain their standard arrow-key,
+Tab, Shift+Tab, Enter, Space, and Escape behavior. Dialogs and drawers trap focus
+while open, and overlays return focus to the control that opened them. Application
+support panels follow the same Escape and focus-return contract. Do not add custom
+global shortcuts until the open shortcut vocabulary is approved.
+
 All component values live in `tokens.css` and `foundations.module.css`. Feature
 styles must not override these components with raw color, type, spacing, radius,
 motion, or stacking values.

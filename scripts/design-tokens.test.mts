@@ -192,6 +192,7 @@ describe("semantic design token contract", () => {
       "--sf-control-padding-sm": "12px",
       "--sf-control-padding-md": "16px",
       "--sf-control-padding-lg": "20px",
+      "--sf-target-size-min": "44px",
       "--sf-status-height": "24px",
       "--sf-menu-item-height": "40px",
       "--sf-menu-min-width": "200px",
@@ -338,6 +339,13 @@ describe("semantic design token contract", () => {
 
     expect(foundationStyles).toContain(":hover:not(:disabled)");
     expect(foundationStyles).toContain(":focus-visible");
+    expect(foundationStyles).toContain(
+      "max(var(--sf-control-height-sm), var(--sf-target-size-min))",
+    );
+    expect(foundationStyles).toContain(
+      "max(var(--sf-menu-item-height), var(--sf-target-size-min))",
+    );
+    expect(foundationStyles).toContain("min-width: var(--sf-target-size-min)");
     expect(foundationStyles).toContain(":disabled");
     expect(foundationStyles).toContain(".inputError");
     expect(foundationStyles).toContain('[data-state="active"]');
@@ -355,6 +363,8 @@ describe("semantic design token contract", () => {
     expect(shellStyles).not.toContain("@media (max-width: 1023px)");
     expect(shellStyles).toContain("grid-area: main");
     expect(shellStyles).toContain("grid-area: notes");
+    expect(shellStyles).toContain(".skipLink:focus-visible");
+    expect(shellStyles).toContain(".panelScrim:focus-visible");
     expect(directIconImports).toEqual(["icon.tsx"]);
   });
 });
