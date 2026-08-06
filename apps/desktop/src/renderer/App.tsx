@@ -15,6 +15,7 @@ import {
   STUDIO_CREATION_ROUTE,
   STUDIO_HOME_ROUTE,
   SHOW_CREATION_ROUTE,
+  SHOW_DETAIL_ROUTE,
   DESIGN_SHOW_ROUTE,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
@@ -23,6 +24,7 @@ import { StudioCreationPage } from "./features/studios/StudioCreationPage";
 import { StudioHomeDestination } from "./features/studios/StudioHomeDestination";
 import { ShowCreationPage } from "./features/shows/ShowCreationPage";
 import { DesignShowDestination } from "./features/shows/DesignShowDestination";
+import { ShowDetailDestination } from "./features/shows/ShowDetailDestination";
 import { StartupDestination } from "./features/startup/StartupDestination";
 
 export const ApplicationFoundation = () => (
@@ -101,6 +103,7 @@ const AppRoutes = () => (
     <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
     <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
     <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
+    <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
     <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
     <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>

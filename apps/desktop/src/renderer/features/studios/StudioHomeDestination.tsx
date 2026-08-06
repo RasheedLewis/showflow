@@ -13,7 +13,7 @@ import { StudioSwitcher } from "./StudioSwitcher";
 import { loadStudio, studioQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
 import { getShowCreationRoute } from "../../app-routes.mts";
-import { getDesignShowRoute } from "../../app-routes.mts";
+import { getShowDetailRoute } from "../../app-routes.mts";
 import type { ShowCardDto, ShowDesignDto, ShowDto } from "@showflow/contracts";
 import { ShowCard } from "../shows/ShowCard";
 import {
@@ -235,7 +235,7 @@ export const StudioHomeDestination = () => {
                     onArchive={archiveShow}
                     onDelete={deleteShow}
                     onOpen={(show) =>
-                      navigate(getDesignShowRoute(show.studioId, show.id))
+                      navigate(getShowDetailRoute(show.studioId, show.id))
                     }
                     onRename={renameShow}
                   />

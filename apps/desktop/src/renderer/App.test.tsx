@@ -319,6 +319,66 @@ describe("App", () => {
         name: "Artist Conversations",
       }),
     ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Create New Episode" }),
+    ).toBeVisible();
+  });
+
+  it("prioritizes Show Detail actions and exposes empty Episode placeholders", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Artist Interviews",
+      description: "Weekly artist interviews.",
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/514ad6df-710d-4301-9bff-b096e9db3dd4`,
+      api,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Artist Interviews",
+      }),
+    ).toBeVisible();
+    const createEpisode = screen.getByRole("heading", {
+      level: 2,
+      name: "Create New Episode",
+    });
+    const designShow = screen.getByRole("heading", {
+      level: 2,
+      name: "Design Show",
+    });
+    const recentEpisodes = screen.getByRole("heading", {
+      level: 2,
+      name: "Recent Episodes",
+    });
+
+    expect(
+      createEpisode.compareDocumentPosition(designShow) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      designShow.compareDocumentPosition(recentEpisodes) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText("0 Segment placements")).toBeVisible();
+    expect(screen.getByText("0 Layouts")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "No Episodes yet" }),
+    ).toBeVisible();
+    expect(
+      screen.getAllByRole("button", { name: "Create New Episode" })[0],
+    ).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Design Show" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "Design your Show’s default Storyboard",
+      }),
+    ).toBeVisible();
   });
 
   it("requires confirmation before deleting a Show card", async () => {
