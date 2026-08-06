@@ -6,8 +6,12 @@ import {
   NotesPanel,
   SaveStateIndicator,
 } from "@showflow/ui";
+import { Route, Routes } from "react-router-dom";
 
-export const App = () => (
+import { ComponentGallery } from "./development/ComponentGallery";
+import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
+
+export const ApplicationFoundation = () => (
   <ApplicationShell
     breadcrumb={<span>Desktop foundation</span>}
     catalog={
@@ -70,4 +74,11 @@ export const App = () => (
       </section>
     </div>
   </ApplicationShell>
+);
+
+export const App = () => (
+  <Routes>
+    <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
+    <Route element={<ApplicationFoundation />} path="*" />
+  </Routes>
 );

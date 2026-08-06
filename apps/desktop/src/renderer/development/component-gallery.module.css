@@ -1,0 +1,181 @@
+.shellHost {
+  height: 100vh;
+}
+
+.gallery {
+  display: grid;
+  gap: var(--sf-space-12);
+}
+
+.galleryIntro {
+  width: 100%;
+}
+
+.introCopy,
+.stageCopy {
+  margin: 0;
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-md);
+  line-height: var(--sf-line-height-body-md);
+}
+
+.section {
+  display: grid;
+  gap: var(--sf-space-6);
+}
+
+.sectionHeader {
+  display: grid;
+  gap: var(--sf-space-2);
+}
+
+.sectionTitle,
+.contextHeading {
+  margin: 0;
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-heading-md);
+  font-weight: var(--sf-font-weight-heading-md);
+  line-height: var(--sf-line-height-heading-md);
+}
+
+.sectionDescription,
+.exampleDescription {
+  margin: 0;
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.exampleGrid,
+.cardGrid,
+.storyboardGrid,
+.surfaceGrid,
+.inputGrid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--sf-storyboard-card-width-min)), 1fr)
+  );
+  gap: var(--sf-space-6);
+}
+
+.example {
+  min-width: 0;
+  overflow: hidden;
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-panel);
+}
+
+.exampleWide {
+  grid-column: 1 / -1;
+}
+
+.exampleHeader {
+  display: grid;
+  gap: var(--sf-space-1);
+  padding: var(--sf-space-4);
+  border-bottom: var(--sf-border-width-default) solid var(--sf-divider);
+  background: var(--sf-bg-card);
+}
+
+.exampleTitle {
+  margin: 0;
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-label-md);
+  font-weight: var(--sf-font-weight-semibold);
+  line-height: var(--sf-line-height-label-md);
+}
+
+.stage {
+  min-width: 0;
+  padding: var(--sf-space-6);
+  background: var(--sf-bg-base);
+}
+
+.stageColumn,
+.validationStack {
+  display: grid;
+  gap: var(--sf-space-4);
+}
+
+.stageRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sf-space-4);
+}
+
+.verticalDivider {
+  min-height: var(--sf-control-height-md);
+}
+
+.preview {
+  display: grid;
+  width: 100%;
+  min-height: var(--sf-space-20);
+  place-items: center;
+  background: var(--sf-bg-canvas);
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.contextSection {
+  display: grid;
+  gap: var(--sf-space-4);
+  margin-top: var(--sf-space-6);
+}
+
+.contextHeading {
+  font-size: var(--sf-font-size-heading-sm);
+  line-height: var(--sf-line-height-heading-sm);
+}
+
+.surface {
+  display: grid;
+  min-height: var(--sf-space-20);
+  align-content: space-between;
+  gap: var(--sf-space-4);
+  padding: var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-md);
+}
+
+.surfaceCanvas {
+  background: var(--sf-bg-canvas);
+}
+
+.surfaceBase {
+  background: var(--sf-bg-base);
+}
+
+.surfacePanel {
+  background: var(--sf-bg-panel);
+}
+
+.surfaceCard {
+  background: var(--sf-bg-card);
+}
+
+.surfaceElevated {
+  background: var(--sf-bg-elevated);
+}
+
+.surfaceLabel {
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-label-md);
+  font-weight: var(--sf-font-weight-medium);
+  line-height: var(--sf-line-height-label-md);
+}
+
+.gallery :global([data-gallery-focus="true"]) {
+  outline: var(--sf-focus-ring-width) solid var(--sf-accent-focus);
+  outline-offset: var(--sf-focus-ring-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery :global([data-gallery-focus="true"]) {
+    transition-duration: var(--sf-motion-reduced);
+  }
+}

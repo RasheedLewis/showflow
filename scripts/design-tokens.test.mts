@@ -10,6 +10,7 @@ type StringRecord = Record<string, string>;
 
 interface PackageManifest {
   readonly dependencies?: StringRecord;
+  readonly devDependencies?: StringRecord;
   readonly exports?: StringRecord;
 }
 
@@ -254,6 +255,9 @@ describe("semantic design token contract", () => {
     const desktopManifest = readManifest(
       path.join(REPOSITORY_ROOT, "apps/desktop/package.json"),
     );
+    const rootManifest = readManifest(
+      path.join(REPOSITORY_ROOT, "package.json"),
+    );
     const rendererEntry = fs.readFileSync(
       path.join(REPOSITORY_ROOT, "apps/desktop/src/renderer/renderer.tsx"),
       "utf8",
@@ -277,6 +281,13 @@ describe("semantic design token contract", () => {
       ),
       "utf8",
     );
+    const galleryStyles = fs.readFileSync(
+      path.join(
+        REPOSITORY_ROOT,
+        "apps/desktop/src/renderer/development/component-gallery.module.css",
+      ),
+      "utf8",
+    );
 
     expect(uiManifest.exports).toMatchObject({
       "./tokens.css": "./src/tokens.css",
@@ -292,16 +303,22 @@ describe("semantic design token contract", () => {
     });
     expect(desktopManifest.dependencies).toMatchObject({
       "@showflow/ui": "workspace:*",
+      "react-router-dom": "7.18.2",
+    });
+    expect(rootManifest.devDependencies).toMatchObject({
+      "@axe-core/playwright": "4.12.1",
     });
     expect(rendererEntry).toContain('import "@showflow/ui/tokens.css";');
     expect(rendererStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(foundationStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(productionStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(shellStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
+    expect(galleryStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(rendererStyles).not.toContain("--foundation-");
     expect(foundationStyles).not.toContain("--foundation-");
     expect(productionStyles).not.toContain("--foundation-");
     expect(shellStyles).not.toContain("--foundation-");
+    expect(galleryStyles).not.toContain("--foundation-");
 
     const tokenReferences = [
       ...source.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
@@ -309,6 +326,7 @@ describe("semantic design token contract", () => {
       ...foundationStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...productionStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...shellStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+      ...galleryStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
     ].map((match) => match[1]);
 
     for (const tokenName of tokenReferences) {

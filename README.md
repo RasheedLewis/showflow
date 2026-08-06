@@ -258,6 +258,10 @@ The workspace includes the initial Electron desktop shell. Start it with
 `pnpm dev`; package it locally with `pnpm package`; or create the installer format
 for the current platform with `pnpm make`.
 
+During development, the internal component acceptance gallery is available at
+`/#/_development/components`. It renders every shared design-system component and
+state inside the real application shell; it is not a product navigation route.
+
 ### Development commands
 
 The technical specification requires one obvious root command for each common

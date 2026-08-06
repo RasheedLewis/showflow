@@ -78,22 +78,23 @@ remains reviewable. Template files are not records and do not receive numbers.
 
 ## Architecture Decision Record register
 
-|                                             ADR | Status   | Decision                           |
-| ----------------------------------------------: | -------- | ---------------------------------- |
-|             [0001](0001-workspace-toolchain.md) | Accepted | Workspace toolchain pins           |
-|  [0002](0002-electron-forge-vite-foundation.md) | Accepted | Electron Forge and Vite foundation |
-|  [0003](0003-browser-window-security-policy.md) | Accepted | BrowserWindow security policy      |
-|          [0004](0004-typed-runtime-info-ipc.md) | Accepted | Typed runtime information IPC      |
-|    [0005](0005-package-boundary-enforcement.md) | Accepted | Package boundary enforcement       |
-|            [0006](0006-code-quality-tooling.md) | Accepted | Code quality tooling               |
-|                  [0007](0007-test-harnesses.md) | Accepted | Test harnesses                     |
-| [0008](0008-continuous-integration-skeleton.md) | Accepted | Continuous integration skeleton    |
-|      [0009](0009-decision-record-governance.md) | Accepted | Decision record governance         |
-|   [0010](0010-initial-design-token-contract.md) | Accepted | Initial design token contract      |
-|             [0011](0011-node-sqlite-adapter.md) | Accepted | `node:sqlite` persistence adapter  |
-|         [0012](0012-self-hosted-geist-fonts.md) | Accepted | Self-hosted Geist font assets      |
-|  [0013](0013-semantic-design-token-contract.md) | Accepted | Complete semantic token contract   |
-|             [0014](0014-lucide-icon-library.md) | Accepted | Lucide icon library                |
+|                                                         ADR | Status   | Decision                                    |
+| ----------------------------------------------------------: | -------- | ------------------------------------------- |
+|                         [0001](0001-workspace-toolchain.md) | Accepted | Workspace toolchain pins                    |
+|              [0002](0002-electron-forge-vite-foundation.md) | Accepted | Electron Forge and Vite foundation          |
+|              [0003](0003-browser-window-security-policy.md) | Accepted | BrowserWindow security policy               |
+|                      [0004](0004-typed-runtime-info-ipc.md) | Accepted | Typed runtime information IPC               |
+|                [0005](0005-package-boundary-enforcement.md) | Accepted | Package boundary enforcement                |
+|                        [0006](0006-code-quality-tooling.md) | Accepted | Code quality tooling                        |
+|                              [0007](0007-test-harnesses.md) | Accepted | Test harnesses                              |
+|             [0008](0008-continuous-integration-skeleton.md) | Accepted | Continuous integration skeleton             |
+|                  [0009](0009-decision-record-governance.md) | Accepted | Decision record governance                  |
+|               [0010](0010-initial-design-token-contract.md) | Accepted | Initial design token contract               |
+|                         [0011](0011-node-sqlite-adapter.md) | Accepted | `node:sqlite` persistence adapter           |
+|                     [0012](0012-self-hosted-geist-fonts.md) | Accepted | Self-hosted Geist font assets               |
+|              [0013](0013-semantic-design-token-contract.md) | Accepted | Complete semantic token contract            |
+|                         [0014](0014-lucide-icon-library.md) | Accepted | Lucide icon library                         |
+| [0015](0015-component-gallery-and-accessibility-harness.md) | Accepted | Component gallery and accessibility harness |
 
 ## Product Decision Request register
 
