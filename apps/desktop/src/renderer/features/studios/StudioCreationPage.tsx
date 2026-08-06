@@ -82,7 +82,6 @@ export const StudioCreationPage = () => {
         <Button
           disabled={isSubmitting}
           form="create-studio-form"
-          size="large"
           type="submit"
           variant="primary"
         >

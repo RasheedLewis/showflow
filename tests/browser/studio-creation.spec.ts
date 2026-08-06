@@ -23,6 +23,10 @@ test("creates, selects, and opens the first Studio", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 2, name: "Create your first Studio" }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create Studio" })).toHaveCSS(
+    "min-height",
+    "44px",
+  );
 
   await page
     .getByRole("textbox", { name: "Studio name" })
