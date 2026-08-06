@@ -4,4 +4,5 @@ export * from "./icon.js";
 export * from "./layout.js";
 export * from "./navigation.js";
 export * from "./overlays.js";
+export * from "./production.js";
 export * from "./tooltip.js";

@@ -198,6 +198,11 @@ describe("semantic design token contract", () => {
       "--sf-dialog-width-sm": "480px",
       "--sf-dialog-width-md": "600px",
       "--sf-drawer-width": "360px",
+      "--sf-storyboard-card-width-min": "300px",
+      "--sf-storyboard-card-width-max": "360px",
+      "--sf-storyboard-card-metadata-min-height": "88px",
+      "--sf-notes-min-height": "160px",
+      "--sf-notes-readable-width": "720px",
     });
   });
 
@@ -246,6 +251,10 @@ describe("semantic design token contract", () => {
       path.join(REPOSITORY_ROOT, "packages/ui/src/foundations.module.css"),
       "utf8",
     );
+    const productionStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/production.module.css"),
+      "utf8",
+    );
 
     expect(uiManifest.exports).toMatchObject({
       "./tokens.css": "./src/tokens.css",
@@ -265,13 +274,16 @@ describe("semantic design token contract", () => {
     expect(rendererEntry).toContain('import "@showflow/ui/tokens.css";');
     expect(rendererStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(foundationStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
+    expect(productionStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(rendererStyles).not.toContain("--foundation-");
     expect(foundationStyles).not.toContain("--foundation-");
+    expect(productionStyles).not.toContain("--foundation-");
 
     const tokenReferences = [
       ...source.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...rendererStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...foundationStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+      ...productionStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
     ].map((match) => match[1]);
 
     for (const tokenName of tokenReferences) {
@@ -286,6 +298,10 @@ describe("semantic design token contract", () => {
   test("keeps foundational visual states semantic and icon imports isolated", () => {
     const foundationStyles = fs.readFileSync(
       path.join(REPOSITORY_ROOT, "packages/ui/src/foundations.module.css"),
+      "utf8",
+    );
+    const productionStyles = fs.readFileSync(
+      path.join(REPOSITORY_ROOT, "packages/ui/src/production.module.css"),
       "utf8",
     );
     const uiSourceDirectory = path.join(REPOSITORY_ROOT, "packages/ui/src");
@@ -304,6 +320,13 @@ describe("semantic design token contract", () => {
     expect(foundationStyles).toContain(".inputError");
     expect(foundationStyles).toContain('[data-state="active"]');
     expect(foundationStyles).toContain("[data-highlighted]");
+    expect(productionStyles).toContain(':hover:not([aria-disabled="true"])');
+    expect(productionStyles).toContain(":focus-within");
+    expect(productionStyles).toContain('[data-selected="true"]');
+    expect(productionStyles).toContain('[data-dragging="true"]');
+    expect(productionStyles).toContain('[data-invalid="true"]');
+    expect(productionStyles).toContain('[data-archived="true"]');
+    expect(productionStyles).toContain('[data-current="true"]');
     expect(directIconImports).toEqual(["icon.tsx"]);
   });
 });

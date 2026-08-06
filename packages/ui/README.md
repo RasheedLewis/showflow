@@ -53,6 +53,46 @@ accessibility behavior consistent.
 />
 ```
 
+## Production object primitives
+
+| Component          | Contract                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `ObjectCard`       | Production-object anatomy with preview, title, summary, metadata, status, actions, and card state. |
+| `StoryboardCard`   | 16:9 Segment card with placement, duration, reuse, issue count, readiness, and Current/Next state. |
+| `StatusBadge`      | Restricts readiness copy to Ready, Needs content, Has warnings, or Blocking issue.                 |
+| `ScopeLabel`       | Persistent canonical scope copy for Show, Episode, Show Segment, and Episode Segment editing.      |
+| `InspectorSection` | Quiet, labelled grouping for related inspector properties without unnecessary disclosure.          |
+| `PropertyRow`      | Property label, description, control, source, limited Episode override, and reset action.          |
+| `NotesPanel`       | Controlled plain-text production notebook with 18/28 typography and optional prompt/actions.       |
+| `ValidationItem`   | Plain-language warning or blocking issue with affected object and direct resolution action.        |
+
+```tsx
+<StoryboardCard
+  duration="01:30"
+  issueCount={1}
+  preview={<SegmentPreview />}
+  readiness="needs-content"
+  sequenceNumber={3}
+  summary='Guest: Jane Doe'
+  title="Interview"
+/>
+
+<ScopeLabel scope="episode" />
+
+<ValidationItem
+  action={<Button size="small">Add artwork</Button>}
+  affectedObject="Ranking Reveal · Album artwork"
+  message="The Ranking Reveal Segment needs album artwork."
+  severity="blocking"
+/>
+```
+
+`ObjectCard` state flags are visual shell state only; domain readiness and
+selection remain owned by the application. `NotesPanel` is intentionally plain
+text because rich notes and teleprompter behavior remain open specifications.
+`PropertyRow` supports only the documented MVP override vocabulary and does not
+imply arbitrary Segment behavior overrides.
+
 Dialogs, drawers, menus, tabs, and tooltips may be controlled or uncontrolled.
 Always provide production-language titles and descriptions. Destructive actions
 belong in a separated destructive `MenuItem` or an explicit confirmation flow;
