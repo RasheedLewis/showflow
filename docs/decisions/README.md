@@ -92,6 +92,7 @@ remains reviewable. Template files are not records and do not receive numbers.
 |   [0010](0010-initial-design-token-contract.md) | Accepted | Initial design token contract      |
 |             [0011](0011-node-sqlite-adapter.md) | Accepted | `node:sqlite` persistence adapter  |
 |         [0012](0012-self-hosted-geist-fonts.md) | Accepted | Self-hosted Geist font assets      |
+|  [0013](0013-semantic-design-token-contract.md) | Accepted | Complete semantic token contract   |
 
 ## Product Decision Request register
 

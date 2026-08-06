@@ -14,6 +14,9 @@ body {
   min-height: 100vh;
   background: var(--sf-bg-canvas);
   color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-md);
+  font-weight: var(--sf-font-weight-body-md);
+  line-height: var(--sf-line-height-body-md);
 }
 
 button,
@@ -34,19 +37,21 @@ select {
   justify-content: space-between;
   gap: var(--sf-space-6);
   padding: 0 var(--sf-space-8);
-  border-bottom: 1px solid var(--sf-border-subtle);
+  border-bottom: var(--sf-border-width-default) solid var(--sf-border-subtle);
   background: var(--sf-bg-base);
 }
 
 .wordmark {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--sf-font-size-heading-sm);
+  font-weight: var(--sf-font-weight-heading-sm);
+  line-height: var(--sf-line-height-heading-sm);
 }
 
 .app-bar-context {
   color: var(--sf-text-tertiary);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: var(--sf-font-size-label-md);
+  font-weight: var(--sf-font-weight-label-md);
+  line-height: var(--sf-line-height-label-md);
 }
 
 .app-content {
@@ -59,7 +64,7 @@ select {
 .status-panel {
   width: min(100%, 38rem);
   padding: var(--sf-space-10);
-  border: 1px solid var(--sf-border-default);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
   border-radius: var(--sf-radius-lg);
   background: var(--sf-bg-panel);
 }
@@ -67,24 +72,27 @@ select {
 .eyebrow {
   margin: 0 0 var(--sf-space-3);
   color: var(--sf-text-tertiary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: var(--sf-font-size-label-sm);
+  font-weight: var(--sf-font-weight-label-sm);
+  letter-spacing: var(--sf-letter-spacing-label-sm);
+  line-height: var(--sf-line-height-label-sm);
   text-transform: uppercase;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2.5rem, 8vw, 5rem);
-  line-height: 1;
+  font-size: var(--sf-font-size-display-xl);
+  font-weight: var(--sf-font-weight-display-xl);
+  line-height: var(--sf-line-height-display-xl);
 }
 
 .status-detail {
   max-width: 32rem;
   margin: var(--sf-space-6) 0 0;
   color: var(--sf-text-secondary);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: var(--sf-font-size-body-md);
+  font-weight: var(--sf-font-weight-body-md);
+  line-height: var(--sf-line-height-body-md);
 }
 
 @media (prefers-reduced-motion: reduce) {

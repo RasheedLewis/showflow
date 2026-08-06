@@ -157,7 +157,9 @@ The initial dark visual foundation is exposed by `@showflow/ui` through the
 semantic `--sf-*` custom properties rather than maintaining feature-local color,
 spacing, radius, or motion values. That stylesheet also loads pinned, locally
 bundled Geist variable fonts; system sans and monospace stacks remain explicit
-fallbacks.
+fallbacks. The semantic contract covers color, typography, spacing, radius,
+border geometry, elevation, motion, stacking order, and the desktop responsive
+boundary.
 
 ### Required repository shape
 

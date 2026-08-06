@@ -47,7 +47,7 @@ const expectTokenGroup = (
   }
 };
 
-describe("initial design token contract", () => {
+describe("semantic design token contract", () => {
   const source = fs.readFileSync(TOKEN_FILE, "utf8");
   const tokens = parseTokens(source);
 
@@ -113,10 +113,59 @@ describe("initial design token contract", () => {
     expect(source).toMatch(
       /:where\(\.sf-duration, \.sf-timecode, \.sf-measurement, \.sf-shortcut\)\s*\{\s*font-family: var\(--sf-font-mono\);\s*\}/u,
     );
+    expect(source).toMatch(
+      /:where\(\.sf-duration, \.sf-timecode\)\s*\{\s*font-size: var\(--sf-font-size-timecode\);\s*font-weight: var\(--sf-font-weight-timecode\);\s*line-height: var\(--sf-line-height-timecode\);\s*\}/u,
+    );
     expect(source).not.toContain(".sf-font-mono");
   });
 
-  test("defines comfortable spacing, shape, and motion", () => {
+  test("defines the complete typography role scale", () => {
+    expectTokenGroup(tokens, {
+      "--sf-font-weight-regular": "400",
+      "--sf-font-weight-medium": "500",
+      "--sf-font-weight-semibold": "600",
+      "--sf-font-weight-bold": "700",
+      "--sf-font-size-display-xl": "48px",
+      "--sf-line-height-display-xl": "56px",
+      "--sf-font-weight-display-xl": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-display-lg": "40px",
+      "--sf-line-height-display-lg": "48px",
+      "--sf-font-weight-display-lg": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-heading-xl": "32px",
+      "--sf-line-height-heading-xl": "40px",
+      "--sf-font-weight-heading-xl": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-heading-lg": "28px",
+      "--sf-line-height-heading-lg": "36px",
+      "--sf-font-weight-heading-lg": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-heading-md": "24px",
+      "--sf-line-height-heading-md": "32px",
+      "--sf-font-weight-heading-md": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-heading-sm": "20px",
+      "--sf-line-height-heading-sm": "28px",
+      "--sf-font-weight-heading-sm": "var(--sf-font-weight-semibold)",
+      "--sf-font-size-body-lg": "18px",
+      "--sf-line-height-body-lg": "28px",
+      "--sf-font-weight-body-lg": "var(--sf-font-weight-regular)",
+      "--sf-font-size-body-md": "16px",
+      "--sf-line-height-body-md": "24px",
+      "--sf-font-weight-body-md": "var(--sf-font-weight-regular)",
+      "--sf-font-size-body-sm": "14px",
+      "--sf-line-height-body-sm": "20px",
+      "--sf-font-weight-body-sm": "var(--sf-font-weight-regular)",
+      "--sf-font-size-label-md": "14px",
+      "--sf-line-height-label-md": "20px",
+      "--sf-font-weight-label-md": "var(--sf-font-weight-medium)",
+      "--sf-font-size-label-sm": "12px",
+      "--sf-line-height-label-sm": "16px",
+      "--sf-font-weight-label-sm": "var(--sf-font-weight-semibold)",
+      "--sf-letter-spacing-label-sm": "0.08em",
+      "--sf-font-size-timecode": "16px",
+      "--sf-line-height-timecode": "20px",
+      "--sf-font-weight-timecode": "var(--sf-font-weight-medium)",
+    });
+  });
+
+  test("defines comfortable spacing, radius, and border geometry", () => {
     expectTokenGroup(tokens, {
       "--sf-space-1": "4px",
       "--sf-space-2": "8px",
@@ -134,6 +183,18 @@ describe("initial design token contract", () => {
       "--sf-radius-lg": "12px",
       "--sf-radius-xl": "16px",
       "--sf-radius-round": "999px",
+      "--sf-border-width-default": "1px",
+      "--sf-focus-ring-width": "2px",
+      "--sf-focus-ring-offset": "2px",
+    });
+  });
+
+  test("defines elevation, motion, stacking, and breakpoint tokens", () => {
+    expectTokenGroup(tokens, {
+      "--sf-elevation-none": "none",
+      "--sf-elevation-1": "0 1px 2px rgba(0, 0, 0, 0.24)",
+      "--sf-elevation-2": "0 8px 24px rgba(0, 0, 0, 0.28)",
+      "--sf-elevation-3": "0 20px 48px rgba(0, 0, 0, 0.38)",
       "--sf-motion-instant": "80ms",
       "--sf-motion-fast": "140ms",
       "--sf-motion-standard": "220ms",
@@ -142,6 +203,15 @@ describe("initial design token contract", () => {
       "--sf-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
       "--sf-ease-enter": "cubic-bezier(0, 0, 0.2, 1)",
       "--sf-ease-exit": "cubic-bezier(0.4, 0, 1, 1)",
+      "--sf-z-base": "0",
+      "--sf-z-sticky": "100",
+      "--sf-z-dropdown": "200",
+      "--sf-z-scrim": "300",
+      "--sf-z-drawer": "400",
+      "--sf-z-dialog": "500",
+      "--sf-z-toast": "600",
+      "--sf-z-tooltip": "700",
+      "--sf-breakpoint-desktop-comfortable": "1280px",
     });
   });
 
@@ -174,5 +244,18 @@ describe("initial design token contract", () => {
     expect(rendererEntry).toContain('import "@showflow/ui/tokens.css";');
     expect(rendererStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(rendererStyles).not.toContain("--foundation-");
+
+    const tokenReferences = [
+      ...source.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+      ...rendererStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+    ].map((match) => match[1]);
+
+    for (const tokenName of tokenReferences) {
+      expect(tokens.has(tokenName ?? ""), tokenName).toBe(true);
+    }
+
+    expect(rendererStyles).not.toMatch(
+      /(?:font-size|font-weight|line-height|letter-spacing):\s*(?:\d|clamp\()/gu,
+    );
   });
 });

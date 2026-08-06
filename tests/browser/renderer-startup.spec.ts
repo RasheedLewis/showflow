@@ -67,8 +67,10 @@ test("the development screen renders with the typed mock desktop API", async ({
     const bodyStyles = getComputedStyle(document.body);
     const panel = document.querySelector<HTMLElement>(".status-panel");
     const appBar = document.querySelector<HTMLElement>(".app-bar");
+    const heading = document.querySelector<HTMLElement>("#showflow-heading");
+    const statusDetail = document.querySelector<HTMLElement>(".status-detail");
 
-    if (!appBar || !panel) {
+    if (!appBar || !heading || !panel || !statusDetail) {
       throw new Error("The Showflow application shell is incomplete.");
     }
 
@@ -82,7 +84,10 @@ test("the development screen renders with the typed mock desktop API", async ({
     const durationStyles = getComputedStyle(duration);
     const durationTypography = {
       fontFamily: durationStyles.fontFamily,
+      fontSize: durationStyles.fontSize,
       fontVariantNumeric: durationStyles.fontVariantNumeric,
+      fontWeight: durationStyles.fontWeight,
+      lineHeight: durationStyles.lineHeight,
     };
 
     duration.remove();
@@ -94,7 +99,17 @@ test("the development screen renders with the typed mock desktop API", async ({
       background: bodyStyles.backgroundColor,
       durationTypography,
       fontFamily: bodyStyles.fontFamily,
+      headingTypography: {
+        fontSize: getComputedStyle(heading).fontSize,
+        fontWeight: getComputedStyle(heading).fontWeight,
+        lineHeight: getComputedStyle(heading).lineHeight,
+      },
       panelBackground: getComputedStyle(panel).backgroundColor,
+      statusDetailTypography: {
+        fontSize: getComputedStyle(statusDetail).fontSize,
+        fontWeight: getComputedStyle(statusDetail).fontWeight,
+        lineHeight: getComputedStyle(statusDetail).lineHeight,
+      },
       text: bodyStyles.color,
     };
   });
@@ -105,9 +120,22 @@ test("the development screen renders with the typed mock desktop API", async ({
     appBarHeight: "64px",
     background: "rgb(13, 15, 16)",
     durationTypography: {
+      fontSize: "16px",
       fontVariantNumeric: "tabular-nums",
+      fontWeight: "500",
+      lineHeight: "20px",
+    },
+    headingTypography: {
+      fontSize: "48px",
+      fontWeight: "600",
+      lineHeight: "56px",
     },
     panelBackground: "rgb(23, 26, 29)",
+    statusDetailTypography: {
+      fontSize: "16px",
+      fontWeight: "400",
+      lineHeight: "24px",
+    },
     text: "rgb(244, 243, 239)",
   });
   expect(visualFoundation.fontFamily).toMatch(
