@@ -7,7 +7,7 @@
 Showflow is a local-first desktop production workspace for creators who design,
 prepare, preview, and rehearse recurring shows.
 
-![Project status](https://img.shields.io/badge/status-foundation%20complete-2F855A?style=flat-square)
+![Project status](https://img.shields.io/badge/status-sprint%204%20complete-2F855A?style=flat-square)
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
@@ -18,12 +18,10 @@ prepare, preview, and rehearse recurring shows.
 </div>
 
 > [!IMPORTANT]
-> **The Showflow Foundation phase (Sprints 0–3) is complete.** The repository now
-> includes the secure Electron desktop runtime, SQLite persistence foundation,
-> pure domain and application kernel, typed IPC and settings boundaries, shared
-> dark design system, responsive application shell, quality gates, test harnesses,
-> and continuous integration. Sprint 4 begins the user-facing Studio and Show
-> workflows.
+> **Sprints 0–4 are complete.** In addition to the secure Electron and SQLite
+> foundation, Showflow now has the first complete user-facing path from launch
+> through persisted Studios and Shows into Show Detail and Design Show. Sprint 5
+> adds the Segment Catalog and editable Show Blueprint.
 
 ## The product
 
@@ -38,6 +36,21 @@ encoders, and routing. Showflow uses the language and workflow of a producer:
 
 The MVP is built for a solo creator who wants to focus on content, pacing, and
 the audience—not broadcast-engineering vocabulary.
+
+### Current product increment
+
+The desktop application currently supports:
+
+- creating and switching persisted Studios;
+- creating, opening, renaming, archiving, deleting, and searching Shows within
+  the current Studio;
+- opening Show Detail with Create New Episode, Design Show, and Recent Episodes
+  presented in the required hierarchy; and
+- restoring the last safe Studio, Show Detail, or Design Show route after
+  restart, with recovery to Studio Home when a saved Show is unavailable.
+
+Show Blueprint editing arrives in Sprint 5. Episode creation and the Episode
+Storyboard remain unavailable until Sprint 6.
 
 ```text
 Design the reusable Show
@@ -257,10 +270,10 @@ pnpm --version # 11.4.0
 pnpm install --frozen-lockfile
 ```
 
-The workspace includes the secure Electron desktop shell and Sprint 3 design
-system foundation. Start it with `pnpm dev`; package it locally with
-`pnpm package`; or create the installer format for the current platform with
-`pnpm make`.
+The workspace includes the secure Electron desktop shell, shared design system,
+and completed Sprint 4 Studio and Show workflow. Start it with `pnpm dev`;
+package it locally with `pnpm package`; or create the installer format for the
+current platform with `pnpm make`.
 
 During development, the internal component acceptance gallery is available at
 `/#/_development/components`. It renders every shared design-system component and
@@ -314,8 +327,8 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
-**Current milestone:** The Foundation phase is complete. Sprint 4—Studios, Shows,
-and Show Detail—is next.
+**Current milestone:** Sprints 0–4 are complete. Sprint 5—Segment Catalog and
+Show Blueprint—is next.
 
 | Phase              | Sprints | Outcome                                                                     |
 | ------------------ | ------: | --------------------------------------------------------------------------- |
@@ -332,7 +345,7 @@ and Show Detail—is next.
 - [x] **Sprint 1:** Persistence proof and database foundation
 - [x] **Sprint 2:** Domain and application kernel
 - [x] **Sprint 3:** Design system foundation and application shell
-- [ ] **Sprint 4:** Studios, Shows, and Show Detail
+- [x] **Sprint 4:** Studios, Shows, and Show Detail
 - [ ] **Sprint 5:** Segment Catalog and Show Blueprint
 - [ ] **Sprint 6:** Episodes and Episode Storyboard
 - [ ] **Sprint 7:** Show Segment schema and behavior editor
@@ -353,9 +366,9 @@ The full gates, subtasks, tests, and decision timing live in the
 
 ## Contributing
 
-This project is still establishing its foundation. Before proposing code or a
-specification change, read the repository-wide [agent instructions](AGENTS.md)
-and then:
+This project is implementing the Producing MVP in gated vertical slices. Before
+proposing code or a specification change, read the repository-wide
+[agent instructions](AGENTS.md) and then:
 
 1. Read the authoritative documents relevant to the change.
 2. Preserve canonical terminology and Show-level ownership rules.
