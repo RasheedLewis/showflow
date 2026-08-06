@@ -45,8 +45,21 @@ export const StudioHomeDestination = () => {
     retry: false,
   });
   const [selectionError, setSelectionError] = useState<string>();
+  const [searchState, setSearchState] = useState<{
+    readonly query: string;
+    readonly studioId: string | undefined;
+  }>({ query: "", studioId });
+  const searchQuery =
+    searchState.studioId === studioId ? searchState.query : "";
   const studio = studioQuery.data;
   const showCards = showsQuery.data ?? [];
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const visibleShowCards =
+    normalizedSearchQuery.length === 0
+      ? showCards
+      : showCards.filter((card) =>
+          card.show.name.toLowerCase().includes(normalizedSearchQuery),
+        );
   const updateCards = (
     update: (cards: readonly ShowCardDto[]) => readonly ShowCardDto[],
   ): void => {
@@ -195,19 +208,35 @@ export const StudioHomeDestination = () => {
               </div>
               <div className={styles.showSearch}>
                 <TextInput
-                  disabled
+                  disabled={showCards.length === 0}
                   helpText={
                     showCards.length === 0
                       ? "Create a Show to start searching."
-                      : "Show search arrives in Sprint 4.8."
+                      : normalizedSearchQuery.length === 0
+                        ? "Search by Show name."
+                        : `${visibleShowCards.length} of ${showCards.length} Shows shown.`
                   }
+                  id="show-search"
                   label="Search Shows"
+                  onChange={(event) =>
+                    setSearchState({
+                      query: event.currentTarget.value,
+                      studioId,
+                    })
+                  }
                   placeholder="Search Shows"
                   type="search"
+                  value={searchQuery}
                 />
               </div>
             </header>
             <section aria-label="Shows" className={styles.showGrid}>
+              {showCards.length > 0 && normalizedSearchQuery.length > 0 ? (
+                <p className={styles.searchStatus} role="status">
+                  {visibleShowCards.length}{" "}
+                  {visibleShowCards.length === 1 ? "Show" : "Shows"} found
+                </p>
+              ) : null}
               {showCards.length === 0 ? (
                 <EmptyState
                   action={
@@ -227,8 +256,25 @@ export const StudioHomeDestination = () => {
                   heading="Create your first Show"
                   icon="plus"
                 />
+              ) : visibleShowCards.length === 0 ? (
+                <EmptyState
+                  action={
+                    <Button
+                      onClick={() => {
+                        setSearchState({ query: "", studioId });
+                        document.getElementById("show-search")?.focus();
+                      }}
+                    >
+                      Clear Search
+                    </Button>
+                  }
+                  className={styles.emptyShowState}
+                  description={`No Shows in ${studio?.name ?? "this Studio"} match “${searchQuery.trim()}”. Try another Show name.`}
+                  heading="No Shows found"
+                  icon="search"
+                />
               ) : (
-                showCards.map((card) => (
+                visibleShowCards.map((card) => (
                   <ShowCard
                     card={card}
                     key={card.show.id}

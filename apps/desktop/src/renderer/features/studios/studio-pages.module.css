@@ -120,9 +120,21 @@
 }
 
 .emptyShowState,
-.availability {
+.availability,
+.searchStatus {
   grid-column: 1 / -1;
+}
+
+.emptyShowState,
+.availability {
   justify-self: center;
+}
+
+.searchStatus {
+  margin: 0;
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
 }
 
 .thumbnailPlaceholder {

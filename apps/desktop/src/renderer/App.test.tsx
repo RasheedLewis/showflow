@@ -324,6 +324,58 @@ describe("App", () => {
     ).toBeVisible();
   });
 
+  it("searches Show names only within the current Studio", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.studios.create({ name: "Field Notes" });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Artist Interviews",
+    });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Weekly Commentary",
+    });
+    await api.shows.create({
+      studioId: SECOND_STUDIO_ID,
+      name: "Field Interviews",
+    });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    const search = await screen.findByRole("searchbox", {
+      name: "Search Shows",
+    });
+    expect(search).toBeEnabled();
+    fireEvent.change(search, { target: { value: "INTERVIEW" } });
+
+    expect(
+      screen.getByRole("button", { name: "Artist Interviews" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Weekly Commentary" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Field Interviews" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 Show found");
+
+    fireEvent.change(search, { target: { value: "missing" } });
+    expect(screen.getByRole("status")).toHaveTextContent("0 Shows found");
+    expect(
+      screen.getByRole("heading", { name: "No Shows found" }),
+    ).toBeVisible();
+    expect(screen.getByText(/No Shows in Public Sphere match/u)).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear Search" }));
+    expect(search).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Artist Interviews" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Weekly Commentary" }),
+    ).toBeVisible();
+  });
+
   it("prioritizes Show Detail actions and exposes empty Episode placeholders", async () => {
     const api = createMockDesktopApi();
     await api.studios.create({ name: "Public Sphere" });

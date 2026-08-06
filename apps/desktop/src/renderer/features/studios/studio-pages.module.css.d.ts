@@ -12,6 +12,7 @@ declare const styles: {
   readonly homeIntro: string;
   readonly homeWorkspace: string;
   readonly message: string;
+  readonly searchStatus: string;
   readonly showGrid: string;
   readonly showSearch: string;
   readonly switcherError: string;
