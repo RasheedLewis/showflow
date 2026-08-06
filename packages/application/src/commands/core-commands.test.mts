@@ -33,11 +33,13 @@ import type {
 
 import {
   AddSegmentToBlueprintCommand,
+  ArchiveShowCommand,
   CreateEpisodeFromBlueprintCommand,
   CreateLayoutCommand,
   CreateShowCommand,
   CreateShowSegmentCommand,
   CreateStudioCommand,
+  DeleteShowCommand,
   DuplicateBlueprintPlacementCommand,
   DuplicateEpisodeSegmentCommand,
   RemoveBlueprintPlacementCommand,
@@ -468,7 +470,11 @@ describe("Studio and Show commands", () => {
     );
 
     await expect(
-      command.execute({ showId: data.show.id, name: "Weekly Countdown" }),
+      command.execute({
+        studioId: data.studio.id,
+        showId: data.show.id,
+        name: " Weekly Countdown ",
+      }),
     ).resolves.toMatchObject({
       name: "Weekly Countdown",
       updatedAt,
@@ -476,7 +482,39 @@ describe("Studio and Show commands", () => {
     await expect(
       command.execute({
         showId: entityId<"show">(999),
+        studioId: data.studio.id,
         name: "Missing Show",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  test("archives and deletes a Show only within its Studio", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const archived = await new ArchiveShowCommand(
+      context.repositories.shows,
+      commandDependencies(),
+    ).execute({ studioId: data.studio.id, showId: data.show.id });
+    let deletedId: ShowId | undefined;
+    const deleted = await new DeleteShowCommand({
+      shows: context.repositories.shows,
+      showDeletion: {
+        delete: async (showId) => {
+          deletedId = showId;
+        },
+      },
+    }).execute({ studioId: data.studio.id, showId: data.show.id });
+
+    expect(archived).toMatchObject({ archivedAt: updatedAt, updatedAt });
+    expect(deleted).toBe(data.show.id);
+    expect(deletedId).toBe(data.show.id);
+    await expect(
+      new DeleteShowCommand({
+        shows: context.repositories.shows,
+        showDeletion: { delete: async () => undefined },
+      }).execute({
+        studioId: entityId<"studio">(999),
+        showId: data.show.id,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });

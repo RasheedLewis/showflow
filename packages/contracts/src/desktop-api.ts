@@ -15,7 +15,13 @@ import type {
 import type {
   CreateShowRequest,
   GetShowDesignRequest,
+  ListShowsRequest,
+  RenameShowRequest,
+  ShowDeleteResult,
   ShowDesignResult,
+  ShowListResult,
+  ShowMutationRequest,
+  ShowResult,
 } from "./show.ts";
 
 export interface ShowflowDesktopApi {
@@ -33,7 +39,11 @@ export interface ShowflowDesktopApi {
     list: () => Promise<StudioListResult>;
   }>;
   readonly shows: Readonly<{
+    archive: (request: ShowMutationRequest) => Promise<ShowResult>;
     create: (request: CreateShowRequest) => Promise<ShowDesignResult>;
+    delete: (request: ShowMutationRequest) => Promise<ShowDeleteResult>;
     getDesign: (request: GetShowDesignRequest) => Promise<ShowDesignResult>;
+    list: (request: ListShowsRequest) => Promise<ShowListResult>;
+    rename: (request: RenameShowRequest) => Promise<ShowResult>;
   }>;
 }

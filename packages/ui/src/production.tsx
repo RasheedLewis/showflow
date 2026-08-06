@@ -36,6 +36,7 @@ export const ObjectCard = ({
   dragging = false,
   invalid = false,
   metadata,
+  onClick,
   onOpen,
   preview,
   selected = false,
@@ -57,6 +58,20 @@ export const ObjectCard = ({
       data-dragging={dragging || undefined}
       data-invalid={invalid || undefined}
       data-selected={selected || undefined}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || onOpen === undefined) return;
+        const target = event.target;
+        if (
+          target instanceof Element &&
+          target.closest(
+            "button, a, input, textarea, select, [role='menuitem']",
+          )
+        ) {
+          return;
+        }
+        onOpen();
+      }}
     >
       {preview ? <div className={styles.objectPreview}>{preview}</div> : null}
       <div className={styles.objectContent}>

@@ -4,6 +4,10 @@ import { ApiErrorSchema } from "./api-result.ts";
 
 export const SHOWS_CREATE_CHANNEL = "showflow:v1:shows:create" as const;
 export const SHOWS_GET_DESIGN_CHANNEL = "showflow:v1:shows:get-design" as const;
+export const SHOWS_LIST_CHANNEL = "showflow:v1:shows:list" as const;
+export const SHOWS_RENAME_CHANNEL = "showflow:v1:shows:rename" as const;
+export const SHOWS_ARCHIVE_CHANNEL = "showflow:v1:shows:archive" as const;
+export const SHOWS_DELETE_CHANNEL = "showflow:v1:shows:delete" as const;
 
 const CanonicalUtcTimestampSchema = z.string().refine((value) => {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)) {
@@ -61,6 +65,52 @@ export const GetShowDesignRequestSchema = z
   })
   .strict();
 
+export const ListShowsRequestSchema = z
+  .object({ studioId: z.string().uuid() })
+  .strict();
+
+export const RenameShowRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    showId: z.string().uuid(),
+    studioId: z.string().uuid(),
+  })
+  .strict();
+
+export const ShowMutationRequestSchema = z
+  .object({
+    showId: z.string().uuid(),
+    studioId: z.string().uuid(),
+  })
+  .strict();
+
+export const ShowCardDtoSchema = z
+  .object({
+    episodeCount: z.number().int().nonnegative(),
+    show: ShowDtoSchema,
+  })
+  .strict();
+
+export const ShowResultSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), data: ShowDtoSchema }).strict(),
+  z.object({ ok: z.literal(false), error: ApiErrorSchema }).strict(),
+]);
+
+export const ShowListResultSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), data: z.array(ShowCardDtoSchema) }).strict(),
+  z.object({ ok: z.literal(false), error: ApiErrorSchema }).strict(),
+]);
+
+export const ShowDeleteResultSchema = z.discriminatedUnion("ok", [
+  z
+    .object({
+      ok: z.literal(true),
+      data: z.object({ showId: z.string().uuid() }).strict(),
+    })
+    .strict(),
+  z.object({ ok: z.literal(false), error: ApiErrorSchema }).strict(),
+]);
+
 export const ShowDesignResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), data: ShowDesignDtoSchema }).strict(),
   z.object({ ok: z.literal(false), error: ApiErrorSchema }).strict(),
@@ -68,6 +118,13 @@ export const ShowDesignResultSchema = z.discriminatedUnion("ok", [
 
 export type CreateShowRequest = z.infer<typeof CreateShowRequestSchema>;
 export type GetShowDesignRequest = z.infer<typeof GetShowDesignRequestSchema>;
+export type ListShowsRequest = z.infer<typeof ListShowsRequestSchema>;
+export type RenameShowRequest = z.infer<typeof RenameShowRequestSchema>;
+export type ShowMutationRequest = z.infer<typeof ShowMutationRequestSchema>;
+export type ShowCardDto = z.infer<typeof ShowCardDtoSchema>;
+export type ShowDeleteResult = z.infer<typeof ShowDeleteResultSchema>;
+export type ShowListResult = z.infer<typeof ShowListResultSchema>;
+export type ShowResult = z.infer<typeof ShowResultSchema>;
 export type ShowBlueprintDto = z.infer<typeof ShowBlueprintDtoSchema>;
 export type ShowDesignDto = z.infer<typeof ShowDesignDtoSchema>;
 export type ShowDesignResult = z.infer<typeof ShowDesignResultSchema>;

@@ -1,11 +1,16 @@
-import type { ShowRepository } from "@showflow/application";
+import type {
+  ShowDeletionRepository,
+  ShowRepository,
+} from "@showflow/application";
 import type { Show, ShowId, StudioId } from "@showflow/domain";
 
 import type { ShowflowDatabase } from "../database/database-service.mjs";
 import { mapPersistenceError } from "../errors/persistence-error-mapper.mjs";
 import { SHOW_COLUMNS, ShowRowParser, writeShow } from "./show-storage.mjs";
 
-export class SqliteShowRepository implements ShowRepository {
+export class SqliteShowRepository
+  implements ShowRepository, ShowDeletionRepository
+{
   constructor(readonly database: ShowflowDatabase) {}
 
   async getById(id: ShowId): Promise<Show | null> {
@@ -39,6 +44,21 @@ export class SqliteShowRepository implements ShowRepository {
   async save(show: Show): Promise<void> {
     try {
       writeShow(this.database, show);
+    } catch (error) {
+      throw mapPersistenceError(error, "write");
+    }
+  }
+
+  async delete(showId: ShowId): Promise<void> {
+    try {
+      const result = this.database.run("DELETE FROM shows WHERE id = ?", [
+        showId,
+      ]);
+      if (Number(result.changes) !== 1) {
+        throw new Error(
+          "The Show could not be deleted because it was missing.",
+        );
+      }
     } catch (error) {
       throw mapPersistenceError(error, "write");
     }

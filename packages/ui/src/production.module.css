@@ -1,5 +1,6 @@
 .objectCard {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border: var(--sf-border-width-default) solid var(--sf-border-default);
   border-radius: var(--sf-radius-lg);
@@ -52,6 +53,7 @@
 
 .objectPreview {
   overflow: hidden;
+  pointer-events: none;
   border-bottom: var(--sf-border-width-default) solid var(--sf-divider);
   background: var(--sf-bg-canvas);
 }
@@ -86,12 +88,6 @@
   text-align: left;
 }
 
-.objectTitleAction::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-}
-
 .objectTitleAction:focus-visible {
   outline: none;
 }
@@ -124,6 +120,7 @@
   position: absolute;
   top: var(--sf-space-3);
   right: var(--sf-space-3);
+  z-index: var(--sf-z-sticky);
   display: flex;
   gap: var(--sf-space-2);
   opacity: 0;

@@ -42,6 +42,10 @@ describe("production object cards", () => {
     fireEvent.keyDown(open, { key: "Enter" });
     fireEvent.click(open);
     expect(onOpen).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByText("Opening preview"));
+    expect(onOpen).toHaveBeenCalledTimes(2);
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(onOpen).toHaveBeenCalledTimes(2);
   });
 
   it("exposes dragging, disabled, invalid, archived, and current states", () => {

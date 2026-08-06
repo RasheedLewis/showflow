@@ -59,13 +59,23 @@ const validShowResult = {
 } as const;
 
 const createValidTransports = () => ({
+  archiveShow: async () => ({ ok: true, data: validShowResult.data.show }),
   createShow: async () => validShowResult,
   createStudio: async () => validStudioResult,
+  deleteShow: async () => ({
+    ok: true,
+    data: { showId: validShowResult.data.show.id },
+  }),
   getApplicationSettings: async () => validSettingsResult,
   getRuntimeInfo: async () => validResult,
   getShowDesign: async () => validShowResult,
   getStudio: async () => validStudioResult,
+  listShows: async () => ({
+    ok: true,
+    data: [{ episodeCount: 0, show: validShowResult.data.show }],
+  }),
   listStudios: async () => ({ ok: true, data: [validStudioResult.data] }),
+  renameShow: async () => ({ ok: true, data: validShowResult.data.show }),
   updateNavigation: async () => validSettingsResult,
 });
 
@@ -85,6 +95,16 @@ test("the preload validates Show creation and Design Show responses", async () =
     }),
   ).resolves.toEqual(validShowResult);
   await expect(api.shows.create({ ...request, name: "   " })).rejects.toThrow();
+  await expect(
+    api.shows.list({ studioId: validStudioResult.data.id }),
+  ).resolves.toMatchObject({ ok: true, data: [{ episodeCount: 0 }] });
+  await expect(
+    api.shows.rename({
+      studioId: validStudioResult.data.id,
+      showId: validShowResult.data.show.id,
+      name: "Renamed Show",
+    }),
+  ).resolves.toMatchObject({ ok: true });
 });
 
 test("the preload API validates and returns runtime information", async () => {
@@ -175,7 +195,14 @@ test("the preload exposes no generic invocation surface", () => {
   expect("invoke" in api.app).toBe(false);
   expect(Object.keys(api.studios)).toEqual(["create", "get", "list"]);
   expect("invoke" in api.studios).toBe(false);
-  expect(Object.keys(api.shows)).toEqual(["create", "getDesign"]);
+  expect(Object.keys(api.shows)).toEqual([
+    "archive",
+    "create",
+    "delete",
+    "getDesign",
+    "list",
+    "rename",
+  ]);
   expect(Object.isFrozen(api)).toBe(true);
   expect(Object.isFrozen(api.app)).toBe(true);
   expect(Object.isFrozen(api.studios)).toBe(true);

@@ -13,7 +13,11 @@ import {
 
 import {
   handleCreateShowRequest,
+  handleArchiveShowRequest,
+  handleDeleteShowRequest,
   handleGetShowDesignRequest,
+  handleListShowsRequest,
+  handleRenameShowRequest,
 } from "./show-handler.mjs";
 
 const studioId = parseEntityId<"studio">(
@@ -51,6 +55,34 @@ describe("Show IPC handlers", () => {
     await expect(
       handleGetShowDesignRequest(request, true, operation),
     ).resolves.toMatchObject({ ok: true, data: { show: { id: showId } } });
+  });
+
+  test("lists, renames, archives, and deletes Show cards", async () => {
+    await expect(
+      handleListShowsRequest({ studioId }, true, {
+        execute: async () => [{ episodeCount: 0, show }],
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: [{ episodeCount: 0, show: { id: showId } }],
+    });
+    await expect(
+      handleRenameShowRequest(
+        { studioId, showId, name: "Renamed Show" },
+        true,
+        { execute: async () => ({ ...show, name: "Renamed Show" }) },
+      ),
+    ).resolves.toMatchObject({ ok: true, data: { name: "Renamed Show" } });
+    await expect(
+      handleArchiveShowRequest({ studioId, showId }, true, {
+        execute: async () => ({ ...show, archivedAt: timestamp }),
+      }),
+    ).resolves.toMatchObject({ ok: true, data: { archivedAt: timestamp } });
+    await expect(
+      handleDeleteShowRequest({ studioId, showId }, true, {
+        execute: async () => showId,
+      }),
+    ).resolves.toEqual({ ok: true, data: { showId } });
   });
 
   test("contains invalid, untrusted, not-found, and persistence failures", async () => {

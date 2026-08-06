@@ -9,13 +9,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { ShowDesignDto } from "@showflow/contracts";
+import type { ShowCardDto, ShowDesignDto } from "@showflow/contracts";
 
 import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import studioStyles from "../studios/studio-pages.module.css";
-import { showDesignQueryKey } from "./show-queries";
+import { showDesignQueryKey, studioShowsQueryKey } from "./show-queries";
 
 export const ShowCreationPage = () => {
   const navigate = useNavigate();
@@ -90,6 +90,13 @@ export const ShowCreationPage = () => {
       queryClient.setQueryData(
         showDesignQueryKey(studioId, result.data.show.id),
         result.data,
+      );
+      queryClient.setQueryData<readonly ShowCardDto[]>(
+        studioShowsQueryKey(studioId),
+        (cards = []) =>
+          cards.some((card) => card.show.id === result.data.show.id)
+            ? cards
+            : [...cards, { episodeCount: 0, show: result.data.show }],
       );
       await openDesignShow(result.data);
     } catch {

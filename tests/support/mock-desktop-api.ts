@@ -6,9 +6,15 @@ import {
   type GetShowDesignRequest,
   type GetRuntimeInfoResult,
   type GetStudioRequest,
+  type ListShowsRequest,
+  type RenameShowRequest,
+  type ShowDeleteResult,
   type ShowflowDesktopApi,
   type ShowDesignDto,
   type ShowDesignResult,
+  type ShowDto,
+  type ShowMutationRequest,
+  type ShowResult,
   type StudioDto,
   type StudioResult,
   type UpdateNavigationSettingsRequest,
@@ -63,6 +69,20 @@ export const createMockDesktopApi = (
       message: "This Show is no longer available. Return to Studio Home.",
     },
   });
+  const showMutationNotFound = (): ShowResult => ({
+    ok: false,
+    error: {
+      code: "NOT_FOUND",
+      message: "This Show is no longer available. Return to Studio Home.",
+    },
+  });
+  const showDeleteNotFound = (): ShowDeleteResult => ({
+    ok: false,
+    error: {
+      code: "NOT_FOUND",
+      message: "This Show is no longer available. Return to Studio Home.",
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -106,6 +126,18 @@ export const createMockDesktopApi = (
       }),
     }),
     shows: Object.freeze({
+      archive: async (request: ShowMutationRequest) => {
+        const design = shows.get(request.showId);
+        if (design === undefined || design.show.studioId !== request.studioId)
+          return showMutationNotFound();
+        const archived = {
+          ...design.show,
+          archivedAt: DEFAULT_TIMESTAMP,
+          updatedAt: DEFAULT_TIMESTAMP,
+        } satisfies ShowDto;
+        shows.set(request.showId, { ...design, show: archived });
+        return { ok: true, data: archived } as const;
+      },
       create: async (request: CreateShowRequest) => {
         if (!studios.has(request.studioId)) return showNotFound();
         const showId = shows.size === 0 ? DEFAULT_SHOW_ID : crypto.randomUUID();
@@ -131,6 +163,13 @@ export const createMockDesktopApi = (
         shows.set(showId, design);
         return { ok: true, data: design } as const;
       },
+      delete: async (request: ShowMutationRequest) => {
+        const design = shows.get(request.showId);
+        if (design === undefined || design.show.studioId !== request.studioId)
+          return showDeleteNotFound();
+        shows.delete(request.showId);
+        return { ok: true, data: { showId: request.showId } } as const;
+      },
       getDesign: async (
         request: GetShowDesignRequest,
       ): Promise<ShowDesignResult> => {
@@ -145,6 +184,27 @@ export const createMockDesktopApi = (
               },
             }
           : { ok: true, data: design };
+      },
+      list: async (request: ListShowsRequest) => ({
+        ok: true as const,
+        data: [...shows.values()]
+          .filter(
+            ({ show }) =>
+              show.studioId === request.studioId && show.archivedAt === null,
+          )
+          .map(({ show }) => ({ episodeCount: 0, show })),
+      }),
+      rename: async (request: RenameShowRequest) => {
+        const design = shows.get(request.showId);
+        if (design === undefined || design.show.studioId !== request.studioId)
+          return showMutationNotFound();
+        const renamed = {
+          ...design.show,
+          name: request.name.trim(),
+          updatedAt: DEFAULT_TIMESTAMP,
+        } satisfies ShowDto;
+        shows.set(request.showId, { ...design, show: renamed });
+        return { ok: true, data: renamed } as const;
       },
     }),
   });
@@ -216,6 +276,25 @@ export const installMockDesktopApi = async (
           list: async () => ({ ok: true, data: [...studios.values()] }),
         }),
         shows: Object.freeze({
+          archive: async (request: { studioId: string; showId: string }) => {
+            const design = shows.get(request.showId);
+            if (
+              design === undefined ||
+              design.show.studioId !== request.studioId
+            ) {
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Show not found." },
+              };
+            }
+            const archived = {
+              ...design.show,
+              archivedAt: timestamp,
+              updatedAt: timestamp,
+            };
+            shows.set(request.showId, { ...design, show: archived });
+            return { ok: true, data: archived };
+          },
           create: async (request: {
             studioId: string;
             name: string;
@@ -256,6 +335,20 @@ export const installMockDesktopApi = async (
             shows.set(showId, design);
             return { ok: true, data: design };
           },
+          delete: async (request: { studioId: string; showId: string }) => {
+            const design = shows.get(request.showId);
+            if (
+              design === undefined ||
+              design.show.studioId !== request.studioId
+            ) {
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Show not found." },
+              };
+            }
+            shows.delete(request.showId);
+            return { ok: true, data: { showId: request.showId } };
+          },
           getDesign: async (request: { studioId: string; showId: string }) => {
             const design = shows.get(request.showId);
             return design === undefined ||
@@ -269,6 +362,39 @@ export const installMockDesktopApi = async (
                   },
                 }
               : { ok: true, data: design };
+          },
+          list: async (request: { studioId: string }) => ({
+            ok: true,
+            data: [...shows.values()]
+              .filter(
+                ({ show }) =>
+                  show.studioId === request.studioId &&
+                  show.archivedAt === null,
+              )
+              .map(({ show }) => ({ episodeCount: 0, show })),
+          }),
+          rename: async (request: {
+            studioId: string;
+            showId: string;
+            name: string;
+          }) => {
+            const design = shows.get(request.showId);
+            if (
+              design === undefined ||
+              design.show.studioId !== request.studioId
+            ) {
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Show not found." },
+              };
+            }
+            const renamed = {
+              ...design.show,
+              name: request.name.trim(),
+              updatedAt: timestamp,
+            };
+            shows.set(request.showId, { ...design, show: renamed });
+            return { ok: true, data: renamed };
           },
         }),
       });

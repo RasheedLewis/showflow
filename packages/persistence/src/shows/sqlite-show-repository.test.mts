@@ -96,6 +96,10 @@ describe("SQLite Show persistence", () => {
           operation: "write",
         });
         await expect(shows.getById(secondShow.id)).resolves.toBeNull();
+
+        await shows.delete(show.id);
+        await expect(shows.getById(show.id)).resolves.toBeNull();
+        await expect(blueprints.getByShowId(show.id)).resolves.toBeNull();
       } finally {
         persistence.database.close();
       }

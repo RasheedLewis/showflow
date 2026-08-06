@@ -3,11 +3,15 @@ import { pathToFileURL } from "node:url";
 
 import {
   ApplicationSettingsService,
+  ArchiveShowCommand,
   CreateStudioCommand,
   CreateShowCommand,
+  DeleteShowCommand,
   GetShowDesignQuery,
   GetStudioQuery,
   ListStudiosQuery,
+  ListStudioShowsQuery,
+  RenameShowCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -113,14 +117,24 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       list: new ListStudiosQuery(studioRepository),
     },
     shows: {
+      archive: new ArchiveShowCommand(showRepository),
       create: new CreateShowCommand({
         studios: studioRepository,
         showCreation: new SqliteShowCreationRepository(persistence.database),
+      }),
+      delete: new DeleteShowCommand({
+        shows: showRepository,
+        showDeletion: showRepository,
       }),
       getDesign: new GetShowDesignQuery({
         shows: showRepository,
         blueprints: blueprintRepository,
       }),
+      list: new ListStudioShowsQuery({
+        studios: studioRepository,
+        shows: showRepository,
+      }),
+      rename: new RenameShowCommand(showRepository),
     },
   };
 };

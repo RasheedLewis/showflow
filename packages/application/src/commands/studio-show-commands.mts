@@ -2,6 +2,7 @@ import {
   createEntityMetadata,
   createShow,
   createStudio,
+  currentUtcTimestamp,
 } from "@showflow/domain";
 import type {
   CreateStudioInput,
@@ -21,6 +22,7 @@ import {
 import { ApplicationError } from "../errors/application-error.mjs";
 import type {
   ShowCreationRepository,
+  ShowDeletionRepository,
   ShowRepository,
   StudioRepository,
 } from "../repositories/repositories.mjs";
@@ -175,8 +177,21 @@ export class CreateShowCommand {
 
 export interface RenameShowCommandInput {
   readonly showId: ShowId;
+  readonly studioId: StudioId;
   readonly name: string;
 }
+
+const requireShowInStudio = async (
+  repository: ShowRepository,
+  studioId: StudioId,
+  showId: ShowId,
+): Promise<Show> => {
+  const show = requireEntity(await repository.getById(showId), "Show");
+  if (show.studioId !== studioId) {
+    throw new ApplicationError("NOT_FOUND", "Show was not found.");
+  }
+  return show;
+};
 
 export class RenameShowCommand {
   readonly #repository: ShowRepository;
@@ -191,15 +206,64 @@ export class RenameShowCommand {
   }
 
   async execute(input: RenameShowCommandInput): Promise<Show> {
-    const current = requireEntity(
-      await this.#repository.getById(input.showId),
-      "Show",
+    const current = await requireShowInStudio(
+      this.#repository,
+      input.studioId,
+      input.showId,
     );
     const show = touchEntity(
-      { ...current, name: input.name },
+      { ...current, name: normalizeShowName(input.name) },
       this.#dependencies,
     );
     await this.#repository.save(show);
     return show;
+  }
+}
+
+export interface ArchiveShowCommandInput {
+  readonly showId: ShowId;
+  readonly studioId: StudioId;
+}
+
+export class ArchiveShowCommand {
+  constructor(
+    readonly repository: ShowRepository,
+    readonly dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
+  ) {}
+
+  async execute(input: ArchiveShowCommandInput): Promise<Show> {
+    const current = await requireShowInStudio(
+      this.repository,
+      input.studioId,
+      input.showId,
+    );
+    const archivedAt = currentUtcTimestamp(this.dependencies.clock);
+    const show = touchEntity({ ...current, archivedAt }, this.dependencies);
+    await this.repository.save(show);
+    return show;
+  }
+}
+
+export interface DeleteShowCommandInput {
+  readonly showId: ShowId;
+  readonly studioId: StudioId;
+}
+
+interface DeleteShowRepositories {
+  readonly shows: ShowRepository;
+  readonly showDeletion: ShowDeletionRepository;
+}
+
+export class DeleteShowCommand {
+  constructor(readonly repositories: DeleteShowRepositories) {}
+
+  async execute(input: DeleteShowCommandInput): Promise<ShowId> {
+    const show = await requireShowInStudio(
+      this.repositories.shows,
+      input.studioId,
+      input.showId,
+    );
+    await this.repositories.showDeletion.delete(show.id);
+    return show.id;
   }
 }

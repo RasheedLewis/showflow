@@ -170,7 +170,10 @@ describe("App", () => {
       }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { level: 2, name: "Create your first Show" }),
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create your first Show",
+      }),
     ).toBeVisible();
     expect(
       screen.getByText(
@@ -226,6 +229,109 @@ describe("App", () => {
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
+  });
+
+  it("renders Show cards and supports rename, open, and archive", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Artist Interviews",
+      description: "Weekly artist interviews.",
+    });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    expect(
+      await screen.findByRole("button", { name: "Artist Interviews" }),
+    ).toBeVisible();
+    expect(screen.getByText("Weekly artist interviews.")).toBeVisible();
+    expect(screen.getByText("0 Episodes")).toBeVisible();
+    expect(
+      screen.getByRole("img", {
+        name: "Artist Interviews thumbnail placeholder",
+      }),
+    ).toBeVisible();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Actions for Artist Interviews" }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Show name" }), {
+      target: { value: "Artist Conversations" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Rename Show" }));
+    expect(
+      await screen.findByRole("button", { name: "Artist Conversations" }),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Artist Conversations" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Artist Conversations",
+      }),
+    ).toBeVisible();
+  });
+
+  it("requires confirmation before deleting a Show card", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Artist Interviews",
+    });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    fireEvent.pointerDown(
+      await screen.findByRole("button", {
+        name: "Actions for Artist Interviews",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    expect(
+      screen.getByRole("dialog", { name: "Delete Artist Interviews?" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("button", { name: "Artist Interviews" }),
+    ).toBeVisible();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "Actions for Artist Interviews" }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete Show" }));
+    expect(
+      await screen.findByRole("heading", { name: "Create your first Show" }),
+    ).toBeVisible();
+  });
+
+  it("archives a Show card without destructive confirmation", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      studioId: DEFAULT_STUDIO_ID,
+      name: "Artist Interviews",
+    });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    fireEvent.pointerDown(
+      await screen.findByRole("button", {
+        name: "Actions for Artist Interviews",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Archive" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Create your first Show" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("creates another Studio and switches back through the account-style menu", async () => {
