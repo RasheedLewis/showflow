@@ -4,6 +4,7 @@ import {
   SETTINGS_UPDATE_NAVIGATION_CHANNEL,
   STUDIOS_CREATE_CHANNEL,
   STUDIOS_GET_CHANNEL,
+  STUDIOS_LIST_CHANNEL,
 } from "@showflow/contracts";
 import { contextBridge, ipcRenderer } from "electron";
 
@@ -17,6 +18,7 @@ const showflowDesktopApi = createShowflowDesktopApi({
   getRuntimeInfo: () =>
     ipcRenderer.invoke(APP_GET_RUNTIME_INFO_CHANNEL, undefined),
   getStudio: (request) => ipcRenderer.invoke(STUDIOS_GET_CHANNEL, request),
+  listStudios: () => ipcRenderer.invoke(STUDIOS_LIST_CHANNEL, undefined),
   updateNavigation: (request) =>
     ipcRenderer.invoke(SETTINGS_UPDATE_NAVIGATION_CHANNEL, request),
 });

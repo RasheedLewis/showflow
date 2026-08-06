@@ -14,6 +14,7 @@ import {
 import {
   handleCreateStudioRequest,
   handleGetStudioRequest,
+  handleListStudiosRequest,
 } from "./studio-handler.mjs";
 
 const STUDIO_ID = parseEntityId<"studio">(
@@ -38,6 +39,7 @@ describe("Studio IPC handlers", () => {
     const get = {
       execute: async (studioId: StudioId) => ({ ...studio, id: studioId }),
     };
+    const list = { execute: async () => [studio] };
 
     await expect(
       handleCreateStudioRequest({ name: "  Public Sphere  " }, true, create),
@@ -58,11 +60,18 @@ describe("Studio IPC handlers", () => {
       ok: true,
       data: { id: STUDIO_ID, name: "Public Sphere" },
     });
+    await expect(
+      handleListStudiosRequest(undefined, true, list),
+    ).resolves.toMatchObject({
+      ok: true,
+      data: [{ id: STUDIO_ID, name: "Public Sphere" }],
+    });
   });
 
   test("rejects untrusted senders and malformed requests", async () => {
     const create = { execute: async () => studio };
     const get = { execute: async () => studio };
+    const list = { execute: async () => [studio] };
 
     await expect(
       handleCreateStudioRequest({ name: "Public Sphere" }, false, create),
@@ -78,6 +87,18 @@ describe("Studio IPC handlers", () => {
     });
     await expect(
       handleGetStudioRequest({ studioId: "missing" }, true, get),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "IPC_INVALID_REQUEST" },
+    });
+    await expect(
+      handleListStudiosRequest(undefined, false, list),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "IPC_UNTRUSTED_SENDER" },
+    });
+    await expect(
+      handleListStudiosRequest({}, true, list),
     ).resolves.toMatchObject({
       ok: false,
       error: { code: "IPC_INVALID_REQUEST" },
@@ -98,6 +119,11 @@ describe("Studio IPC handlers", () => {
         throw new ApplicationError("NOT_FOUND", "Studio was not found.");
       },
     };
+    const list = {
+      execute: async (): Promise<readonly Studio[]> => {
+        throw new PersistenceFailureError("read", new Error("studios table"));
+      },
+    };
 
     const createResult = await handleCreateStudioRequest(
       { name: "Public Sphere" },
@@ -109,6 +135,7 @@ describe("Studio IPC handlers", () => {
       true,
       get,
     );
+    const listResult = await handleListStudiosRequest(undefined, true, list);
 
     expect(createResult).toMatchObject({
       ok: false,
@@ -122,6 +149,11 @@ describe("Studio IPC handlers", () => {
       },
     });
     expect(JSON.stringify(createResult)).not.toMatch(/SQLITE|studios\.name/u);
+    expect(listResult).toMatchObject({
+      ok: false,
+      error: { code: "PERSISTENCE_FAILURE" },
+    });
+    expect(JSON.stringify(listResult)).not.toContain("studios table");
   });
 
   test("contains invalid application responses", async () => {
@@ -130,6 +162,14 @@ describe("Studio IPC handlers", () => {
     await expect(
       handleCreateStudioRequest({ name: "Public Sphere" }, true, {
         execute: async () => invalidStudio,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "IPC_INVALID_RESPONSE" },
+    });
+    await expect(
+      handleListStudiosRequest(undefined, true, {
+        execute: async () => [invalidStudio],
       }),
     ).resolves.toMatchObject({
       ok: false,

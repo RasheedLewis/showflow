@@ -1,7 +1,34 @@
 .workspace {
+  position: relative;
   display: grid;
   min-height: 100%;
   place-items: center;
+}
+
+.switcherTrigger {
+  max-width: var(--sf-shell-catalog-width);
+}
+
+.switcherTrigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcherError {
+  position: absolute;
+  top: var(--sf-space-4);
+  right: var(--sf-space-4);
+  left: var(--sf-space-4);
+  max-width: var(--sf-dialog-width-md);
+  margin: 0 auto;
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-error);
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-error-muted);
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
 }
 
 .card {

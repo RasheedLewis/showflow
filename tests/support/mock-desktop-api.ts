@@ -30,6 +30,7 @@ export const DEFAULT_APPLICATION_SETTINGS_RESULT = {
 } as const satisfies ApplicationSettingsResult;
 export const DEFAULT_STUDIO_ID =
   "8d9df01f-2584-4b9a-ad13-a96d673918e9" as const;
+export const SECOND_STUDIO_ID = "f4f47461-e2c8-44a8-a301-5465655aeb36" as const;
 const DEFAULT_TIMESTAMP = "2026-08-06T14:30:00.000Z" as const;
 
 export const createMockDesktopApi = (
@@ -38,6 +39,7 @@ export const createMockDesktopApi = (
 ): ShowflowDesktopApi => {
   let settingsResult = initialSettingsResult;
   const studios = new Map<string, StudioDto>();
+  const studioIds = [DEFAULT_STUDIO_ID, SECOND_STUDIO_ID] as const;
 
   const studioNotFound = (): StudioResult => ({
     ok: false,
@@ -65,10 +67,11 @@ export const createMockDesktopApi = (
     }),
     studios: Object.freeze({
       create: async (request: CreateStudioRequest) => {
+        const studioId = studioIds[studios.size] ?? crypto.randomUUID();
         const studio = {
           archivedAt: null,
           createdAt: DEFAULT_TIMESTAMP,
-          id: DEFAULT_STUDIO_ID,
+          id: studioId,
           logoResourceId: null,
           name: request.name.trim(),
           updatedAt: DEFAULT_TIMESTAMP,
@@ -82,6 +85,10 @@ export const createMockDesktopApi = (
           ? studioNotFound()
           : ({ ok: true, data: studio } as const);
       },
+      list: async () => ({
+        ok: true as const,
+        data: [...studios.values()],
+      }),
     }),
   });
 };
@@ -97,7 +104,10 @@ export const installMockDesktopApi = async (
     ({ apiVersion, applicationSettings, runtimeInfo }) => {
       let settingsResult = applicationSettings;
       const studios = new Map();
-      const studioId = "8d9df01f-2584-4b9a-ad13-a96d673918e9";
+      const studioIds = [
+        "8d9df01f-2584-4b9a-ad13-a96d673918e9",
+        "f4f47461-e2c8-44a8-a301-5465655aeb36",
+      ];
       const timestamp = "2026-08-06T14:30:00.000Z";
       const mockApi = Object.freeze({
         apiVersion,
@@ -120,6 +130,7 @@ export const installMockDesktopApi = async (
         }),
         studios: Object.freeze({
           create: async (request: { name: string }) => {
+            const studioId = studioIds[studios.size] ?? crypto.randomUUID();
             const studio = {
               archivedAt: null,
               createdAt: timestamp,
@@ -144,6 +155,7 @@ export const installMockDesktopApi = async (
                 }
               : { ok: true, data: studio };
           },
+          list: async () => ({ ok: true, data: [...studios.values()] }),
         }),
       });
 

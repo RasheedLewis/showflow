@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import {
   CreateStudioRequestSchema,
   GetStudioRequestSchema,
+  ListStudiosRequestSchema,
+  StudioListResultSchema,
   StudioResultSchema,
 } from "./studio.ts";
 
@@ -16,6 +18,25 @@ describe("Studio desktop contracts", () => {
     expect(GetStudioRequestSchema.parse({ studioId: STUDIO_ID })).toEqual({
       studioId: STUDIO_ID,
     });
+    expect(ListStudiosRequestSchema.parse(undefined)).toBeUndefined();
+  });
+
+  test("accepts a serializable Studio list", () => {
+    expect(
+      StudioListResultSchema.safeParse({
+        ok: true,
+        data: [
+          {
+            archivedAt: null,
+            createdAt: "2026-08-06T14:30:00.000Z",
+            id: STUDIO_ID,
+            logoResourceId: null,
+            name: "Public Sphere",
+            updatedAt: "2026-08-06T14:30:00.000Z",
+          },
+        ],
+      }).success,
+    ).toBe(true);
   });
 
   test("accepts a serializable Studio result", () => {
@@ -41,6 +62,7 @@ describe("Studio desktop contracts", () => {
     expect(
       GetStudioRequestSchema.safeParse({ studioId: "Public Sphere" }).success,
     ).toBe(false);
+    expect(ListStudiosRequestSchema.safeParse({}).success).toBe(false);
     expect(
       StudioResultSchema.safeParse({
         ok: true,

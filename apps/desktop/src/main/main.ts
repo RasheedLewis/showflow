@@ -5,6 +5,7 @@ import {
   ApplicationSettingsService,
   CreateStudioCommand,
   GetStudioQuery,
+  ListStudiosQuery,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -98,6 +99,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     studios: {
       create: new CreateStudioCommand(studioRepository),
       get: new GetStudioQuery(studioRepository),
+      list: new ListStudiosQuery(studioRepository),
     },
   };
 };

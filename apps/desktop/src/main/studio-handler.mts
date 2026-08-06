@@ -2,19 +2,25 @@ import {
   ApplicationError,
   type CreateStudioCommand,
   type GetStudioQuery,
+  type ListStudiosQuery,
 } from "@showflow/application";
 import {
   CreateStudioRequestSchema,
   GetStudioRequestSchema,
+  ListStudiosRequestSchema,
   StudioDtoSchema,
+  StudioListResultSchema,
   StudioResultSchema,
   type ApiErrorCode,
+  type StudioDto,
+  type StudioListResult,
   type StudioResult,
 } from "@showflow/contracts";
 import { parseEntityId, type Studio } from "@showflow/domain";
 
 type CreateStudioOperation = Pick<CreateStudioCommand, "execute">;
 type GetStudioOperation = Pick<GetStudioQuery, "execute">;
+type ListStudiosOperation = Pick<ListStudiosQuery, "execute">;
 
 const createErrorResult = (code: ApiErrorCode, message: string): StudioResult =>
   StudioResultSchema.parse({
@@ -22,10 +28,19 @@ const createErrorResult = (code: ApiErrorCode, message: string): StudioResult =>
     error: { code, message },
   });
 
+const createListErrorResult = (
+  code: ApiErrorCode,
+  message: string,
+): StudioListResult =>
+  StudioListResultSchema.parse({
+    ok: false,
+    error: { code, message },
+  });
+
 const getApplicationErrorCode = (error: unknown): ApiErrorCode =>
   error instanceof ApplicationError ? error.code : "INTERNAL_ERROR";
 
-const createSuccessResult = (studio: Studio): StudioResult => {
+const parseStudioDto = (studio: Studio): StudioDto | null => {
   const studioDto = StudioDtoSchema.safeParse({
     archivedAt: studio.archivedAt ?? null,
     createdAt: studio.createdAt,
@@ -35,16 +50,39 @@ const createSuccessResult = (studio: Studio): StudioResult => {
     updatedAt: studio.updatedAt,
   });
 
-  if (!studioDto.success) {
+  return studioDto.success ? studioDto.data : null;
+};
+
+const createSuccessResult = (studio: Studio): StudioResult => {
+  const studioDto = parseStudioDto(studio);
+
+  if (studioDto === null)
     return createErrorResult(
       "IPC_INVALID_RESPONSE",
       "Showflow could not validate the Studio response.",
     );
-  }
 
   return StudioResultSchema.parse({
     ok: true,
-    data: studioDto.data,
+    data: studioDto,
+  });
+};
+
+const createListSuccessResult = (
+  studios: readonly Studio[],
+): StudioListResult => {
+  const studioDtos = studios.map(parseStudioDto);
+
+  if (studioDtos.some((studio) => studio === null)) {
+    return createListErrorResult(
+      "IPC_INVALID_RESPONSE",
+      "Showflow could not validate the Studio list response.",
+    );
+  }
+
+  return StudioListResultSchema.parse({
+    ok: true,
+    data: studioDtos,
   });
 };
 
@@ -108,6 +146,35 @@ export const handleGetStudioRequest = async (
       error instanceof ApplicationError && error.code === "NOT_FOUND"
         ? "This Studio is no longer available. Return to Studio setup."
         : "Showflow could not load the Studio. Your saved work was not changed. Try again.",
+    );
+  }
+};
+
+export const handleListStudiosRequest = async (
+  request: unknown,
+  senderIsTrusted: boolean,
+  query: ListStudiosOperation,
+): Promise<StudioListResult> => {
+  if (!senderIsTrusted) {
+    return createListErrorResult(
+      "IPC_UNTRUSTED_SENDER",
+      "The Studio list request did not come from Showflow.",
+    );
+  }
+
+  if (!ListStudiosRequestSchema.safeParse(request).success) {
+    return createListErrorResult(
+      "IPC_INVALID_REQUEST",
+      "The Studio list request was invalid.",
+    );
+  }
+
+  try {
+    return createListSuccessResult(await query.execute());
+  } catch (error) {
+    return createListErrorResult(
+      getApplicationErrorCode(error),
+      "Showflow could not load the Studios. Your saved work was not changed. Try again.",
     );
   }
 };

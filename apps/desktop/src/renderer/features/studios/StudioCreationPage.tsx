@@ -1,24 +1,36 @@
 import { ApplicationShell, Button, TextInput } from "@showflow/ui";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import type { StudioDto } from "@showflow/contracts";
 
+import { getStudioHomeRoute } from "../../app-routes.mts";
+import { loadStudios, studiosQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
-
-const studioRoute = (studioId: string): string => `/studio/${studioId}`;
 
 export const StudioCreationPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const studiosQuery = useQuery({
+    queryFn: loadStudios,
+    queryKey: studiosQueryKey,
+  });
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string>();
   const [requestError, setRequestError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdStudio, setCreatedStudio] = useState<StudioDto>();
+  const openedFromStudioSwitcher =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "openedFromStudioSwitcher" in location.state &&
+    location.state.openedFromStudioSwitcher === true;
 
   const selectAndOpenStudio = async (studio: StudioDto): Promise<void> => {
-    const route = studioRoute(studio.id);
+    const route = getStudioHomeRoute(studio.id);
     const settingsResult = await window.showflow.app.updateNavigation({
       lastRoute: route,
       lastStudioId: studio.id,
@@ -65,6 +77,14 @@ export const StudioCreationPage = () => {
 
       setCreatedStudio(result.data);
       setName(result.data.name);
+      await queryClient.cancelQueries({ queryKey: studiosQueryKey });
+      queryClient.setQueryData<readonly StudioDto[]>(
+        studiosQueryKey,
+        (studios = []) =>
+          studios.some((studio) => studio.id === result.data.id)
+            ? studios
+            : [...studios, result.data],
+      );
       await selectAndOpenStudio(result.data);
     } catch {
       setRequestError(
@@ -106,7 +126,9 @@ export const StudioCreationPage = () => {
         >
           <p className={styles.eyebrow}>Your production workspace</p>
           <h2 className={styles.heading} id="create-studio-heading">
-            Create your first Studio
+            {!openedFromStudioSwitcher && (studiosQuery.data?.length ?? 0) === 0
+              ? "Create your first Studio"
+              : "Create a Studio"}
           </h2>
           <p className={styles.description}>
             A Studio contains your Shows, brand assets, and production

@@ -16,7 +16,10 @@ import {
   COMPONENT_GALLERY_ROUTE,
   GALLERY_COMPONENTS,
 } from "./development/component-gallery-contract.mts";
-import { createMockDesktopApi } from "../../../../tests/support/mock-desktop-api";
+import {
+  createMockDesktopApi,
+  DEFAULT_STUDIO_ID,
+} from "../../../../tests/support/mock-desktop-api";
 
 const installDesktopApi = (api: ShowflowDesktopApi): void => {
   Object.defineProperty(window, "showflow", {
@@ -176,6 +179,133 @@ describe("App", () => {
         lastStudioId: "8d9df01f-2584-4b9a-ad13-a96d673918e9",
       },
     });
+  });
+
+  it("creates another Studio and switches back through the account-style menu", async () => {
+    const api = createMockDesktopApi();
+    renderApp("/studio/new", api);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Studio name" }), {
+      target: { value: "Public Sphere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
+    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Public Sphere",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    expect(screen.getByText("Current Studio")).toBeVisible();
+    expect(screen.getByText("Other Studios")).toBeVisible();
+    expect(
+      screen.getByRole("menuitem", { name: "No other Studios" }),
+    ).toHaveAttribute("data-disabled");
+    expect(
+      screen.getByRole("menuitem", { name: "Studio settings Coming later" }),
+    ).toHaveAttribute("data-disabled");
+    fireEvent.click(screen.getByRole("menuitem", { name: "Create Studio" }));
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Create a Studio" }),
+    ).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: "Studio name" }), {
+      target: { value: "Field Notes" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
+    await screen.findByRole("heading", { name: "Field Notes is ready" });
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Field Notes",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Public Sphere" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Public Sphere is ready" }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: "/studio/8d9df01f-2584-4b9a-ad13-a96d673918e9",
+        lastStudioId: "8d9df01f-2584-4b9a-ad13-a96d673918e9",
+      },
+    });
+  });
+
+  it("keeps the current Studio open when persisting a switch fails", async () => {
+    const baseApi = createMockDesktopApi();
+    await baseApi.studios.create({ name: "Public Sphere" });
+    await baseApi.studios.create({ name: "Field Notes" });
+    const api = Object.freeze({
+      ...baseApi,
+      app: Object.freeze({
+        ...baseApi.app,
+        updateNavigation: async () => ({
+          ok: false as const,
+          error: {
+            code: "PERSISTENCE_FAILURE" as const,
+            message: "Showflow could not save navigation settings.",
+          },
+        }),
+      }),
+    }) satisfies ShowflowDesktopApi;
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+    fireEvent.pointerDown(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Public Sphere",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Field Notes" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The current Studio remains open. Try again.",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Public Sphere is ready" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Field Notes is ready" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("offers a retry when other Studios cannot be loaded", async () => {
+    const baseApi = createMockDesktopApi();
+    await baseApi.studios.create({ name: "Public Sphere" });
+    const api = Object.freeze({
+      ...baseApi,
+      studios: Object.freeze({
+        ...baseApi.studios,
+        list: async () => ({
+          ok: false as const,
+          error: {
+            code: "PERSISTENCE_FAILURE" as const,
+            message: "Showflow could not load the Studios.",
+          },
+        }),
+      }),
+    }) satisfies ShowflowDesktopApi;
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    await screen.findByRole("heading", { name: "Public Sphere is ready" });
+    fireEvent.pointerDown(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Public Sphere",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Retry loading Studios" }),
+    ).toBeVisible();
   });
 
   it("validates the required Studio name without crossing the desktop API", async () => {

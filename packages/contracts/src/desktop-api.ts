@@ -9,6 +9,7 @@ import type {
 import type {
   CreateStudioRequest,
   GetStudioRequest,
+  StudioListResult,
   StudioResult,
 } from "./studio.ts";
 
@@ -24,5 +25,6 @@ export interface ShowflowDesktopApi {
   readonly studios: Readonly<{
     create: (request: CreateStudioRequest) => Promise<StudioResult>;
     get: (request: GetStudioRequest) => Promise<StudioResult>;
+    list: () => Promise<StudioListResult>;
   }>;
 }

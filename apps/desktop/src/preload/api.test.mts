@@ -41,6 +41,7 @@ const createValidTransports = () => ({
   getApplicationSettings: async () => validSettingsResult,
   getRuntimeInfo: async () => validResult,
   getStudio: async () => validStudioResult,
+  listStudios: async () => ({ ok: true, data: [validStudioResult.data] }),
   updateNavigation: async () => validSettingsResult,
 });
 
@@ -100,12 +101,22 @@ test("the preload validates Studio requests and responses", async () => {
   await expect(
     api.studios.get({ studioId: validStudioResult.data.id }),
   ).resolves.toEqual(validStudioResult);
+  await expect(api.studios.list()).resolves.toEqual({
+    ok: true,
+    data: [validStudioResult.data],
+  });
   await expect(api.studios.create({ name: "   " })).rejects.toThrow();
   await expect(
     createShowflowDesktopApi({
       ...createValidTransports(),
       getStudio: async () => ({ ok: true, data: { id: "invalid" } }),
     }).studios.get({ studioId: validStudioResult.data.id }),
+  ).rejects.toThrow();
+  await expect(
+    createShowflowDesktopApi({
+      ...createValidTransports(),
+      listStudios: async () => ({ ok: true, data: [{ id: "invalid" }] }),
+    }).studios.list(),
   ).rejects.toThrow();
 });
 
@@ -120,7 +131,7 @@ test("the preload exposes no generic invocation surface", () => {
   ]);
   expect("invoke" in api).toBe(false);
   expect("invoke" in api.app).toBe(false);
-  expect(Object.keys(api.studios)).toEqual(["create", "get"]);
+  expect(Object.keys(api.studios)).toEqual(["create", "get", "list"]);
   expect("invoke" in api.studios).toBe(false);
   expect(Object.isFrozen(api)).toBe(true);
   expect(Object.isFrozen(api.app)).toBe(true);

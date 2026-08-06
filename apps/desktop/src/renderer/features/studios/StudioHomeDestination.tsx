@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import type { StudioDto } from "@showflow/contracts";
 
+import { StudioSwitcher } from "./StudioSwitcher";
 import styles from "./studio-pages.module.css";
 
 type StudioLoadState =
@@ -17,6 +18,7 @@ export const StudioHomeDestination = () => {
   const [loadState, setLoadState] = useState<StudioLoadState>({
     status: "loading",
   });
+  const [selectionError, setSelectionError] = useState<string>();
 
   useEffect(() => {
     let active = true;
@@ -71,13 +73,25 @@ export const StudioHomeDestination = () => {
         )
       }
       studioSwitcher={
-        <Button disabled size="small" variant="ghost">
-          {studio?.name ?? "Studio"}
-        </Button>
+        studio === undefined ? (
+          <Button disabled size="small" variant="ghost">
+            Studio
+          </Button>
+        ) : (
+          <StudioSwitcher
+            currentStudio={studio}
+            onSelectionError={setSelectionError}
+          />
+        )
       }
       title={studio?.name ?? "Studio Home"}
     >
       <div className={styles.workspace}>
+        {selectionError ? (
+          <p className={styles.switcherError} role="alert">
+            {selectionError}
+          </p>
+        ) : null}
         {loadState.status === "loading" ? (
           <section aria-label="Loading Studio" className={styles.card}>
             <Skeleton label="Loading Studio" />

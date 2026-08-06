@@ -5,6 +5,7 @@ import type { ShowflowDesktopApi } from "@showflow/contracts";
 
 import {
   DEFAULT_STUDIO_ID,
+  SECOND_STUDIO_ID,
   installMockDesktopApi,
 } from "../support/mock-desktop-api.ts";
 
@@ -64,4 +65,71 @@ test("validates Studio creation accessibly", async ({ page }) => {
     .disableRules(["color-contrast"])
     .analyze();
   expect(accessibilityScan.violations).toEqual([]);
+});
+
+test("creates another Studio and switches back while persisting selection", async ({
+  page,
+}) => {
+  await page
+    .getByRole("textbox", { name: "Studio name" })
+    .fill("Public Sphere");
+  await page.getByRole("button", { name: "Create Studio" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Public Sphere is ready" }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", {
+      name: "Switch Studio. Current Studio: Public Sphere",
+    })
+    .click();
+  await expect(page.getByText("Current Studio")).toBeVisible();
+  await expect(page.getByText("Other Studios", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", { name: "No other Studios" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("menuitem", { name: "Studio settings Coming later" }),
+  ).toBeDisabled();
+
+  const openMenuAccessibility = await new AxeBuilder({ page })
+    .include('[role="menu"]')
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(openMenuAccessibility.violations).toEqual([]);
+
+  await page.getByRole("menuitem", { name: "Create Studio" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Create a Studio" }),
+  ).toBeVisible();
+  await page.getByRole("textbox", { name: "Studio name" }).fill("Field Notes");
+  await page.getByRole("button", { name: "Create Studio" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/#/studio/${SECOND_STUDIO_ID}$`, "u"),
+  );
+
+  await page
+    .getByRole("button", {
+      name: "Switch Studio. Current Studio: Field Notes",
+    })
+    .click();
+  await page.getByRole("menuitem", { name: "Public Sphere" }).click();
+
+  await expect(page).toHaveURL(
+    new RegExp(`/#/studio/${DEFAULT_STUDIO_ID}$`, "u"),
+  );
+  await expect(
+    page.getByRole("heading", { name: "Public Sphere is ready" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => window.showflow.app.getApplicationSettings()),
+    )
+    .toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
 });

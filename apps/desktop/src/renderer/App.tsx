@@ -6,11 +6,14 @@ import {
   NotesPanel,
   SaveStateIndicator,
 } from "@showflow/ui";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import {
   APPLICATION_FOUNDATION_ROUTE,
   STUDIO_CREATION_ROUTE,
+  STUDIO_HOME_ROUTE,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
@@ -82,7 +85,7 @@ export const ApplicationFoundation = () => (
   </ApplicationShell>
 );
 
-export const App = () => (
+const AppRoutes = () => (
   <Routes>
     <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
     <Route
@@ -90,7 +93,24 @@ export const App = () => (
       path={APPLICATION_FOUNDATION_ROUTE}
     />
     <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
-    <Route element={<StudioHomeDestination />} path="/studio/:studioId" />
+    <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
     <Route element={<Navigate replace to={STUDIO_CREATION_ROUTE} />} path="*" />
   </Routes>
 );
+
+export const App = () => {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: 1, staleTime: 30_000 },
+        },
+      }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppRoutes />
+    </QueryClientProvider>
+  );
+};

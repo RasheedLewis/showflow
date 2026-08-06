@@ -30,12 +30,16 @@ export { type ShowflowDesktopApi } from "./desktop-api.ts";
 export {
   CreateStudioRequestSchema,
   GetStudioRequestSchema,
+  ListStudiosRequestSchema,
   STUDIOS_CREATE_CHANNEL,
   STUDIOS_GET_CHANNEL,
+  STUDIOS_LIST_CHANNEL,
   StudioDtoSchema,
+  StudioListResultSchema,
   StudioResultSchema,
   type CreateStudioRequest,
   type GetStudioRequest,
   type StudioDto,
+  type StudioListResult,
   type StudioResult,
 } from "./studio.ts";
