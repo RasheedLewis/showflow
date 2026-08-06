@@ -1,0 +1,186 @@
+.workspace {
+  position: relative;
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+}
+
+.homeWorkspace {
+  position: relative;
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: var(--sf-space-8);
+}
+
+.switcherTrigger {
+  max-width: var(--sf-shell-catalog-width);
+}
+
+.switcherTrigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switcherError {
+  position: absolute;
+  top: var(--sf-space-4);
+  right: var(--sf-space-4);
+  left: var(--sf-space-4);
+  max-width: var(--sf-dialog-width-md);
+  margin: 0 auto;
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-error);
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-error-muted);
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.card {
+  display: grid;
+  width: min(100%, 36rem);
+  gap: var(--sf-space-6);
+  padding: var(--sf-space-10);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-panel);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-sm);
+  font-weight: var(--sf-font-weight-label-sm);
+  letter-spacing: var(--sf-letter-spacing-label-sm);
+  line-height: var(--sf-line-height-label-sm);
+  text-transform: uppercase;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--sf-font-size-heading-xl);
+  font-weight: var(--sf-font-weight-heading-xl);
+  line-height: var(--sf-line-height-heading-xl);
+}
+
+.description {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-md);
+  line-height: var(--sf-line-height-body-md);
+}
+
+.form {
+  display: grid;
+  gap: var(--sf-space-5);
+}
+
+.message {
+  margin: 0;
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-error);
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-error-muted);
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.homeHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--sf-space-8);
+  padding-bottom: var(--sf-space-6);
+  border-bottom: var(--sf-border-width-default) solid var(--sf-divider);
+}
+
+.homeIntro {
+  display: grid;
+  gap: var(--sf-space-2);
+}
+
+.showSearch {
+  width: min(100%, var(--sf-dialog-width-sm));
+}
+
+.showGrid {
+  display: grid;
+  min-height: var(--sf-dialog-width-sm);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--sf-storyboard-card-width-min), 1fr)
+  );
+  align-content: center;
+  gap: var(--sf-space-6);
+}
+
+.emptyShowState,
+.availability,
+.searchStatus {
+  grid-column: 1 / -1;
+}
+
+.emptyShowState,
+.availability {
+  justify-self: center;
+}
+
+.searchStatus {
+  margin: 0;
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.thumbnailPlaceholder {
+  display: grid;
+  gap: var(--sf-space-2);
+  padding: var(--sf-space-4);
+  border: var(--sf-border-width-default) dashed var(--sf-border-default);
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-bg-card);
+}
+
+.designHeader {
+  padding-bottom: var(--sf-space-6);
+  border-bottom: var(--sf-border-width-default) solid var(--sf-divider);
+}
+
+.blueprintWorkspace {
+  display: grid;
+  min-height: var(--sf-dialog-width-md);
+  place-items: center;
+  align-content: center;
+  gap: var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-panel);
+}
+
+.availability {
+  margin: 0;
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+  text-align: center;
+}
+
+@media (max-width: 799px) {
+  .card {
+    padding: var(--sf-space-6);
+  }
+
+  .homeHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .showSearch {
+    width: 100%;
+  }
+}

@@ -65,6 +65,8 @@ describe("ApplicationShell", () => {
     expect(
       screen.getByRole("link", { name: "Skip to workspace" }),
     ).toHaveAttribute("href", `#${main.id}`);
+    fireEvent.click(screen.getByRole("link", { name: "Skip to workspace" }));
+    expect(main).toHaveFocus();
   });
 
   it("collapses and restores the inspector", () => {

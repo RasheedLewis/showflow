@@ -30,6 +30,14 @@ export interface MenuItemProps {
   readonly shortcut?: string;
 }
 
+export interface MenuLabelProps {
+  readonly children: ReactNode;
+}
+
+export const MenuLabel = ({ children }: MenuLabelProps) => (
+  <RadixMenu.Label className={styles.menuLabel}>{children}</RadixMenu.Label>
+);
+
 export const MenuItem = ({
   children,
   destructive = false,
@@ -47,9 +55,12 @@ export const MenuItem = ({
   >
     <span>{children}</span>
     {shortcut ? (
-      <span className={classNames(styles.menuShortcut, "sf-shortcut")}>
-        {shortcut}
-      </span>
+      <>
+        {" "}
+        <span className={classNames(styles.menuShortcut, "sf-shortcut")}>
+          {shortcut}
+        </span>
+      </>
     ) : null}
   </RadixMenu.Item>
 );

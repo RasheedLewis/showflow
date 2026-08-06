@@ -372,6 +372,16 @@
   z-index: var(--sf-z-dropdown);
 }
 
+.menuLabel {
+  padding: var(--sf-space-2) var(--sf-space-3);
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-sm);
+  font-weight: var(--sf-font-weight-label-sm);
+  letter-spacing: var(--sf-letter-spacing-label-sm);
+  line-height: var(--sf-line-height-label-sm);
+  text-transform: uppercase;
+}
+
 .menuItem {
   display: flex;
   min-height: max(var(--sf-menu-item-height), var(--sf-target-size-min));

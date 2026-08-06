@@ -21,8 +21,10 @@
   "dependencies": {
     "@showflow/application": "workspace:*",
     "@showflow/contracts": "workspace:*",
+    "@showflow/domain": "workspace:*",
     "@showflow/persistence": "workspace:*",
     "@showflow/ui": "workspace:*",
+    "@tanstack/react-query": "5.101.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router-dom": "7.18.2"

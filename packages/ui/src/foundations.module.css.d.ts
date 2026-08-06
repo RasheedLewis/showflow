@@ -36,6 +36,7 @@ type FoundationClassName =
   | "menu"
   | "menuItem"
   | "menuItemDestructive"
+  | "menuLabel"
   | "menuSeparator"
   | "menuShortcut"
   | "modal"

@@ -1,0 +1,35 @@
+.thumbnail {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-height: var(--sf-notes-min-height);
+  place-items: center;
+  background: var(--sf-bg-card);
+  box-shadow: inset 0 0 0 var(--sf-space-6) var(--sf-bg-panel);
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-display-lg);
+  font-weight: var(--sf-font-weight-semibold);
+}
+
+.cardError,
+.dialogError {
+  margin: 0;
+  color: var(--sf-error);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+}
+
+.cardError {
+  padding: 0 var(--sf-space-3);
+}
+
+.dialogError {
+  margin-top: var(--sf-space-4);
+}
+
+.dialogCopy {
+  margin: 0;
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-md);
+  line-height: var(--sf-line-height-body-md);
+}

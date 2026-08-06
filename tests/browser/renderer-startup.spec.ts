@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 import type { ShowflowDesktopApi } from "@showflow/contracts";
 
+import { APPLICATION_FOUNDATION_ROUTE } from "../../apps/desktop/src/renderer/app-routes.mts";
+
 import {
   DEFAULT_RUNTIME_INFO_RESULT,
   installMockDesktopApi,
@@ -17,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 test("the development screen renders with the typed mock desktop API", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
 
   const appBar = page.getByRole("banner", { name: "Showflow application" });
 
@@ -172,7 +174,7 @@ test("the shell remains legible when bundled Geist assets fail", async ({
     blockedFontRequests += 1;
     await route.abort("failed");
   });
-  await page.goto("/");
+  await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
   await page.evaluate(async () => document.fonts.ready);
 
   expect(blockedFontRequests).toBeGreaterThan(0);
@@ -255,7 +257,7 @@ test("the application shell preserves its workspace across desktop widths", asyn
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1440 });
-  await page.goto("/");
+  await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
 
   const main = page.getByRole("main", { name: "Showflow is ready." });
   const primaryAction = page.getByRole("button", { name: "Create Studio" });
@@ -301,7 +303,7 @@ test("keyboard focus remains visible and critical targets meet the minimum size"
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1440 });
-  await page.goto("/");
+  await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
 
   await page.keyboard.press("Tab");
   const skipLink = page.getByRole("link", { name: "Skip to workspace" });
@@ -337,7 +339,7 @@ test("reduced motion keeps the shell functional while making motion immediate", 
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
 
   const motion = await page.evaluate(() => {
     const rootStyles = getComputedStyle(document.documentElement);

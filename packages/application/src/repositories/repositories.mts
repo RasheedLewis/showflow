@@ -40,6 +40,14 @@ export interface ShowBlueprintRepository extends EntityRepository<
   getByShowId(showId: ShowId): Promise<ShowBlueprint | null>;
 }
 
+export interface ShowCreationRepository {
+  create(show: Show, blueprint: ShowBlueprint): Promise<void>;
+}
+
+export interface ShowDeletionRepository {
+  delete(showId: ShowId): Promise<void>;
+}
+
 export interface ShowSegmentRepository extends EntityRepository<
   ShowSegment,
   ShowSegmentId

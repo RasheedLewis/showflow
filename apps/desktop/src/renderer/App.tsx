@@ -6,10 +6,26 @@ import {
   NotesPanel,
   SaveStateIndicator,
 } from "@showflow/ui";
-import { Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 
+import {
+  APPLICATION_FOUNDATION_ROUTE,
+  STUDIO_CREATION_ROUTE,
+  STUDIO_HOME_ROUTE,
+  SHOW_CREATION_ROUTE,
+  SHOW_DETAIL_ROUTE,
+  DESIGN_SHOW_ROUTE,
+} from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
+import { StudioCreationPage } from "./features/studios/StudioCreationPage";
+import { StudioHomeDestination } from "./features/studios/StudioHomeDestination";
+import { ShowCreationPage } from "./features/shows/ShowCreationPage";
+import { DesignShowDestination } from "./features/shows/DesignShowDestination";
+import { ShowDetailDestination } from "./features/shows/ShowDetailDestination";
+import { StartupDestination } from "./features/startup/StartupDestination";
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
@@ -76,9 +92,36 @@ export const ApplicationFoundation = () => (
   </ApplicationShell>
 );
 
-export const App = () => (
+const AppRoutes = () => (
   <Routes>
+    <Route element={<StartupDestination />} path="/" />
     <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
-    <Route element={<ApplicationFoundation />} path="*" />
+    <Route
+      element={<ApplicationFoundation />}
+      path={APPLICATION_FOUNDATION_ROUTE}
+    />
+    <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
+    <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
+    <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
+    <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
+    <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
+    <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>
 );
+
+export const App = () => {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: 1, staleTime: 30_000 },
+        },
+      }),
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppRoutes />
+    </QueryClientProvider>
+  );
+};

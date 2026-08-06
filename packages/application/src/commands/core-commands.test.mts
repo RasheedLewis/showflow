@@ -33,11 +33,13 @@ import type {
 
 import {
   AddSegmentToBlueprintCommand,
+  ArchiveShowCommand,
   CreateEpisodeFromBlueprintCommand,
   CreateLayoutCommand,
   CreateShowCommand,
   CreateShowSegmentCommand,
   CreateStudioCommand,
+  DeleteShowCommand,
   DuplicateBlueprintPlacementCommand,
   DuplicateEpisodeSegmentCommand,
   RemoveBlueprintPlacementCommand,
@@ -416,22 +418,47 @@ describe("Studio and Show commands", () => {
     expect(context.saved.studios).toHaveLength(2);
   });
 
+  test("normalizes Studio names and rejects empty creation", async () => {
+    const context = createRepositories();
+    const command = new CreateStudioCommand(
+      context.repositories.studios,
+      commandDependencies(),
+    );
+
+    await expect(
+      command.execute({ name: "  Public Sphere  " }),
+    ).resolves.toMatchObject({
+      name: "Public Sphere",
+    });
+    await expect(command.execute({ name: "   " })).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+  });
+
   test("creates a Show and empty Blueprint in one transaction", async () => {
     const data = createTestData();
     const context = createRepositories({ studios: [data.studio] });
     const show = await new CreateShowCommand(
-      context.repositories,
+      {
+        studios: context.repositories.studios,
+        showCreation: {
+          create: async (createdShow, blueprint) => {
+            await context.repositories.shows.save(createdShow);
+            await context.repositories.blueprints.save(blueprint);
+          },
+        },
+      },
       commandDependencies(),
     ).execute({ studioId: data.studio.id, name: "Artist Interviews" });
     const blueprint = [...context.blueprints.values()][0];
 
-    expect(show.id).toBe(entityId<"show">(500));
+    expect(show.show.id).toBe(entityId<"show">(500));
     expect(blueprint).toMatchObject({
       id: entityId<"showBlueprint">(501),
-      showId: show.id,
+      showId: show.show.id,
       placements: [],
     });
-    expect(context.getTransactionCount()).toBe(1);
+    expect(context.saved.shows).toHaveLength(1);
   });
 
   test("renames a Show and returns a stable not-found error", async () => {
@@ -443,7 +470,11 @@ describe("Studio and Show commands", () => {
     );
 
     await expect(
-      command.execute({ showId: data.show.id, name: "Weekly Countdown" }),
+      command.execute({
+        studioId: data.studio.id,
+        showId: data.show.id,
+        name: " Weekly Countdown ",
+      }),
     ).resolves.toMatchObject({
       name: "Weekly Countdown",
       updatedAt,
@@ -451,7 +482,39 @@ describe("Studio and Show commands", () => {
     await expect(
       command.execute({
         showId: entityId<"show">(999),
+        studioId: data.studio.id,
         name: "Missing Show",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  test("archives and deletes a Show only within its Studio", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const archived = await new ArchiveShowCommand(
+      context.repositories.shows,
+      commandDependencies(),
+    ).execute({ studioId: data.studio.id, showId: data.show.id });
+    let deletedId: ShowId | undefined;
+    const deleted = await new DeleteShowCommand({
+      shows: context.repositories.shows,
+      showDeletion: {
+        delete: async (showId) => {
+          deletedId = showId;
+        },
+      },
+    }).execute({ studioId: data.studio.id, showId: data.show.id });
+
+    expect(archived).toMatchObject({ archivedAt: updatedAt, updatedAt });
+    expect(deleted).toBe(data.show.id);
+    expect(deletedId).toBe(data.show.id);
+    await expect(
+      new DeleteShowCommand({
+        shows: context.repositories.shows,
+        showDeletion: { delete: async () => undefined },
+      }).execute({
+        studioId: entityId<"studio">(999),
+        showId: data.show.id,
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });

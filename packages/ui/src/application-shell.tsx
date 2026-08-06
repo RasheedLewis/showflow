@@ -126,7 +126,14 @@ export const ApplicationShell = ({
       data-catalog-open={catalogOpen || undefined}
       data-inspector-open={inspectorOpen || undefined}
     >
-      <a className={styles.skipLink} href={`#${mainId}`}>
+      <a
+        className={styles.skipLink}
+        href={`#${mainId}`}
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById(mainId)?.focus();
+        }}
+      >
         Skip to workspace
       </a>
 

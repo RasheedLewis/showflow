@@ -1,7 +1,7 @@
 import type { Archivable, DomainEntity, JsonObject } from "./core.mjs";
 import type { ResourceId, ShowId, StudioId } from "../identity/entity-id.mjs";
 
-export interface Studio extends DomainEntity<StudioId> {
+export interface Studio extends DomainEntity<StudioId>, Archivable {
   readonly name: string;
   readonly logoResourceId?: ResourceId;
 }
