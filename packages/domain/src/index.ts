@@ -18,3 +18,4 @@ export * from "./entities/studio.mjs";
 export * from "./entities/validation-issue.mjs";
 export * from "./identity/entity-id.mjs";
 export * from "./time/clock.mjs";
+export * from "./validation/base-validation.mjs";
