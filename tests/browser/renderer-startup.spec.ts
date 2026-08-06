@@ -163,6 +163,94 @@ test("the development screen renders with the typed mock desktop API", async ({
   expect(loadedFonts).toEqual({ mono: true, sans: true });
 });
 
+test("the shell remains legible when bundled Geist assets fail", async ({
+  page,
+}) => {
+  let blockedFontRequests = 0;
+
+  await page.route(/\.woff2(?:\?.*)?$/u, async (route) => {
+    blockedFontRequests += 1;
+    await route.abort("failed");
+  });
+  await page.goto("/");
+  await page.evaluate(async () => document.fonts.ready);
+
+  expect(blockedFontRequests).toBeGreaterThan(0);
+
+  const fallbackState = await page.evaluate(() => {
+    const targets = [
+      document.querySelector<HTMLElement>("#showflow-heading"),
+      document.querySelector<HTMLElement>(".status-detail"),
+      document.querySelector<HTMLElement>("button"),
+    ];
+
+    if (targets.some((target) => target === null)) {
+      throw new Error("The font-fallback layout targets are missing.");
+    }
+
+    return {
+      bodyFontFamily: getComputedStyle(document.body).fontFamily,
+      documentFitsViewport:
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+      geistFaces: Array.from(document.fonts)
+        .filter((fontFace) => fontFace.family.includes("Geist"))
+        .map((fontFace) => ({
+          family: fontFace.family,
+          status: fontFace.status,
+        })),
+      targets: targets.map((target) => {
+        const element = target as HTMLElement;
+        const rect = element.getBoundingClientRect();
+        const styles = getComputedStyle(element);
+
+        return {
+          fitsHorizontally: element.scrollWidth <= element.clientWidth,
+          height: rect.height,
+          opacity: styles.opacity,
+          visibility: styles.visibility,
+          width: rect.width,
+        };
+      }),
+    };
+  });
+
+  expect(fallbackState.bodyFontFamily).toContain("system-ui");
+  expect(fallbackState.geistFaces.length).toBeGreaterThan(0);
+  expect(fallbackState.geistFaces).toContainEqual(
+    expect.objectContaining({ status: "error" }),
+  );
+  expect(fallbackState.geistFaces).not.toContainEqual(
+    expect.objectContaining({ status: "loaded" }),
+  );
+  expect(fallbackState.documentFitsViewport).toBe(true);
+  for (const target of fallbackState.targets) {
+    expect(target.fitsHorizontally).toBe(true);
+    expect(target.height).toBeGreaterThan(0);
+    expect(target.opacity).not.toBe("0");
+    expect(target.visibility).toBe("visible");
+    expect(target.width).toBeGreaterThan(0);
+  }
+
+  const devtools = await page.context().newCDPSession(page);
+  await devtools.send("DOM.enable");
+  await devtools.send("CSS.enable");
+  const { root } = await devtools.send("DOM.getDocument");
+  const { nodeId } = await devtools.send("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector: "#showflow-heading",
+  });
+  const { fonts: renderedFonts } = await devtools.send(
+    "CSS.getPlatformFontsForNode",
+    { nodeId },
+  );
+
+  expect(renderedFonts.length).toBeGreaterThan(0);
+  expect(renderedFonts.some((font) => font.familyName.includes("Geist"))).toBe(
+    false,
+  );
+});
+
 test("the application shell preserves its workspace across desktop widths", async ({
   page,
 }) => {
