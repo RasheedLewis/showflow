@@ -8,6 +8,13 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "@showflow/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "vitest": "4.1.10"
   }
 }
