@@ -9,10 +9,12 @@ import type {
   Show,
   ShowBlueprint,
   ShowId,
+  StudioId,
   ShowSegment,
 } from "@showflow/domain";
 
 import { requireQueryEntity } from "./query-support.mjs";
+import { ApplicationError } from "../errors/application-error.mjs";
 import type {
   EpisodeRepository,
   LayoutRepository,
@@ -27,6 +29,40 @@ export interface ShowDetail {
   readonly segments: readonly ShowSegment[];
   readonly layouts: readonly Layout[];
   readonly episodes: readonly Episode[];
+}
+
+export interface ShowDesign {
+  readonly show: Show;
+  readonly blueprint: ShowBlueprint;
+}
+
+type ShowDesignRepositories = {
+  readonly shows: ShowRepository;
+  readonly blueprints: ShowBlueprintRepository;
+};
+
+export class GetShowDesignQuery {
+  readonly #repositories: ShowDesignRepositories;
+
+  constructor(repositories: ShowDesignRepositories) {
+    this.#repositories = repositories;
+  }
+
+  async execute(studioId: StudioId, showId: ShowId): Promise<ShowDesign> {
+    const show = requireQueryEntity(
+      await this.#repositories.shows.getById(showId),
+      "Show",
+    );
+    if (show.studioId !== studioId) {
+      throw new ApplicationError("NOT_FOUND", "Show was not found.");
+    }
+
+    const blueprint = requireQueryEntity(
+      await this.#repositories.blueprints.getByShowId(show.id),
+      "Show Blueprint",
+    );
+    return { show, blueprint };
+  }
 }
 
 type ShowDetailRepositories = {

@@ -1,7 +1,9 @@
 declare const styles: {
+  readonly blueprintWorkspace: string;
   readonly availability: string;
   readonly card: string;
   readonly description: string;
+  readonly designHeader: string;
   readonly emptyShowState: string;
   readonly eyebrow: string;
   readonly form: string;
@@ -14,6 +16,7 @@ declare const styles: {
   readonly showSearch: string;
   readonly switcherError: string;
   readonly switcherTrigger: string;
+  readonly thumbnailPlaceholder: string;
   readonly workspace: string;
 };
 

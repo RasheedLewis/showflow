@@ -12,6 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { StudioSwitcher } from "./StudioSwitcher";
 import { loadStudio, studioQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
+import { getShowCreationRoute } from "../../app-routes.mts";
 
 const incompleteStudioRouteMessage =
   "This Studio route is incomplete. Return to Studio setup.";
@@ -114,9 +115,11 @@ export const StudioHomeDestination = () => {
               <EmptyState
                 action={
                   <Button
-                    aria-describedby="new-show-availability"
-                    disabled
                     leadingIcon="plus"
+                    onClick={() => {
+                      if (studio !== undefined)
+                        navigate(getShowCreationRoute(studio.id));
+                    }}
                     variant="primary"
                   >
                     New Show
@@ -127,9 +130,6 @@ export const StudioHomeDestination = () => {
                 heading="Create your first Show"
                 icon="plus"
               />
-              <p className={styles.availability} id="new-show-availability">
-                Show creation will be available soon.
-              </p>
             </section>
           </>
         )}

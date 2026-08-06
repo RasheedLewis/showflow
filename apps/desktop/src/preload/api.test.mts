@@ -35,14 +35,56 @@ const validStudioResult = {
     updatedAt: "2026-08-06T14:30:00.000Z",
   },
 } as const;
+const validShowResult = {
+  ok: true,
+  data: {
+    show: {
+      archivedAt: null,
+      createdAt: "2026-08-06T14:30:00.000Z",
+      description: "Weekly artist interviews.",
+      id: "514ad6df-710d-4301-9bff-b096e9db3dd4",
+      name: "Artist Interviews",
+      studioId: validStudioResult.data.id,
+      thumbnailResourceId: null,
+      updatedAt: "2026-08-06T14:30:00.000Z",
+    },
+    blueprint: {
+      createdAt: "2026-08-06T14:30:00.000Z",
+      id: "5da62c88-a25d-450d-bf4d-3809a9f8bd11",
+      placementCount: 0,
+      showId: "514ad6df-710d-4301-9bff-b096e9db3dd4",
+      updatedAt: "2026-08-06T14:30:00.000Z",
+    },
+  },
+} as const;
 
 const createValidTransports = () => ({
+  createShow: async () => validShowResult,
   createStudio: async () => validStudioResult,
   getApplicationSettings: async () => validSettingsResult,
   getRuntimeInfo: async () => validResult,
+  getShowDesign: async () => validShowResult,
   getStudio: async () => validStudioResult,
   listStudios: async () => ({ ok: true, data: [validStudioResult.data] }),
   updateNavigation: async () => validSettingsResult,
+});
+
+test("the preload validates Show creation and Design Show responses", async () => {
+  const api = createShowflowDesktopApi(createValidTransports());
+  const request = {
+    studioId: validStudioResult.data.id,
+    name: "Artist Interviews",
+    description: "Weekly artist interviews.",
+  };
+
+  await expect(api.shows.create(request)).resolves.toEqual(validShowResult);
+  await expect(
+    api.shows.getDesign({
+      studioId: validStudioResult.data.id,
+      showId: validShowResult.data.show.id,
+    }),
+  ).resolves.toEqual(validShowResult);
+  await expect(api.shows.create({ ...request, name: "   " })).rejects.toThrow();
 });
 
 test("the preload API validates and returns runtime information", async () => {
@@ -123,7 +165,7 @@ test("the preload validates Studio requests and responses", async () => {
 test("the preload exposes no generic invocation surface", () => {
   const api = createShowflowDesktopApi(createValidTransports());
 
-  expect(Object.keys(api)).toEqual(["apiVersion", "app", "studios"]);
+  expect(Object.keys(api)).toEqual(["apiVersion", "app", "studios", "shows"]);
   expect(Object.keys(api.app)).toEqual([
     "getApplicationSettings",
     "getRuntimeInfo",
@@ -133,7 +175,9 @@ test("the preload exposes no generic invocation surface", () => {
   expect("invoke" in api.app).toBe(false);
   expect(Object.keys(api.studios)).toEqual(["create", "get", "list"]);
   expect("invoke" in api.studios).toBe(false);
+  expect(Object.keys(api.shows)).toEqual(["create", "getDesign"]);
   expect(Object.isFrozen(api)).toBe(true);
   expect(Object.isFrozen(api.app)).toBe(true);
   expect(Object.isFrozen(api.studios)).toBe(true);
+  expect(Object.isFrozen(api.shows)).toBe(true);
 });

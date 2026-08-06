@@ -2,9 +2,13 @@ import {
   DESKTOP_API_VERSION,
   type ApplicationSettingsResult,
   type CreateStudioRequest,
+  type CreateShowRequest,
+  type GetShowDesignRequest,
   type GetRuntimeInfoResult,
   type GetStudioRequest,
   type ShowflowDesktopApi,
+  type ShowDesignDto,
+  type ShowDesignResult,
   type StudioDto,
   type StudioResult,
   type UpdateNavigationSettingsRequest,
@@ -31,6 +35,9 @@ export const DEFAULT_APPLICATION_SETTINGS_RESULT = {
 export const DEFAULT_STUDIO_ID =
   "8d9df01f-2584-4b9a-ad13-a96d673918e9" as const;
 export const SECOND_STUDIO_ID = "f4f47461-e2c8-44a8-a301-5465655aeb36" as const;
+export const DEFAULT_SHOW_ID = "514ad6df-710d-4301-9bff-b096e9db3dd4" as const;
+export const DEFAULT_BLUEPRINT_ID =
+  "5da62c88-a25d-450d-bf4d-3809a9f8bd11" as const;
 const DEFAULT_TIMESTAMP = "2026-08-06T14:30:00.000Z" as const;
 
 export const createMockDesktopApi = (
@@ -40,12 +47,20 @@ export const createMockDesktopApi = (
   let settingsResult = initialSettingsResult;
   const studios = new Map<string, StudioDto>();
   const studioIds = [DEFAULT_STUDIO_ID, SECOND_STUDIO_ID] as const;
+  const shows = new Map<string, ShowDesignDto>();
 
   const studioNotFound = (): StudioResult => ({
     ok: false,
     error: {
       code: "NOT_FOUND",
       message: "This Studio is no longer available. Return to Studio setup.",
+    },
+  });
+  const showNotFound = (): ShowDesignResult => ({
+    ok: false,
+    error: {
+      code: "NOT_FOUND",
+      message: "This Show is no longer available. Return to Studio Home.",
     },
   });
 
@@ -90,6 +105,48 @@ export const createMockDesktopApi = (
         data: [...studios.values()],
       }),
     }),
+    shows: Object.freeze({
+      create: async (request: CreateShowRequest) => {
+        if (!studios.has(request.studioId)) return showNotFound();
+        const showId = shows.size === 0 ? DEFAULT_SHOW_ID : crypto.randomUUID();
+        const design = {
+          show: {
+            archivedAt: null,
+            createdAt: DEFAULT_TIMESTAMP,
+            description: request.description?.trim() || null,
+            id: showId,
+            name: request.name.trim(),
+            studioId: request.studioId,
+            thumbnailResourceId: null,
+            updatedAt: DEFAULT_TIMESTAMP,
+          },
+          blueprint: {
+            createdAt: DEFAULT_TIMESTAMP,
+            id: shows.size === 0 ? DEFAULT_BLUEPRINT_ID : crypto.randomUUID(),
+            placementCount: 0,
+            showId,
+            updatedAt: DEFAULT_TIMESTAMP,
+          },
+        } satisfies ShowDesignDto;
+        shows.set(showId, design);
+        return { ok: true, data: design } as const;
+      },
+      getDesign: async (
+        request: GetShowDesignRequest,
+      ): Promise<ShowDesignResult> => {
+        const design = shows.get(request.showId);
+        return design === undefined || design.show.studioId !== request.studioId
+          ? {
+              ok: false,
+              error: {
+                code: "NOT_FOUND",
+                message:
+                  "This Show is no longer available. Return to Studio Home.",
+              },
+            }
+          : { ok: true, data: design };
+      },
+    }),
   });
 };
 
@@ -109,6 +166,7 @@ export const installMockDesktopApi = async (
         "f4f47461-e2c8-44a8-a301-5465655aeb36",
       ];
       const timestamp = "2026-08-06T14:30:00.000Z";
+      const shows = new Map();
       const mockApi = Object.freeze({
         apiVersion,
         app: Object.freeze({
@@ -156,6 +214,62 @@ export const installMockDesktopApi = async (
               : { ok: true, data: studio };
           },
           list: async () => ({ ok: true, data: [...studios.values()] }),
+        }),
+        shows: Object.freeze({
+          create: async (request: {
+            studioId: string;
+            name: string;
+            description?: string;
+          }) => {
+            if (!studios.has(request.studioId)) {
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Studio not found." },
+              };
+            }
+            const showId =
+              shows.size === 0
+                ? "514ad6df-710d-4301-9bff-b096e9db3dd4"
+                : crypto.randomUUID();
+            const design = {
+              show: {
+                archivedAt: null,
+                createdAt: timestamp,
+                description: request.description?.trim() || null,
+                id: showId,
+                name: request.name.trim(),
+                studioId: request.studioId,
+                thumbnailResourceId: null,
+                updatedAt: timestamp,
+              },
+              blueprint: {
+                createdAt: timestamp,
+                id:
+                  shows.size === 0
+                    ? "5da62c88-a25d-450d-bf4d-3809a9f8bd11"
+                    : crypto.randomUUID(),
+                placementCount: 0,
+                showId,
+                updatedAt: timestamp,
+              },
+            };
+            shows.set(showId, design);
+            return { ok: true, data: design };
+          },
+          getDesign: async (request: { studioId: string; showId: string }) => {
+            const design = shows.get(request.showId);
+            return design === undefined ||
+              design.show.studioId !== request.studioId
+              ? {
+                  ok: false,
+                  error: {
+                    code: "NOT_FOUND",
+                    message:
+                      "This Show is no longer available. Return to Studio Home.",
+                  },
+                }
+              : { ok: true, data: design };
+          },
         }),
       });
 

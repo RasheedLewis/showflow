@@ -437,18 +437,26 @@ describe("Studio and Show commands", () => {
     const data = createTestData();
     const context = createRepositories({ studios: [data.studio] });
     const show = await new CreateShowCommand(
-      context.repositories,
+      {
+        studios: context.repositories.studios,
+        showCreation: {
+          create: async (createdShow, blueprint) => {
+            await context.repositories.shows.save(createdShow);
+            await context.repositories.blueprints.save(blueprint);
+          },
+        },
+      },
       commandDependencies(),
     ).execute({ studioId: data.studio.id, name: "Artist Interviews" });
     const blueprint = [...context.blueprints.values()][0];
 
-    expect(show.id).toBe(entityId<"show">(500));
+    expect(show.show.id).toBe(entityId<"show">(500));
     expect(blueprint).toMatchObject({
       id: entityId<"showBlueprint">(501),
-      showId: show.id,
+      showId: show.show.id,
       placements: [],
     });
-    expect(context.getTransactionCount()).toBe(1);
+    expect(context.saved.shows).toHaveLength(1);
   });
 
   test("renames a Show and returns a stable not-found error", async () => {

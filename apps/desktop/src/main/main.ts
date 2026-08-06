@@ -4,12 +4,17 @@ import { pathToFileURL } from "node:url";
 import {
   ApplicationSettingsService,
   CreateStudioCommand,
+  CreateShowCommand,
+  GetShowDesignQuery,
   GetStudioQuery,
   ListStudiosQuery,
 } from "@showflow/application";
 import {
   initializePersistence,
   SqliteApplicationSettingsRepository,
+  SqliteShowBlueprintRepository,
+  SqliteShowCreationRepository,
+  SqliteShowRepository,
   SqliteStudioRepository,
   type InitializedPersistence,
   type MigrationLogger,
@@ -26,6 +31,7 @@ import {
 import { runRequestedNodeSqliteSpike } from "./node-sqlite-spike-entry.mjs";
 import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
 import { registerStudioIpc, type StudioIpcOperations } from "./studio-ipc.mjs";
+import { registerShowIpc, type ShowIpcOperations } from "./show-ipc.mjs";
 
 let mainWindow: BrowserWindow | null = null;
 let initializedPersistence: InitializedPersistence | null = null;
@@ -36,6 +42,7 @@ interface DesktopServices {
   readonly applicationSettings: ApplicationSettingsService;
   readonly persistence: InitializedPersistence;
   readonly studios: StudioIpcOperations;
+  readonly shows: ShowIpcOperations;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -92,6 +99,10 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     persistence.database,
   );
   const studioRepository = new SqliteStudioRepository(persistence.database);
+  const showRepository = new SqliteShowRepository(persistence.database);
+  const blueprintRepository = new SqliteShowBlueprintRepository(
+    persistence.database,
+  );
 
   return {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
@@ -100,6 +111,16 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       create: new CreateStudioCommand(studioRepository),
       get: new GetStudioQuery(studioRepository),
       list: new ListStudiosQuery(studioRepository),
+    },
+    shows: {
+      create: new CreateShowCommand({
+        studios: studioRepository,
+        showCreation: new SqliteShowCreationRepository(persistence.database),
+      }),
+      getDesign: new GetShowDesignQuery({
+        shows: showRepository,
+        blueprints: blueprintRepository,
+      }),
     },
   };
 };
@@ -159,6 +180,7 @@ const configureNavigationPolicy = (
 const createMainWindow = async (
   applicationSettings: ApplicationSettingsService,
   studios: StudioIpcOperations,
+  shows: ShowIpcOperations,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -183,6 +205,7 @@ const createMainWindow = async (
     applicationSettings,
   );
   registerStudioIpc(window, content.trustedUrl, studios);
+  registerShowIpc(window, content.trustedUrl, shows);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -225,13 +248,18 @@ app
 
     const services = await initializeDesktopServices();
     initializedPersistence = services.persistence;
-    await createMainWindow(services.applicationSettings, services.studios);
+    await createMainWindow(
+      services.applicationSettings,
+      services.studios,
+      services.shows,
+    );
 
     app.on("activate", () => {
       if (mainWindow === null) {
         void createMainWindow(
           services.applicationSettings,
           services.studios,
+          services.shows,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
         });

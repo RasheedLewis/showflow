@@ -4,10 +4,10 @@ import {
   createStudio,
 } from "@showflow/domain";
 import type {
-  CreateShowInput,
   CreateStudioInput,
   DomainFactoryDependencies,
   Show,
+  ShowBlueprint,
   ShowId,
   Studio,
   StudioId,
@@ -20,7 +20,7 @@ import {
 } from "./command-support.mjs";
 import { ApplicationError } from "../errors/application-error.mjs";
 import type {
-  ApplicationRepositories,
+  ShowCreationRepository,
   ShowRepository,
   StudioRepository,
 } from "../repositories/repositories.mjs";
@@ -93,39 +93,83 @@ export class RenameStudioCommand {
   }
 }
 
-export type CreateShowCommandInput = CreateShowInput;
+export interface CreateShowCommandInput {
+  readonly studioId: StudioId;
+  readonly name: string;
+  readonly description?: string;
+}
+
+export interface CreatedShow {
+  readonly show: Show;
+  readonly blueprint: ShowBlueprint;
+}
+
+const createShowBlueprint = (
+  show: Show,
+  dependencies: DomainFactoryDependencies,
+): ShowBlueprint => ({
+  id: dependencies.createId("showBlueprint"),
+  showId: show.id,
+  placements: [],
+  ...createEntityMetadata(dependencies.clock),
+});
+
+const normalizeShowName = (name: string): string => {
+  const normalizedName = name.trim();
+
+  if (normalizedName.length === 0 || normalizedName.length > 200) {
+    throw new ApplicationError(
+      "VALIDATION_ERROR",
+      "Show name must contain between 1 and 200 characters.",
+    );
+  }
+
+  return normalizedName;
+};
+
+const normalizeShowDescription = (
+  description: string | undefined,
+): string | undefined => {
+  const normalizedDescription = description?.trim();
+  return normalizedDescription === "" ? undefined : normalizedDescription;
+};
+
+interface CreateShowRepositories {
+  readonly studios: StudioRepository;
+  readonly showCreation: ShowCreationRepository;
+}
 
 export class CreateShowCommand {
-  readonly #repositories: ApplicationRepositories;
+  readonly #repositories: CreateShowRepositories;
   readonly #dependencies: DomainFactoryDependencies;
 
   constructor(
-    repositories: ApplicationRepositories,
+    repositories: CreateShowRepositories,
     dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
   ) {
     this.#repositories = repositories;
     this.#dependencies = dependencies;
   }
 
-  execute(input: CreateShowCommandInput): Promise<Show> {
-    return this.#repositories.transactions.run(async (repositories) => {
-      requireEntity(
-        await repositories.studios.getById(input.studioId),
-        "Studio",
-      );
+  async execute(input: CreateShowCommandInput): Promise<CreatedShow> {
+    requireEntity(
+      await this.#repositories.studios.getById(input.studioId),
+      "Studio",
+    );
 
-      const show = createShow(input, this.#dependencies);
-      const blueprint = {
-        id: this.#dependencies.createId("showBlueprint"),
-        showId: show.id,
-        placements: [],
-        ...createEntityMetadata(this.#dependencies.clock),
-      };
+    const description = normalizeShowDescription(input.description);
+    const show = createShow(
+      {
+        studioId: input.studioId,
+        name: normalizeShowName(input.name),
+        ...(description === undefined ? {} : { description }),
+      },
+      this.#dependencies,
+    );
+    const blueprint = createShowBlueprint(show, this.#dependencies);
 
-      await repositories.shows.save(show);
-      await repositories.blueprints.save(blueprint);
-      return show;
-    });
+    await this.#repositories.showCreation.create(show, blueprint);
+    return { show, blueprint };
   }
 }
 

@@ -125,6 +125,31 @@
   justify-self: center;
 }
 
+.thumbnailPlaceholder {
+  display: grid;
+  gap: var(--sf-space-2);
+  padding: var(--sf-space-4);
+  border: var(--sf-border-width-default) dashed var(--sf-border-default);
+  border-radius: var(--sf-radius-md);
+  background: var(--sf-bg-card);
+}
+
+.designHeader {
+  padding-bottom: var(--sf-space-6);
+  border-bottom: var(--sf-border-width-default) solid var(--sf-divider);
+}
+
+.blueprintWorkspace {
+  display: grid;
+  min-height: var(--sf-dialog-width-md);
+  place-items: center;
+  align-content: center;
+  gap: var(--sf-space-4);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-panel);
+}
+
 .availability {
   margin: 0;
   color: var(--sf-text-tertiary);

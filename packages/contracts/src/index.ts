@@ -43,3 +43,19 @@ export {
   type StudioListResult,
   type StudioResult,
 } from "./studio.ts";
+export {
+  CreateShowRequestSchema,
+  GetShowDesignRequestSchema,
+  SHOWS_CREATE_CHANNEL,
+  SHOWS_GET_DESIGN_CHANNEL,
+  ShowBlueprintDtoSchema,
+  ShowDesignDtoSchema,
+  ShowDesignResultSchema,
+  ShowDtoSchema,
+  type CreateShowRequest,
+  type GetShowDesignRequest,
+  type ShowBlueprintDto,
+  type ShowDesignDto,
+  type ShowDesignResult,
+  type ShowDto,
+} from "./show.ts";

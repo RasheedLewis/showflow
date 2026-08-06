@@ -12,6 +12,11 @@ import type {
   StudioListResult,
   StudioResult,
 } from "./studio.ts";
+import type {
+  CreateShowRequest,
+  GetShowDesignRequest,
+  ShowDesignResult,
+} from "./show.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -26,5 +31,9 @@ export interface ShowflowDesktopApi {
     create: (request: CreateStudioRequest) => Promise<StudioResult>;
     get: (request: GetStudioRequest) => Promise<StudioResult>;
     list: () => Promise<StudioListResult>;
+  }>;
+  readonly shows: Readonly<{
+    create: (request: CreateShowRequest) => Promise<ShowDesignResult>;
+    getDesign: (request: GetShowDesignRequest) => Promise<ShowDesignResult>;
   }>;
 }

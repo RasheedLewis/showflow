@@ -181,13 +181,49 @@ describe("App", () => {
     expect(
       screen.getByRole("searchbox", { name: "Search Shows" }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "New Show" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "New Show" })).toBeEnabled();
     expect(screen.queryByText("Recent Episodes")).not.toBeInTheDocument();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
       data: {
         lastRoute: "/studio/8d9df01f-2584-4b9a-ad13-a96d673918e9",
         lastStudioId: "8d9df01f-2584-4b9a-ad13-a96d673918e9",
+      },
+    });
+  });
+
+  it("creates a blank Show and opens its empty Blueprint", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+
+    fireEvent.click(await screen.findByRole("button", { name: "New Show" }));
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: "Show name" }),
+      {
+        target: { value: "Artist Interviews" },
+      },
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Description" }), {
+      target: { value: "Weekly artist interviews." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create Show" }));
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Artist Interviews",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        name: "Design your Show’s default Storyboard",
+      }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
   });

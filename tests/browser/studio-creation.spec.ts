@@ -52,7 +52,7 @@ test("creates, selects, and opens the first Studio", async ({ page }) => {
   await expect(
     page.getByRole("searchbox", { name: "Search Shows" }),
   ).toBeDisabled();
-  await expect(page.getByRole("button", { name: "New Show" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "New Show" })).toBeEnabled();
 
   const studioHomeAccessibility = await new AxeBuilder({ page })
     .disableRules(["color-contrast"])
