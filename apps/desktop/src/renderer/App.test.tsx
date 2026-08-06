@@ -18,6 +18,7 @@ import {
 } from "./development/component-gallery-contract.mts";
 import {
   createMockDesktopApi,
+  DEFAULT_SHOW_ID,
   DEFAULT_STUDIO_ID,
   SECOND_STUDIO_ID,
 } from "../../../../tests/support/mock-desktop-api";
@@ -199,6 +200,94 @@ describe("App", () => {
     });
   });
 
+  it("restores a persisted Show Detail route", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.app.updateNavigation({
+      lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}`,
+      lastStudioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp("/", api);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Artist Interviews",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Create New Episode" }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
+  });
+
+  it("restores a persisted Design Show route", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.app.updateNavigation({
+      lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      lastStudioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp("/", api);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Design your Show’s default Storyboard",
+      }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
+  });
+
+  it("falls back to Studio Home when the persisted Show no longer exists", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.app.updateNavigation({
+      lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}`,
+      lastStudioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp("/", api);
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Public Sphere",
+      }),
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create your first Show",
+      }),
+    ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
+  });
+
   it("creates, selects, and opens a Studio", async () => {
     const api = createMockDesktopApi();
     renderApp("/studio/new", api);
@@ -322,6 +411,13 @@ describe("App", () => {
     expect(
       screen.getByRole("heading", { level: 2, name: "Create New Episode" }),
     ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
   });
 
   it("searches Show names only within the current Studio", async () => {
@@ -431,6 +527,13 @@ describe("App", () => {
         name: "Design your Show’s default Storyboard",
       }),
     ).toBeVisible();
+    await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
+      ok: true,
+      data: {
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+        lastStudioId: DEFAULT_STUDIO_ID,
+      },
+    });
   });
 
   it("requires confirmation before deleting a Show card", async () => {

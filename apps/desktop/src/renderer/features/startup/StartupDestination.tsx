@@ -4,12 +4,17 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
-import { Navigate } from "react-router-dom";
+import { Navigate, matchPath } from "react-router-dom";
+
+import { GetShowDesignRequestSchema } from "@showflow/contracts";
 
 import {
+  DESIGN_SHOW_ROUTE,
+  SHOW_DETAIL_ROUTE,
   getStudioHomeRoute,
   STUDIO_CREATION_ROUTE,
 } from "../../app-routes.mts";
+import { showDesignQueryKey } from "../shows/show-queries";
 import {
   loadStudios,
   studioQueryKey,
@@ -22,6 +27,39 @@ const startupQueryKey = ["startup-destination"] as const;
 interface StartupDestinationResult {
   readonly route: string;
 }
+
+const resolveDurableRoute = async (
+  lastRoute: string,
+  selectedStudioId: string,
+  queryClient: QueryClient,
+): Promise<string> => {
+  const studioHomeRoute = getStudioHomeRoute(selectedStudioId);
+  if (lastRoute === studioHomeRoute) return studioHomeRoute;
+
+  const showRouteMatch =
+    matchPath({ end: true, path: DESIGN_SHOW_ROUTE }, lastRoute) ??
+    matchPath({ end: true, path: SHOW_DETAIL_ROUTE }, lastRoute);
+  const request = GetShowDesignRequestSchema.safeParse({
+    showId: showRouteMatch?.params.showId,
+    studioId: showRouteMatch?.params.studioId,
+  });
+  if (!request.success || request.data.studioId !== selectedStudioId) {
+    return studioHomeRoute;
+  }
+
+  const result = await window.showflow.shows.getDesign(request.data);
+  if (!result.ok) {
+    if (result.error.code === "NOT_FOUND") return studioHomeRoute;
+    throw new Error(result.error.message);
+  }
+  if (result.data.show.archivedAt !== null) return studioHomeRoute;
+
+  queryClient.setQueryData(
+    showDesignQueryKey(request.data.studioId, request.data.showId),
+    result.data,
+  );
+  return lastRoute;
+};
 
 const resolveStartupDestination = async (
   queryClient: QueryClient,
@@ -37,9 +75,16 @@ const resolveStartupDestination = async (
     studios.find((studio) => studio.id === settingsResult.data.lastStudioId) ??
     studios[0];
   if (selectedStudio === undefined) return { route: STUDIO_CREATION_ROUTE };
-  const route = getStudioHomeRoute(selectedStudio.id);
+  const route = await resolveDurableRoute(
+    settingsResult.data.lastRoute,
+    selectedStudio.id,
+    queryClient,
+  );
 
-  if (settingsResult.data.lastStudioId !== selectedStudio.id) {
+  if (
+    settingsResult.data.lastStudioId !== selectedStudio.id ||
+    settingsResult.data.lastRoute !== route
+  ) {
     const updateResult = await window.showflow.app.updateNavigation({
       lastRoute: route,
       lastStudioId: selectedStudio.id,

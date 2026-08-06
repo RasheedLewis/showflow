@@ -12,9 +12,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { StudioSwitcher } from "./StudioSwitcher";
 import { loadStudio, studioQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
-import { getShowCreationRoute } from "../../app-routes.mts";
-import { getShowDetailRoute } from "../../app-routes.mts";
+import {
+  getShowCreationRoute,
+  getShowDetailRoute,
+  getStudioHomeRoute,
+} from "../../app-routes.mts";
 import type { ShowCardDto, ShowDesignDto, ShowDto } from "@showflow/contracts";
+import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { ShowCard } from "../shows/ShowCard";
 import {
   loadStudioShows,
@@ -52,6 +56,10 @@ export const StudioHomeDestination = () => {
   const searchQuery =
     searchState.studioId === studioId ? searchState.query : "";
   const studio = studioQuery.data;
+  const navigationError = usePersistedNavigation({
+    route: studio === undefined ? undefined : getStudioHomeRoute(studio.id),
+    studioId: studio?.id,
+  });
   const showCards = showsQuery.data ?? [];
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const visibleShowCards =
@@ -154,9 +162,9 @@ export const StudioHomeDestination = () => {
           studio === undefined ? styles.workspace : styles.homeWorkspace
         }
       >
-        {selectionError ? (
+        {(selectionError ?? navigationError) ? (
           <p className={styles.switcherError} role="alert">
-            {selectionError}
+            {selectionError ?? navigationError}
           </p>
         ) : null}
         {studioQuery.isPending ||

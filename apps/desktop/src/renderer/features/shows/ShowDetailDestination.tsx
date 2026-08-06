@@ -9,7 +9,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
+import {
+  getDesignShowRoute,
+  getShowDetailRoute,
+  getStudioHomeRoute,
+} from "../../app-routes.mts";
+import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
@@ -45,6 +50,13 @@ export const ShowDetailDestination = () => {
   });
   const studio = studioQuery.data;
   const detail = detailQuery.data;
+  const navigationError = usePersistedNavigation({
+    route:
+      detail === undefined
+        ? undefined
+        : getShowDetailRoute(detail.show.studioId, detail.show.id),
+    studioId: detail?.show.studioId,
+  });
   const isPending = studioQuery.isPending || detailQuery.isPending;
   const isError =
     !routeIsComplete || studioQuery.isError || detailQuery.isError;
@@ -97,9 +109,9 @@ export const ShowDetailDestination = () => {
       title={detail?.show.name ?? "Show Detail"}
     >
       <div className={styles.workspace}>
-        {selectionError ? (
+        {(selectionError ?? navigationError) ? (
           <p className={styles.switcherError} role="alert">
-            {selectionError}
+            {selectionError ?? navigationError}
           </p>
         ) : null}
         {isPending ? (

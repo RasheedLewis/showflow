@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getStudioHomeRoute } from "../../app-routes.mts";
+import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
+import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import studioStyles from "../studios/studio-pages.module.css";
@@ -34,6 +35,13 @@ export const DesignShowDestination = () => {
   });
   const studio = studioQuery.data;
   const design = designQuery.data;
+  const navigationError = usePersistedNavigation({
+    route:
+      design === undefined
+        ? undefined
+        : getDesignShowRoute(design.show.studioId, design.show.id),
+    studioId: design?.show.studioId,
+  });
   const isPending = studioQuery.isPending || designQuery.isPending;
   const isError =
     !routeIsComplete || studioQuery.isError || designQuery.isError;
@@ -61,9 +69,9 @@ export const DesignShowDestination = () => {
       title={design?.show.name ?? "Design Show"}
     >
       <div className={studioStyles.homeWorkspace}>
-        {selectionError ? (
+        {(selectionError ?? navigationError) ? (
           <p className={studioStyles.switcherError} role="alert">
-            {selectionError}
+            {selectionError ?? navigationError}
           </p>
         ) : null}
         {isPending ? (
