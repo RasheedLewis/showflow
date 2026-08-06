@@ -66,7 +66,9 @@ test("the development screen renders with the typed mock desktop API", async ({
     const rootStyles = getComputedStyle(document.documentElement);
     const bodyStyles = getComputedStyle(document.body);
     const panel = document.querySelector<HTMLElement>(".status-panel");
-    const appBar = document.querySelector<HTMLElement>(".app-bar");
+    const appBar = document.querySelector<HTMLElement>(
+      'header[aria-label="Showflow application"]',
+    );
     const heading = document.querySelector<HTMLElement>("#showflow-heading");
     const statusDetail = document.querySelector<HTMLElement>(".status-detail");
 
@@ -126,9 +128,9 @@ test("the development screen renders with the typed mock desktop API", async ({
       lineHeight: "20px",
     },
     headingTypography: {
-      fontSize: "48px",
+      fontSize: "32px",
       fontWeight: "600",
-      lineHeight: "56px",
+      lineHeight: "40px",
     },
     panelBackground: "rgb(23, 26, 29)",
     statusDetailTypography: {
@@ -159,4 +161,50 @@ test("the development screen renders with the typed mock desktop API", async ({
   });
 
   expect(loadedFonts).toEqual({ mono: true, sans: true });
+});
+
+test("the application shell preserves its workspace across desktop widths", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1440 });
+  await page.goto("/");
+
+  const main = page.getByRole("main", { name: "Showflow is ready." });
+  const primaryAction = page.getByRole("button", { name: "Create Studio" });
+  const inspector = page.getByRole("complementary", { name: "Inspector" });
+
+  await expect(main).toBeVisible();
+  await expect(primaryAction).toBeVisible();
+  await expect(inspector).toBeVisible();
+  await expect(
+    page.getByRole("banner", { name: "Showflow application" }),
+  ).toHaveCSS("height", "64px");
+
+  await page.getByRole("button", { name: "Hide Inspector" }).click();
+  await expect(inspector).toBeHidden();
+  await expect(main).toBeVisible();
+
+  await page.setViewportSize({ height: 760, width: 1000 });
+  await expect(main).toBeVisible();
+  await expect(primaryAction).toBeVisible();
+
+  const catalogTrigger = page.getByRole("button", {
+    name: "Open Workspace navigation",
+  });
+  await catalogTrigger.click();
+  const catalog = page.getByRole("complementary", {
+    name: "Workspace navigation",
+  });
+  await expect(catalog).toBeVisible();
+  await expect(catalog).toHaveCSS("position", "fixed");
+  await expect(main).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(catalog).toBeHidden();
+  await expect(catalogTrigger).toBeFocused();
+
+  await page.getByRole("button", { name: "Show Inspector" }).click();
+  await expect(inspector).toBeVisible();
+  await expect(inspector).toHaveCSS("position", "fixed");
+  await expect(main).toBeVisible();
 });

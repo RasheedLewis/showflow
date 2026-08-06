@@ -93,6 +93,40 @@ text because rich notes and teleprompter behavior remain open specifications.
 `PropertyRow` supports only the documented MVP override vocabulary and does not
 imply arbitrary Segment behavior overrides.
 
+## Application shell
+
+`ApplicationShell` owns the persistent 64 px top bar and arranges the current
+workspace around one main focus region. Its slots cover the Studio switcher,
+short breadcrumb, title, save state, history controls, primary action, menu,
+scope line, optional Catalog, optional inspector, and optional notes surface.
+
+```tsx
+<ApplicationShell
+  catalog={<SegmentCatalog />}
+  catalogLabel="Segment Catalog"
+  inspector={<SegmentInspector />}
+  notes={
+    <NotesPanel
+      onChange={(event) => setNotes(event.currentTarget.value)}
+      value={notes}
+    />
+  }
+  primaryAction={<Button variant="primary">Add Segment</Button>}
+  saveState={<SaveStateIndicator state="saved" />}
+  scope={<ScopeLabel scope="show" />}
+  studioSwitcher={<StudioSwitcher />}
+  title="Show Blueprint"
+>
+  <Storyboard />
+</ApplicationShell>
+```
+
+Below the 1280 px comfortable desktop boundary, the Catalog and inspector
+collapse and may be reopened as overlays. Opening one support surface closes the
+other; Escape, the close control, or the scrim restores focus to its opener. The
+main workspace, scope, and primary action remain mounted throughout. This is
+basic desktop panel collapse, not a mobile editing system.
+
 Dialogs, drawers, menus, tabs, and tooltips may be controlled or uncontrolled.
 Always provide production-language titles and descriptions. Destructive actions
 belong in a separated destructive `MenuItem` or an explicit confirmation flow;

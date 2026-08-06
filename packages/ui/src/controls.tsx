@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type {
   ButtonHTMLAttributes,
+  ComponentPropsWithRef,
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
@@ -16,7 +17,7 @@ import { Tooltip } from "./tooltip.js";
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 export type ControlSize = "small" | "standard" | "large";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ComponentPropsWithRef<"button"> {
   readonly leadingIcon?: IconName;
   readonly size?: ControlSize;
   readonly trailingIcon?: IconName;
@@ -54,7 +55,7 @@ export const Button = ({
 );
 
 export interface IconButtonProps extends Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
+  ComponentPropsWithRef<"button">,
   "aria-label" | "children" | "title"
 > {
   readonly icon: IconName;

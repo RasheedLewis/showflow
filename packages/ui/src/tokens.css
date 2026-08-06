@@ -147,6 +147,13 @@
   --sf-notes-min-height: 160px;
   --sf-notes-readable-width: 720px;
 
+  /* Application shell geometry */
+  --sf-shell-top-bar-height: 64px;
+  --sf-shell-catalog-width: 300px;
+  --sf-shell-inspector-width: 340px;
+  --sf-shell-notes-height-min: 180px;
+  --sf-shell-notes-height-max: 260px;
+
   /* Elevation */
   --sf-elevation-none: none;
   --sf-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.24);

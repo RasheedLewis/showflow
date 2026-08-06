@@ -6,10 +6,14 @@ import {
   Info,
   Menu,
   MoreHorizontal,
+  PanelLeft,
+  PanelRight,
   Plus,
+  Redo2,
   Save,
   Search,
   Trash2,
+  Undo2,
   X,
 } from "lucide-react";
 import type { LucideIcon, LucideProps } from "lucide-react";
@@ -22,10 +26,14 @@ const icons = {
   info: Info,
   menu: Menu,
   more: MoreHorizontal,
+  "panel-left": PanelLeft,
+  "panel-right": PanelRight,
   plus: Plus,
+  redo: Redo2,
   save: Save,
   search: Search,
   trash: Trash2,
+  undo: Undo2,
   close: X,
 } satisfies Record<string, LucideIcon>;
 

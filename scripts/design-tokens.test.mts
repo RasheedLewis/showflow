@@ -203,6 +203,11 @@ describe("semantic design token contract", () => {
       "--sf-storyboard-card-metadata-min-height": "88px",
       "--sf-notes-min-height": "160px",
       "--sf-notes-readable-width": "720px",
+      "--sf-shell-top-bar-height": "64px",
+      "--sf-shell-catalog-width": "300px",
+      "--sf-shell-inspector-width": "340px",
+      "--sf-shell-notes-height-min": "180px",
+      "--sf-shell-notes-height-max": "260px",
     });
   });
 
@@ -255,6 +260,13 @@ describe("semantic design token contract", () => {
       path.join(REPOSITORY_ROOT, "packages/ui/src/production.module.css"),
       "utf8",
     );
+    const shellStyles = fs.readFileSync(
+      path.join(
+        REPOSITORY_ROOT,
+        "packages/ui/src/application-shell.module.css",
+      ),
+      "utf8",
+    );
 
     expect(uiManifest.exports).toMatchObject({
       "./tokens.css": "./src/tokens.css",
@@ -275,15 +287,18 @@ describe("semantic design token contract", () => {
     expect(rendererStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(foundationStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(productionStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
+    expect(shellStyles).not.toMatch(/#[\da-f]{3,8}|rgba?\(/iu);
     expect(rendererStyles).not.toContain("--foundation-");
     expect(foundationStyles).not.toContain("--foundation-");
     expect(productionStyles).not.toContain("--foundation-");
+    expect(shellStyles).not.toContain("--foundation-");
 
     const tokenReferences = [
       ...source.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...rendererStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...foundationStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
       ...productionStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
+      ...shellStyles.matchAll(/var\((--sf-[a-z0-9-]+)\)/gu),
     ].map((match) => match[1]);
 
     for (const tokenName of tokenReferences) {
@@ -302,6 +317,13 @@ describe("semantic design token contract", () => {
     );
     const productionStyles = fs.readFileSync(
       path.join(REPOSITORY_ROOT, "packages/ui/src/production.module.css"),
+      "utf8",
+    );
+    const shellStyles = fs.readFileSync(
+      path.join(
+        REPOSITORY_ROOT,
+        "packages/ui/src/application-shell.module.css",
+      ),
       "utf8",
     );
     const uiSourceDirectory = path.join(REPOSITORY_ROOT, "packages/ui/src");
@@ -327,6 +349,12 @@ describe("semantic design token contract", () => {
     expect(productionStyles).toContain('[data-invalid="true"]');
     expect(productionStyles).toContain('[data-archived="true"]');
     expect(productionStyles).toContain('[data-current="true"]');
+    expect(shellStyles).toContain("height: var(--sf-shell-top-bar-height)");
+    expect(shellStyles).toContain("height: 100vh");
+    expect(shellStyles).toContain("@media (max-width: 1279px)");
+    expect(shellStyles).not.toContain("@media (max-width: 1023px)");
+    expect(shellStyles).toContain("grid-area: main");
+    expect(shellStyles).toContain("grid-area: notes");
     expect(directIconImports).toEqual(["icon.tsx"]);
   });
 });
