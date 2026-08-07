@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   parseEntityId,
   parseUtcTimestamp,
+  type BlueprintSegmentPlacement,
   type JsonObject,
   type Show,
   type ShowBlueprint,
@@ -174,16 +175,122 @@ export const BLUEPRINT_COLUMNS = `
   updated_at AS updatedAt
 `;
 
-export const writeEmptyBlueprint = (
+const BlueprintPlacementRowSchema = z
+  .object({
+    createdAt: z.string(),
+    defaultDataJson: z.string(),
+    defaultDurationMs: z.number().int().nonnegative().nullable(),
+    id: z.string(),
+    label: z.string().nullable(),
+    placementOverridesJson: z.string().nullable(),
+    position: z.number().int().nonnegative(),
+    showBlueprintId: z.string(),
+    showSegmentId: z.string(),
+    updatedAt: z.string(),
+  })
+  .strict();
+
+const parseJsonObject = (value: string): JsonObject =>
+  JsonObjectSchema.parse(JSON.parse(value) as unknown) as JsonObject;
+
+const parseBlueprintPlacementRow = (
+  value: unknown,
+): BlueprintSegmentPlacement => {
+  try {
+    const row = BlueprintPlacementRowSchema.parse(value);
+    const createdAt = parseUtcTimestamp(row.createdAt);
+    const updatedAt = parseUtcTimestamp(row.updatedAt);
+    if (updatedAt < createdAt) {
+      throw new RangeError("Invalid Blueprint placement timestamps.");
+    }
+
+    return {
+      id: parseEntityId<"blueprintSegmentPlacement">(row.id),
+      showBlueprintId: parseEntityId<"showBlueprint">(row.showBlueprintId),
+      showSegmentId: parseEntityId<"showSegment">(row.showSegmentId),
+      position: row.position,
+      ...(row.label === null ? {} : { label: row.label }),
+      defaultData: parseJsonObject(row.defaultDataJson),
+      ...(row.defaultDurationMs === null
+        ? {}
+        : { defaultDurationMs: row.defaultDurationMs }),
+      ...(row.placementOverridesJson === null
+        ? {}
+        : {
+            placementOverrides: parseJsonObject(row.placementOverridesJson),
+          }),
+      createdAt,
+      updatedAt,
+    };
+  } catch (error) {
+    throw new StoredShowError(error);
+  }
+};
+
+export const BlueprintPlacementRowParser = {
+  parse: parseBlueprintPlacementRow,
+};
+
+export const BLUEPRINT_PLACEMENT_COLUMNS = `
+  id,
+  show_blueprint_id AS showBlueprintId,
+  show_segment_id AS showSegmentId,
+  position,
+  label,
+  default_data_json AS defaultDataJson,
+  default_duration_ms AS defaultDurationMs,
+  placement_overrides_json AS placementOverridesJson,
+  created_at AS createdAt,
+  updated_at AS updatedAt
+`;
+
+const writeBlueprintPlacement = (
+  database: DatabaseExecutor,
+  placement: BlueprintSegmentPlacement,
+): void => {
+  const validPlacement = parseBlueprintPlacementRow({
+    createdAt: placement.createdAt,
+    defaultDataJson: JSON.stringify(placement.defaultData),
+    defaultDurationMs: placement.defaultDurationMs ?? null,
+    id: placement.id,
+    label: placement.label ?? null,
+    placementOverridesJson:
+      placement.placementOverrides === undefined
+        ? null
+        : JSON.stringify(placement.placementOverrides),
+    position: placement.position,
+    showBlueprintId: placement.showBlueprintId,
+    showSegmentId: placement.showSegmentId,
+    updatedAt: placement.updatedAt,
+  });
+  database.run(
+    `INSERT INTO blueprint_segment_placements (
+       id, show_blueprint_id, show_segment_id, position, label,
+       default_data_json, default_duration_ms, placement_overrides_json,
+       created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      validPlacement.id,
+      validPlacement.showBlueprintId,
+      validPlacement.showSegmentId,
+      validPlacement.position,
+      validPlacement.label ?? null,
+      JSON.stringify(validPlacement.defaultData),
+      validPlacement.defaultDurationMs ?? null,
+      validPlacement.placementOverrides === undefined
+        ? null
+        : JSON.stringify(validPlacement.placementOverrides),
+      validPlacement.createdAt,
+      validPlacement.updatedAt,
+    ],
+  );
+};
+
+export const writeBlueprint = (
   database: DatabaseExecutor,
   blueprint: ShowBlueprint,
   insertOnly = false,
 ): void => {
-  if (blueprint.placements.length !== 0) {
-    throw new StoredShowError(
-      new RangeError("Sprint 4 persistence accepts only an empty Blueprint."),
-    );
-  }
   const validBlueprint = parseBlueprintRow({
     createdAt: blueprint.createdAt,
     id: blueprint.id,
@@ -208,4 +315,18 @@ export const writeEmptyBlueprint = (
       validBlueprint.updatedAt,
     ],
   );
+  database.run(
+    "DELETE FROM blueprint_segment_placements WHERE show_blueprint_id = ?",
+    [validBlueprint.id],
+  );
+  for (const placement of [...blueprint.placements].sort(
+    (left, right) => left.position - right.position,
+  )) {
+    if (placement.showBlueprintId !== validBlueprint.id) {
+      throw new StoredShowError(
+        new RangeError("Blueprint placement belongs to another Blueprint."),
+      );
+    }
+    writeBlueprintPlacement(database, placement);
+  }
 };

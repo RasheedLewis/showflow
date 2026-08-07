@@ -10,8 +10,10 @@ import type {
   JsonObject,
   ShowBlueprint,
   ShowBlueprintId,
+  ShowSegment,
   ShowSegmentId,
 } from "@showflow/domain";
+import { ApplicationError } from "../errors/application-error.mjs";
 
 import {
   DEFAULT_COMMAND_DEPENDENCIES,
@@ -42,7 +44,60 @@ export interface AddSegmentToBlueprintCommandInput {
   readonly defaultData?: JsonObject;
   readonly defaultDurationMs?: number;
   readonly placementOverrides?: JsonObject;
+  readonly position?: number;
 }
+
+export const addSegmentToBlueprint = (
+  blueprint: ShowBlueprint,
+  segment: ShowSegment,
+  input: Omit<
+    AddSegmentToBlueprintCommandInput,
+    "blueprintId" | "showSegmentId"
+  >,
+  dependencies: DomainFactoryDependencies,
+): ShowBlueprint => {
+  const position = input.position ?? blueprint.placements.length;
+  if (
+    !Number.isInteger(position) ||
+    position < 0 ||
+    position > blueprint.placements.length
+  ) {
+    throw new ApplicationError(
+      "VALIDATION_ERROR",
+      "The Segment insertion position is outside the Blueprint.",
+    );
+  }
+  const placement = {
+    id: dependencies.createId("blueprintSegmentPlacement"),
+    showBlueprintId: blueprint.id,
+    showSegmentId: segment.id,
+    position,
+    ...(input.label === undefined ? {} : { label: input.label }),
+    defaultData:
+      input.defaultData === undefined ? {} : { ...input.defaultData },
+    ...(input.defaultDurationMs === undefined
+      ? {}
+      : { defaultDurationMs: input.defaultDurationMs }),
+    ...(input.placementOverrides === undefined
+      ? {}
+      : { placementOverrides: { ...input.placementOverrides } }),
+    ...createEntityMetadata(dependencies.clock),
+  } satisfies BlueprintSegmentPlacement;
+
+  assertBlueprintPlacementOwnership({ blueprint, placement, segment });
+  const placements = [...blueprint.placements];
+  placements.splice(position, 0, placement);
+  const positioned = placements.map((item, itemPosition) =>
+    item.id === placement.id
+      ? item
+      : {
+          ...item,
+          position: itemPosition,
+          ...updateEntityMetadata(item, dependencies.clock),
+        },
+  );
+  return touchEntity({ ...blueprint, placements: positioned }, dependencies);
+};
 
 export class AddSegmentToBlueprintCommand {
   readonly #repositories: BlueprintCommandRepositories;
@@ -67,31 +122,9 @@ export class AddSegmentToBlueprintCommand {
       await this.#repositories.segments.getById(input.showSegmentId),
       "Show Segment",
     );
-    const placement = {
-      id: this.#dependencies.createId("blueprintSegmentPlacement"),
-      showBlueprintId: blueprint.id,
-      showSegmentId: segment.id,
-      position: blueprint.placements.length,
-      ...(input.label === undefined ? {} : { label: input.label }),
-      defaultData:
-        input.defaultData === undefined ? {} : { ...input.defaultData },
-      ...(input.defaultDurationMs === undefined
-        ? {}
-        : { defaultDurationMs: input.defaultDurationMs }),
-      ...(input.placementOverrides === undefined
-        ? {}
-        : { placementOverrides: { ...input.placementOverrides } }),
-      ...createEntityMetadata(this.#dependencies.clock),
-    } satisfies BlueprintSegmentPlacement;
-
-    assertBlueprintPlacementOwnership({ blueprint, placement, segment });
-
     return saveBlueprint(
       this.#repositories.blueprints,
-      touchEntity(
-        { ...blueprint, placements: [...blueprint.placements, placement] },
-        this.#dependencies,
-      ),
+      addSegmentToBlueprint(blueprint, segment, input, this.#dependencies),
     );
   }
 }

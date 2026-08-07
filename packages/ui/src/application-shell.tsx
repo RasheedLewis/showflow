@@ -194,7 +194,11 @@ export const ApplicationShell = ({
         </div>
       </header>
 
-      {scope ? <div className={styles.scopeArea}>{scope}</div> : null}
+      {scope ? (
+        <section aria-label="Editing scope" className={styles.scopeArea}>
+          {scope}
+        </section>
+      ) : null}
 
       <div className={styles.workspace}>
         {hasCatalog && catalogOpen ? (

@@ -23,6 +23,16 @@ test("packages the canonical migration directory", async () => {
       "utf8",
     ),
   ).resolves.toContain("CREATE TABLE app_settings");
+  await expect(
+    fs.readFile(
+      path.join(
+        getPackagedResourcesPath(),
+        "migrations",
+        "004_show_segments_and_blueprint_placements.sql",
+      ),
+      "utf8",
+    ),
+  ).resolves.toContain("CREATE TABLE blueprint_segment_placements");
 });
 
 test("packages third-party license notices", async () => {
@@ -37,4 +47,6 @@ test("packages third-party license notices", async () => {
   expect(notices).toContain("Lucide Icons and Contributors");
   expect(notices).toContain("Radix UI Primitives");
   expect(notices).toContain("Floating UI contributors");
+  expect(notices).toContain("@dnd-kit/core");
+  expect(notices).toContain("Claudéric Demers");
 });

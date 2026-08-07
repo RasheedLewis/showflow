@@ -52,15 +52,20 @@ const validShowResult = {
       createdAt: "2026-08-06T14:30:00.000Z",
       id: "5da62c88-a25d-450d-bf4d-3809a9f8bd11",
       placementCount: 0,
+      placements: [],
       showId: "514ad6df-710d-4301-9bff-b096e9db3dd4",
       updatedAt: "2026-08-06T14:30:00.000Z",
     },
+    segments: [],
   },
 } as const;
 
 const createValidTransports = () => ({
+  addBlueprintSegment: async () => validShowResult,
+  archiveSegment: async () => validShowResult,
   archiveShow: async () => ({ ok: true, data: validShowResult.data.show }),
   createShow: async () => validShowResult,
+  createSegment: async () => validShowResult,
   createStudio: async () => validStudioResult,
   deleteShow: async () => ({
     ok: true,
@@ -76,6 +81,9 @@ const createValidTransports = () => ({
   }),
   listStudios: async () => ({ ok: true, data: [validStudioResult.data] }),
   renameShow: async () => ({ ok: true, data: validShowResult.data.show }),
+  duplicateBlueprintPlacement: async () => validShowResult,
+  removeBlueprintPlacement: async () => validShowResult,
+  reorderBlueprint: async () => validShowResult,
   updateNavigation: async () => validSettingsResult,
 });
 
@@ -185,7 +193,14 @@ test("the preload validates Studio requests and responses", async () => {
 test("the preload exposes no generic invocation surface", () => {
   const api = createShowflowDesktopApi(createValidTransports());
 
-  expect(Object.keys(api)).toEqual(["apiVersion", "app", "studios", "shows"]);
+  expect(Object.keys(api)).toEqual([
+    "apiVersion",
+    "app",
+    "studios",
+    "shows",
+    "segments",
+    "blueprints",
+  ]);
   expect(Object.keys(api.app)).toEqual([
     "getApplicationSettings",
     "getRuntimeInfo",
@@ -207,4 +222,6 @@ test("the preload exposes no generic invocation surface", () => {
   expect(Object.isFrozen(api.app)).toBe(true);
   expect(Object.isFrozen(api.studios)).toBe(true);
   expect(Object.isFrozen(api.shows)).toBe(true);
+  expect(Object.isFrozen(api.segments)).toBe(true);
+  expect(Object.isFrozen(api.blueprints)).toBe(true);
 });

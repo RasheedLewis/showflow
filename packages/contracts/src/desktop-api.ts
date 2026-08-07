@@ -14,6 +14,11 @@ import type {
 } from "./studio.ts";
 import type {
   CreateShowRequest,
+  CreateSegmentRequest,
+  ArchiveSegmentRequest,
+  AddBlueprintSegmentRequest,
+  ReorderBlueprintRequest,
+  BlueprintPlacementMutationRequest,
   GetShowDesignRequest,
   ListShowsRequest,
   RenameShowRequest,
@@ -45,5 +50,21 @@ export interface ShowflowDesktopApi {
     getDesign: (request: GetShowDesignRequest) => Promise<ShowDesignResult>;
     list: (request: ListShowsRequest) => Promise<ShowListResult>;
     rename: (request: RenameShowRequest) => Promise<ShowResult>;
+  }>;
+  readonly segments: Readonly<{
+    archive: (request: ArchiveSegmentRequest) => Promise<ShowDesignResult>;
+    create: (request: CreateSegmentRequest) => Promise<ShowDesignResult>;
+  }>;
+  readonly blueprints: Readonly<{
+    addSegment: (
+      request: AddBlueprintSegmentRequest,
+    ) => Promise<ShowDesignResult>;
+    duplicatePlacement: (
+      request: BlueprintPlacementMutationRequest,
+    ) => Promise<ShowDesignResult>;
+    removePlacement: (
+      request: BlueprintPlacementMutationRequest,
+    ) => Promise<ShowDesignResult>;
+    reorder: (request: ReorderBlueprintRequest) => Promise<ShowDesignResult>;
   }>;
 }

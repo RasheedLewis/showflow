@@ -8,7 +8,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
-import type { ShowflowDesktopApi } from "@showflow/contracts";
+import type { ShowDesignResult, ShowflowDesktopApi } from "@showflow/contracts";
 
 import { App } from "./App";
 import { APPLICATION_FOUNDATION_ROUTE } from "./app-routes.mts";
@@ -18,6 +18,7 @@ import {
 } from "./development/component-gallery-contract.mts";
 import {
   createMockDesktopApi,
+  DEFAULT_BLUEPRINT_ID,
   DEFAULT_SHOW_ID,
   DEFAULT_STUDIO_ID,
   SECOND_STUDIO_ID,
@@ -256,6 +257,390 @@ describe("App", () => {
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
+  });
+
+  it("creates a reusable Segment from the empty Blueprint and keeps scope visible", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      api,
+    );
+
+    expect(await screen.findByRole("tab", { name: "Blueprint" })).toBeVisible();
+    expect(
+      screen.getAllByText("Changes become the default for future Episodes.")[0],
+    ).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Segments" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "Layouts" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add First Segment" }));
+    const picker = await screen.findByRole("dialog", { name: "Add Segment" });
+    fireEvent.change(
+      within(picker).getByRole("textbox", { name: /Segment name/ }),
+      {
+        target: { value: "Opening" },
+      },
+    );
+    fireEvent.change(
+      within(picker).getByRole("textbox", { name: "Description (optional)" }),
+      { target: { value: "Welcome the audience." } },
+    );
+    fireEvent.click(
+      within(picker).getByRole("button", { name: "Create and Add" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Opening" }),
+    ).toBeVisible();
+    expect(screen.getByText("Welcome the audience.")).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to Blueprint" }),
+    );
+    const storyboard = await screen.findByRole("list", {
+      name: "Show Blueprint Storyboard",
+    });
+    expect(within(storyboard).getByText("Opening")).toBeVisible();
+    expect(screen.getByText("Saved")).toBeVisible();
+  });
+
+  it("duplicates, removes, and persistently undoes Blueprint structure", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      api,
+    );
+
+    const storyboard = await screen.findByRole("list", {
+      name: "Show Blueprint Storyboard",
+    });
+    const more = within(storyboard).getByRole("button", {
+      name: "More actions for Opening",
+    });
+    fireEvent.pointerDown(more, { button: 0, ctrlKey: false });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Duplicate placement" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(1),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+
+    const duplicateItems = within(storyboard).getAllByRole("listitem");
+    const secondDuplicate = duplicateItems[1];
+    if (secondDuplicate === undefined) {
+      throw new Error("Expected the duplicate Blueprint placement.");
+    }
+    fireEvent.pointerDown(
+      within(secondDuplicate).getByRole("button", {
+        name: "More actions for Opening",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove from Blueprint" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(1),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(1),
+    );
+
+    const addSegmentButton = screen.getAllByRole("button", {
+      name: "Add Segment",
+    })[0];
+    if (addSegmentButton === undefined) {
+      throw new Error("Expected the Add Segment action.");
+    }
+    fireEvent.click(addSegmentButton);
+    const picker = await screen.findByRole("dialog", { name: "Add Segment" });
+    fireEvent.click(within(picker).getByRole("button", { name: "Add" }));
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(1),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+
+    const refreshed = await api.shows.getDesign({
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    expect(refreshed).toMatchObject({
+      ok: true,
+      data: { blueprint: { placementCount: 2 } },
+    });
+  });
+
+  it("reorders without pointer input and persistently undoes and redoes the order", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Interview",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      api,
+    );
+
+    const storyboard = await screen.findByRole("list", {
+      name: "Show Blueprint Storyboard",
+    });
+    const orderedNames = (): string[] =>
+      within(storyboard)
+        .getAllByRole("listitem")
+        .map(
+          (item) =>
+            within(item).getByRole("heading", { level: 3 }).textContent ?? "",
+        );
+    expect(orderedNames()).toEqual(["Opening", "Interview"]);
+
+    const more = within(storyboard).getByRole("button", {
+      name: "More actions for Opening",
+    });
+    more.focus();
+    fireEvent.keyDown(more, { key: "Enter" });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" }),
+    );
+    await waitFor(() =>
+      expect(orderedNames()).toEqual(["Interview", "Opening"]),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(orderedNames()).toEqual(["Opening", "Interview"]),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Blueprint change" }),
+    );
+    await waitFor(() =>
+      expect(orderedNames()).toEqual(["Interview", "Opening"]),
+    );
+
+    const refreshed = await api.shows.getDesign({
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    expect(
+      refreshed.ok
+        ? refreshed.data.blueprint.placements.map(
+            ({ showSegmentId }) =>
+              refreshed.data.segments.find(
+                ({ segment }) => segment.id === showSegmentId,
+              )?.segment.name,
+          )
+        : [],
+    ).toEqual(["Interview", "Opening"]);
+  });
+
+  it("holds the dropped visual order while the reorder save is pending", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Interview",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    let completeReorder: (() => void) | undefined;
+    const delayedApi = {
+      ...api,
+      blueprints: Object.freeze({
+        ...api.blueprints,
+        reorder: (request) =>
+          new Promise<ShowDesignResult>((resolve) => {
+            completeReorder = () => {
+              void api.blueprints.reorder(request).then(resolve);
+            };
+          }),
+      }),
+    } satisfies ShowflowDesktopApi;
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      delayedApi,
+    );
+
+    const storyboard = await screen.findByRole("list", {
+      name: "Show Blueprint Storyboard",
+    });
+    const orderedNames = (): string[] =>
+      within(storyboard)
+        .getAllByRole("listitem")
+        .map(
+          (item) =>
+            within(item).getByRole("heading", { level: 3 }).textContent ?? "",
+        );
+    fireEvent.pointerDown(
+      within(storyboard).getByRole("button", {
+        name: "More actions for Opening",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" }),
+    );
+
+    await waitFor(() =>
+      expect(orderedNames()).toEqual(["Interview", "Opening"]),
+    );
+    expect(screen.getByText("Saving…")).toBeVisible();
+    const stillSaved = await api.shows.getDesign({
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    expect(
+      stillSaved.ok
+        ? stillSaved.data.blueprint.placements.map(
+            ({ showSegmentId }) =>
+              stillSaved.data.segments.find(
+                ({ segment }) => segment.id === showSegmentId,
+              )?.segment.name,
+          )
+        : [],
+    ).toEqual(["Opening", "Interview"]);
+
+    if (completeReorder === undefined) {
+      throw new Error("Expected the pending reorder save.");
+    }
+    completeReorder();
+    await waitFor(() => expect(screen.getByText("Saved")).toBeVisible());
+    expect(orderedNames()).toEqual(["Interview", "Opening"]);
+  });
+
+  it("keeps the saved order visible and reports a failed reorder", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Interview",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    const failingApi = {
+      ...api,
+      blueprints: Object.freeze({
+        ...api.blueprints,
+        reorder: async () => ({
+          ok: false as const,
+          error: {
+            code: "PERSISTENCE_FAILURE" as const,
+            message:
+              "Showflow could not save the Blueprint change. Your saved Storyboard was not changed. Try again.",
+          },
+        }),
+      }),
+    } satisfies ShowflowDesktopApi;
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+      failingApi,
+    );
+
+    const storyboard = await screen.findByRole("list", {
+      name: "Show Blueprint Storyboard",
+    });
+    fireEvent.pointerDown(
+      within(storyboard).getByRole("button", {
+        name: "More actions for Opening",
+      }),
+      { button: 0, ctrlKey: false },
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" }),
+    );
+
+    expect(await screen.findByText("Could not save")).toBeVisible();
+    expect(
+      screen.getByText(/Your saved Storyboard was not changed/u),
+    ).toBeVisible();
+    expect(
+      within(storyboard)
+        .getAllByRole("listitem")
+        .map(
+          (item) => within(item).getByRole("heading", { level: 3 }).textContent,
+        ),
+    ).toEqual(["Opening", "Interview"]);
   });
 
   it("falls back to Studio Home when the persisted Show no longer exists", async () => {

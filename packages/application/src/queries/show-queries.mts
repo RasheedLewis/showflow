@@ -1,4 +1,5 @@
 import {
+  assertBlueprintPlacementOwnership,
   assertEpisodeOwnedByShow,
   assertLayoutOwnedByShow,
   assertShowSegmentOwnedByShow,
@@ -34,11 +35,13 @@ export interface ShowDetail {
 export interface ShowDesign {
   readonly show: Show;
   readonly blueprint: ShowBlueprint;
+  readonly segments: readonly ShowSegment[];
 }
 
 type ShowDesignRepositories = {
   readonly shows: ShowRepository;
   readonly blueprints: ShowBlueprintRepository;
+  readonly segments: ShowSegmentRepository;
 };
 
 export class GetShowDesignQuery {
@@ -57,11 +60,28 @@ export class GetShowDesignQuery {
       throw new ApplicationError("NOT_FOUND", "Show was not found.");
     }
 
-    const blueprint = requireQueryEntity(
-      await this.#repositories.blueprints.getByShowId(show.id),
-      "Show Blueprint",
+    const [storedBlueprint, segments] = await Promise.all([
+      this.#repositories.blueprints.getByShowId(show.id),
+      this.#repositories.segments.listByShowId(show.id),
+    ]);
+    const blueprint = requireQueryEntity(storedBlueprint, "Show Blueprint");
+    for (const segment of segments) {
+      assertShowSegmentOwnedByShow(segment, show.id);
+    }
+    const segmentsById = new Map(
+      segments.map((segment) => [segment.id, segment]),
     );
-    return { show, blueprint };
+    for (const placement of blueprint.placements) {
+      assertBlueprintPlacementOwnership({
+        blueprint,
+        placement,
+        segment: requireQueryEntity(
+          segmentsById.get(placement.showSegmentId) ?? null,
+          "Show Segment",
+        ),
+      });
+    }
+    return { show, blueprint, segments };
   }
 }
 

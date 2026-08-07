@@ -3,15 +3,22 @@ import { pathToFileURL } from "node:url";
 
 import {
   ApplicationSettingsService,
+  AddSegmentToBlueprintCommand,
   ArchiveShowCommand,
+  ArchiveShowSegmentCommand,
+  CreateShowSegmentCommand,
+  CreateShowSegmentInBlueprintCommand,
   CreateStudioCommand,
   CreateShowCommand,
   DeleteShowCommand,
+  DuplicateBlueprintPlacementCommand,
   GetShowDesignQuery,
   GetStudioQuery,
   ListStudiosQuery,
   ListStudioShowsQuery,
   RenameShowCommand,
+  RemoveBlueprintPlacementCommand,
+  ReorderBlueprintPlacementsCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -19,6 +26,8 @@ import {
   SqliteShowBlueprintRepository,
   SqliteShowCreationRepository,
   SqliteShowRepository,
+  SqliteShowSegmentRepository,
+  SqliteSegmentBlueprintCreationRepository,
   SqliteStudioRepository,
   type InitializedPersistence,
   type MigrationLogger,
@@ -26,6 +35,8 @@ import {
 import { app, BrowserWindow, shell, type Session } from "electron";
 
 import { registerApplicationSettingsIpc } from "./application-settings-ipc.mjs";
+import { registerDesignShowIpc } from "./design-show-ipc.mjs";
+import type { DesignShowOperations } from "./design-show-handler.mjs";
 import {
   createSecureWebPreferences,
   getTrustedDevelopmentUrl,
@@ -47,6 +58,7 @@ interface DesktopServices {
   readonly persistence: InitializedPersistence;
   readonly studios: StudioIpcOperations;
   readonly shows: ShowIpcOperations;
+  readonly designShow: DesignShowOperations;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -107,10 +119,42 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
   const blueprintRepository = new SqliteShowBlueprintRepository(
     persistence.database,
   );
+  const segmentRepository = new SqliteShowSegmentRepository(
+    persistence.database,
+  );
+  const getDesign = new GetShowDesignQuery({
+    shows: showRepository,
+    blueprints: blueprintRepository,
+    segments: segmentRepository,
+  });
 
   return {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
     persistence,
+    designShow: {
+      addSegment: new AddSegmentToBlueprintCommand({
+        blueprints: blueprintRepository,
+        segments: segmentRepository,
+      }),
+      archiveSegment: new ArchiveShowSegmentCommand(segmentRepository),
+      createSegment: new CreateShowSegmentCommand({
+        segments: segmentRepository,
+        shows: showRepository,
+      }),
+      createSegmentInBlueprint: new CreateShowSegmentInBlueprintCommand({
+        blueprints: blueprintRepository,
+        shows: showRepository,
+        creation: new SqliteSegmentBlueprintCreationRepository(
+          persistence.database,
+        ),
+      }),
+      duplicatePlacement: new DuplicateBlueprintPlacementCommand(
+        blueprintRepository,
+      ),
+      getDesign,
+      removePlacement: new RemoveBlueprintPlacementCommand(blueprintRepository),
+      reorder: new ReorderBlueprintPlacementsCommand(blueprintRepository),
+    },
     studios: {
       create: new CreateStudioCommand(studioRepository),
       get: new GetStudioQuery(studioRepository),
@@ -126,10 +170,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
         shows: showRepository,
         showDeletion: showRepository,
       }),
-      getDesign: new GetShowDesignQuery({
-        shows: showRepository,
-        blueprints: blueprintRepository,
-      }),
+      getDesign,
       list: new ListStudioShowsQuery({
         studios: studioRepository,
         shows: showRepository,
@@ -195,6 +236,7 @@ const createMainWindow = async (
   applicationSettings: ApplicationSettingsService,
   studios: StudioIpcOperations,
   shows: ShowIpcOperations,
+  designShow: DesignShowOperations,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -220,6 +262,7 @@ const createMainWindow = async (
   );
   registerStudioIpc(window, content.trustedUrl, studios);
   registerShowIpc(window, content.trustedUrl, shows);
+  registerDesignShowIpc(window, content.trustedUrl, designShow);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -266,6 +309,7 @@ app
       services.applicationSettings,
       services.studios,
       services.shows,
+      services.designShow,
     );
 
     app.on("activate", () => {
@@ -274,6 +318,7 @@ app
           services.applicationSettings,
           services.studios,
           services.shows,
+          services.designShow,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
         });

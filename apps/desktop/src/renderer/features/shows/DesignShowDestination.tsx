@@ -1,22 +1,50 @@
-import { ApplicationShell, Button, EmptyState, Skeleton } from "@showflow/ui";
+import {
+  ApplicationShell,
+  Badge,
+  Button,
+  EmptyState,
+  IconButton,
+  SaveStateIndicator,
+  ScopeLabel,
+  Skeleton,
+  Tabs,
+} from "@showflow/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
+import {
+  getDesignShowRoute,
+  getDesignShowSegmentRoute,
+  getStudioHomeRoute,
+} from "../../app-routes.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
-import studioStyles from "../studios/studio-pages.module.css";
+import { BlueprintStoryboard } from "./BlueprintStoryboard";
+import { SegmentCatalog } from "./SegmentCatalog";
+import { SegmentPicker } from "./SegmentPicker";
+import styles from "./design-show.module.css";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
+import { useDesignShowMutations } from "./useDesignShowMutations";
+
+type DesignTab = "blueprint" | "segments" | "layouts";
 
 export const DesignShowDestination = () => {
   const navigate = useNavigate();
-  const { studioId, showId } = useParams<{
+  const { studioId, showId, segmentId } = useParams<{
     studioId: string;
     showId: string;
+    segmentId: string;
   }>();
   const [selectionError, setSelectionError] = useState<string>();
+  const [activeTab, setActiveTab] = useState<DesignTab>(
+    segmentId === undefined ? "blueprint" : "segments",
+  );
+  const [pickerMode, setPickerMode] = useState<"blueprint" | "catalog">(
+    "blueprint",
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
   const routeIsComplete = studioId !== undefined && showId !== undefined;
   const studioQuery = useQuery({
     enabled: studioId !== undefined,
@@ -35,25 +63,84 @@ export const DesignShowDestination = () => {
   });
   const studio = studioQuery.data;
   const design = designQuery.data;
+  const mutations = useDesignShowMutations(design);
+  const selectedSegment = design?.segments.find(
+    ({ segment }) => segment.id === segmentId,
+  )?.segment;
+  const route =
+    design === undefined
+      ? undefined
+      : segmentId === undefined
+        ? getDesignShowRoute(design.show.studioId, design.show.id)
+        : getDesignShowSegmentRoute(
+            design.show.studioId,
+            design.show.id,
+            segmentId,
+          );
   const navigationError = usePersistedNavigation({
-    route:
-      design === undefined
-        ? undefined
-        : getDesignShowRoute(design.show.studioId, design.show.id),
+    route,
     studioId: design?.show.studioId,
   });
   const isPending = studioQuery.isPending || designQuery.isPending;
   const isError =
     !routeIsComplete || studioQuery.isError || designQuery.isError;
 
+  const openSegment = (targetSegmentId: string): void => {
+    if (design === undefined) return;
+    navigate(
+      getDesignShowSegmentRoute(
+        design.show.studioId,
+        design.show.id,
+        targetSegmentId,
+      ),
+    );
+  };
+  const returnToBlueprint = (): void => {
+    if (design === undefined) return;
+    setActiveTab("blueprint");
+    navigate(getDesignShowRoute(design.show.studioId, design.show.id));
+  };
+  const run = (operation: Promise<unknown>): void => {
+    void operation.catch(() => undefined);
+  };
+  const openPicker = (mode: "blueprint" | "catalog"): void => {
+    setPickerMode(mode);
+    setPickerOpen(true);
+  };
+
   return (
     <ApplicationShell
-      breadcrumb={<span>Design Show / Blueprint</span>}
+      breadcrumb={<span>{design?.show.name ?? "Show"} / Design Show</span>}
+      historyActions={
+        <>
+          <IconButton
+            disabled={!mutations.canUndo || mutations.isSaving}
+            icon="undo"
+            label="Undo Blueprint change"
+            onClick={() => run(mutations.undo())}
+            tooltip="Undo"
+          />
+          <IconButton
+            disabled={!mutations.canRedo || mutations.isSaving}
+            icon="redo"
+            label="Redo Blueprint change"
+            onClick={() => run(mutations.redo())}
+            tooltip="Redo"
+          />
+        </>
+      }
       primaryAction={
-        <Button disabled leadingIcon="plus" variant="primary">
+        <Button
+          disabled={design === undefined || mutations.isSaving}
+          leadingIcon="plus"
+          onClick={() => openPicker("blueprint")}
+          variant="primary"
+        >
           Add Segment
         </Button>
       }
+      saveState={<SaveStateIndicator state={mutations.saveState} />}
+      scope={<ScopeLabel scope="show" />}
       studioSwitcher={
         studio === undefined ? (
           <Button disabled size="small" variant="ghost">
@@ -68,26 +155,23 @@ export const DesignShowDestination = () => {
       }
       title={design?.show.name ?? "Design Show"}
     >
-      <div className={studioStyles.homeWorkspace}>
-        {(selectionError ?? navigationError) ? (
-          <p className={studioStyles.switcherError} role="alert">
-            {selectionError ?? navigationError}
+      <div className={styles.workspace}>
+        {(selectionError ?? navigationError ?? mutations.error) ? (
+          <p className={styles.error} role="alert">
+            {selectionError ?? navigationError ?? mutations.error}
           </p>
         ) : null}
         {isPending ? (
-          <section
-            aria-label="Loading Design Show"
-            className={studioStyles.card}
-          >
+          <section aria-label="Loading Design Show">
             <Skeleton label="Loading Show Blueprint" />
           </section>
         ) : isError ? (
-          <section className={studioStyles.card}>
-            <p className={studioStyles.eyebrow}>Show unavailable</p>
-            <h2 className={studioStyles.heading}>
+          <section className={styles.placeholder}>
+            <p className={styles.eyebrow}>Show unavailable</p>
+            <h2 className={styles.placeholderTitle}>
               Showflow could not open Design Show
             </h2>
-            <p className={studioStyles.message} role="alert">
+            <p className={styles.error} role="alert">
               {designQuery.error instanceof Error
                 ? designQuery.error.message
                 : "Return to Studio Home and choose an available Show."}
@@ -98,39 +182,162 @@ export const DesignShowDestination = () => {
               </Button>
             )}
           </section>
-        ) : (
+        ) : design === undefined ? null : (
           <>
-            <header className={studioStyles.designHeader}>
-              <div className={studioStyles.homeIntro}>
-                <p className={studioStyles.eyebrow}>Show Blueprint</p>
-                <h2 className={studioStyles.heading}>Blueprint</h2>
-                <p className={studioStyles.description}>
-                  Changes here become the default Storyboard for future
-                  Episodes.
+            <header className={styles.header}>
+              <div className={styles.intro}>
+                <p className={styles.eyebrow}>Design Show</p>
+                <h2 className={styles.heading}>Show Blueprint</h2>
+                <p className={styles.description}>
+                  Changes become the default for future Episodes.
                 </p>
               </div>
+              <Badge tone="info">
+                {design.blueprint.placementCount} Segment
+                {design.blueprint.placementCount === 1 ? "" : "s"}
+              </Badge>
             </header>
-            <section
-              aria-label="Show Blueprint"
-              className={studioStyles.blueprintWorkspace}
-            >
-              <EmptyState
-                action={
-                  <Button disabled leadingIcon="plus" variant="primary">
-                    Add First Segment
-                  </Button>
+
+            <Tabs
+              items={[
+                {
+                  content: (
+                    <div className={styles.tabContent}>
+                      <div className={styles.toolbar}>
+                        <p className={styles.metadata}>
+                          Arrange the default Storyboard from left to right.
+                        </p>
+                        <Button
+                          leadingIcon="plus"
+                          onClick={() => openPicker("blueprint")}
+                        >
+                          Add Segment
+                        </Button>
+                      </div>
+                      <BlueprintStoryboard
+                        onAddFirst={() => openPicker("blueprint")}
+                        onDuplicate={(placementId) =>
+                          run(mutations.duplicatePlacement(placementId))
+                        }
+                        onOpen={openSegment}
+                        onRemove={(placementId) =>
+                          run(mutations.removePlacement(placementId))
+                        }
+                        onReorder={(placementIds) =>
+                          mutations.reorder(placementIds)
+                        }
+                        placements={design.blueprint.placements}
+                        segments={design.segments}
+                      />
+                    </div>
+                  ),
+                  label: "Blueprint",
+                  value: "blueprint",
+                },
+                {
+                  content: (
+                    <div className={styles.tabContent}>
+                      {segmentId === undefined ? (
+                        <SegmentCatalog
+                          items={design.segments}
+                          onAdd={(targetSegmentId) =>
+                            run(mutations.addExisting(targetSegmentId))
+                          }
+                          onArchive={(targetSegmentId) =>
+                            run(mutations.archiveSegment(targetSegmentId))
+                          }
+                          onCreate={() => openPicker("catalog")}
+                          onOpen={openSegment}
+                        />
+                      ) : selectedSegment === undefined ? (
+                        <EmptyState
+                          action={
+                            <Button onClick={returnToBlueprint}>
+                              Return to Blueprint
+                            </Button>
+                          }
+                          description="This Segment may have been archived or removed."
+                          heading="Segment unavailable"
+                        />
+                      ) : (
+                        <section className={styles.placeholder}>
+                          <p className={styles.eyebrow}>Show Segment</p>
+                          <h2 className={styles.placeholderTitle}>
+                            {selectedSegment.name}
+                          </h2>
+                          <p className={styles.placeholderCopy}>
+                            {selectedSegment.description ??
+                              "Detailed Segment fields, lifecycle, Layouts, and notes arrive in Sprint 7."}
+                          </p>
+                          <p className={styles.description}>
+                            Changes affect future uses of this Segment.
+                          </p>
+                          <div className={styles.placeholderActions}>
+                            <Button onClick={returnToBlueprint}>
+                              Return to Blueprint
+                            </Button>
+                            <Button disabled variant="ghost">
+                              Edit Segment details in Sprint 7
+                            </Button>
+                          </div>
+                        </section>
+                      )}
+                    </div>
+                  ),
+                  label: "Segments",
+                  value: "segments",
+                },
+                {
+                  content: (
+                    <div className={styles.tabContent}>
+                      <div className={styles.emptyWrap}>
+                        <EmptyState
+                          action={<Button disabled>New Layout</Button>}
+                          description="Reusable Layout composition arrives in Sprint 10."
+                          heading="Layout Catalog"
+                        />
+                      </div>
+                    </div>
+                  ),
+                  label: "Layouts",
+                  value: "layouts",
+                },
+              ]}
+              label="Design Show sections"
+              onValueChange={(value) => {
+                const nextTab = value as DesignTab;
+                setActiveTab(nextTab);
+                if (segmentId !== undefined && nextTab !== "segments") {
+                  navigate(
+                    getDesignShowRoute(design.show.studioId, design.show.id),
+                  );
                 }
-                description="Add reusable Segments to define the default Storyboard for future Episodes."
-                heading="Design your Show’s default Storyboard"
-                icon="plus"
-              />
-              <p className={studioStyles.availability}>
-                Segment creation arrives in the next Sprint.
-              </p>
-            </section>
+              }}
+              value={segmentId === undefined ? activeTab : "segments"}
+            />
           </>
         )}
       </div>
+
+      {design === undefined ? null : (
+        <SegmentPicker
+          isSaving={mutations.isSaving}
+          mode={pickerMode}
+          onAdd={async (targetSegmentId) => {
+            await mutations.addExisting(targetSegmentId);
+          }}
+          onCreate={async (input) => {
+            const createdId = await mutations.createSegment({
+              ...input,
+              placeInBlueprint: pickerMode === "blueprint",
+            });
+            if (createdId !== undefined) openSegment(createdId);
+          }}
+          onOpenChange={setPickerOpen}
+          open={pickerOpen}
+          segments={design.segments}
+        />
+      )}
     </ApplicationShell>
   );
 };

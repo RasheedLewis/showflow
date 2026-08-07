@@ -17,6 +17,7 @@ import {
   SHOW_CREATION_ROUTE,
   SHOW_DETAIL_ROUTE,
   DESIGN_SHOW_ROUTE,
+  DESIGN_SHOW_SEGMENT_ROUTE,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
@@ -105,6 +106,10 @@ const AppRoutes = () => (
     <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
     <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
     <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
+    <Route
+      element={<DesignShowDestination />}
+      path={DESIGN_SHOW_SEGMENT_ROUTE}
+    />
     <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>
 );

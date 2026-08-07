@@ -5,8 +5,10 @@ import type { ShowflowDatabase } from "../database/database-service.mjs";
 import { mapPersistenceError } from "../errors/persistence-error-mapper.mjs";
 import {
   BLUEPRINT_COLUMNS,
+  BLUEPRINT_PLACEMENT_COLUMNS,
+  BlueprintPlacementRowParser,
   BlueprintRowParser,
-  writeEmptyBlueprint,
+  writeBlueprint,
 } from "./show-storage.mjs";
 
 export class SqliteShowBlueprintRepository implements ShowBlueprintRepository {
@@ -14,13 +16,13 @@ export class SqliteShowBlueprintRepository implements ShowBlueprintRepository {
 
   async getById(id: ShowBlueprintId): Promise<ShowBlueprint | null> {
     try {
-      return (
+      const blueprint =
         this.database.queryOne(
           `SELECT ${BLUEPRINT_COLUMNS} FROM show_blueprints WHERE id = ?`,
           BlueprintRowParser,
           [id],
-        ) ?? null
-      );
+        ) ?? null;
+      return blueprint === null ? null : this.#withPlacements(blueprint);
     } catch (error) {
       throw mapPersistenceError(error, "read");
     }
@@ -28,13 +30,13 @@ export class SqliteShowBlueprintRepository implements ShowBlueprintRepository {
 
   async getByShowId(showId: ShowId): Promise<ShowBlueprint | null> {
     try {
-      return (
+      const blueprint =
         this.database.queryOne(
           `SELECT ${BLUEPRINT_COLUMNS} FROM show_blueprints WHERE show_id = ?`,
           BlueprintRowParser,
           [showId],
-        ) ?? null
-      );
+        ) ?? null;
+      return blueprint === null ? null : this.#withPlacements(blueprint);
     } catch (error) {
       throw mapPersistenceError(error, "read");
     }
@@ -42,9 +44,23 @@ export class SqliteShowBlueprintRepository implements ShowBlueprintRepository {
 
   async save(blueprint: ShowBlueprint): Promise<void> {
     try {
-      writeEmptyBlueprint(this.database, blueprint);
+      this.database.transaction((transaction) => {
+        writeBlueprint(transaction, blueprint);
+      });
     } catch (error) {
       throw mapPersistenceError(error, "write");
     }
+  }
+
+  #withPlacements(blueprint: ShowBlueprint): ShowBlueprint {
+    const placements = this.database.queryAll(
+      `SELECT ${BLUEPRINT_PLACEMENT_COLUMNS}
+       FROM blueprint_segment_placements
+       WHERE show_blueprint_id = ?
+       ORDER BY position, id`,
+      BlueprintPlacementRowParser,
+      [blueprint.id],
+    );
+    return { ...blueprint, placements };
   }
 }

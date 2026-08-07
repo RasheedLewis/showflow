@@ -38,6 +38,7 @@ import {
   CreateLayoutCommand,
   CreateShowCommand,
   CreateShowSegmentCommand,
+  CreateShowSegmentInBlueprintCommand,
   CreateStudioCommand,
   DeleteShowCommand,
   DuplicateBlueprintPlacementCommand,
@@ -551,6 +552,70 @@ describe("Show-scoped catalog commands", () => {
     expect(context.saved.segments).toEqual([segment]);
     expect(context.saved.layouts).toEqual([layout]);
   });
+
+  test("creates a Segment directly in the current Show", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const segment = await new CreateShowSegmentCommand(
+      {
+        segments: context.repositories.segments,
+        shows: context.repositories.shows,
+      },
+      commandDependencies(),
+    ).execute({
+      context: { scope: "show", showId: data.show.id },
+      description: "  Welcome the audience.  ",
+      name: "  Opening remarks  ",
+    });
+
+    expect(segment).toMatchObject({
+      description: "Welcome the audience.",
+      name: "Opening remarks",
+      showId: data.show.id,
+    });
+    expect(context.saved.segments).toEqual([segment]);
+  });
+
+  test("creates a Catalog Segment and Blueprint placement as one operation", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    let received:
+      | { readonly blueprint: ShowBlueprint; readonly segment: ShowSegment }
+      | undefined;
+    const result = await new CreateShowSegmentInBlueprintCommand(
+      {
+        blueprints: context.repositories.blueprints,
+        shows: context.repositories.shows,
+        creation: {
+          create: async (segment, blueprint) => {
+            received = { blueprint, segment };
+          },
+        },
+      },
+      commandDependencies(),
+    ).execute({
+      blueprintId: data.blueprint.id,
+      name: "Audience questions",
+      position: 1,
+      showId: data.show.id,
+    });
+
+    expect(received).toEqual(result);
+    expect(result.segment).toMatchObject({
+      id: entityId<"showSegment">(500),
+      showId: data.show.id,
+    });
+    expect(
+      result.blueprint.placements.map(({ position, showSegmentId }) => ({
+        position,
+        showSegmentId,
+      })),
+    ).toEqual([
+      { position: 0, showSegmentId: data.firstSegment.id },
+      { position: 1, showSegmentId: result.segment.id },
+      { position: 2, showSegmentId: data.secondSegment.id },
+    ]);
+  });
 });
 
 describe("Show Blueprint commands", () => {
@@ -573,6 +638,8 @@ describe("Show Blueprint commands", () => {
       position: 2,
       label: "Encore",
     });
+    expect(context.saved.segments).toEqual([]);
+    expect(context.segments.size).toBe(2);
 
     const otherShowId = entityId<"show">(100);
     const crossShowSegment = createShowSegment(

@@ -47,9 +47,11 @@ describe("Show desktop contracts", () => {
           createdAt: "2026-08-06T14:30:00.000Z",
           id: "5da62c88-a25d-450d-bf4d-3809a9f8bd11",
           placementCount: 0,
+          placements: [],
           showId,
           updatedAt: "2026-08-06T14:30:00.000Z",
         },
+        segments: [],
       },
     };
 

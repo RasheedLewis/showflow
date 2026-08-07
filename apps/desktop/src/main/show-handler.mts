@@ -26,7 +26,12 @@ import {
   type ShowListResult,
   type ShowResult,
 } from "@showflow/contracts";
-import { parseEntityId, type Show, type ShowBlueprint } from "@showflow/domain";
+import {
+  parseEntityId,
+  type Show,
+  type ShowBlueprint,
+  type ShowSegment,
+} from "@showflow/domain";
 
 type CreateShowOperation = Pick<CreateShowCommand, "execute">;
 type GetShowDesignOperation = Pick<GetShowDesignQuery, "execute">;
@@ -35,7 +40,10 @@ type RenameShowOperation = Pick<RenameShowCommand, "execute">;
 type ArchiveShowOperation = Pick<ArchiveShowCommand, "execute">;
 type DeleteShowOperation = Pick<DeleteShowCommand, "execute">;
 
-const errorResult = (code: ApiErrorCode, message: string): ShowDesignResult =>
+export const showDesignErrorResult = (
+  code: ApiErrorCode,
+  message: string,
+): ShowDesignResult =>
   ShowDesignResultSchema.parse({ ok: false, error: { code, message } });
 
 const applicationErrorCode = (error: unknown): ApiErrorCode =>
@@ -55,10 +63,29 @@ const parseShowDto = (show: Show): ShowDto | null => {
   return result.success ? result.data : null;
 };
 
-const successResult = (
+const parseSegmentDto = (segment: ShowSegment) => ({
+  archivedAt: segment.archivedAt ?? null,
+  createdAt: segment.createdAt,
+  description: segment.description ?? null,
+  expectedDurationMs: segment.expectedDurationMs ?? null,
+  id: segment.id,
+  name: segment.name,
+  showId: segment.showId,
+  updatedAt: segment.updatedAt,
+});
+
+export const showDesignSuccessResult = (
   show: Show,
   blueprint: ShowBlueprint,
+  segments: readonly ShowSegment[] = [],
 ): ShowDesignResult => {
+  const usageCounts = new Map<string, number>();
+  for (const placement of blueprint.placements) {
+    usageCounts.set(
+      placement.showSegmentId,
+      (usageCounts.get(placement.showSegmentId) ?? 0) + 1,
+    );
+  }
   const result = ShowDesignResultSchema.safeParse({
     ok: true,
     data: {
@@ -67,14 +94,30 @@ const successResult = (
         createdAt: blueprint.createdAt,
         id: blueprint.id,
         placementCount: blueprint.placements.length,
+        placements: blueprint.placements.map((placement) => ({
+          createdAt: placement.createdAt,
+          defaultData: placement.defaultData,
+          defaultDurationMs: placement.defaultDurationMs ?? null,
+          id: placement.id,
+          label: placement.label ?? null,
+          placementOverrides: placement.placementOverrides ?? null,
+          position: placement.position,
+          showBlueprintId: placement.showBlueprintId,
+          showSegmentId: placement.showSegmentId,
+          updatedAt: placement.updatedAt,
+        })),
         showId: blueprint.showId,
         updatedAt: blueprint.updatedAt,
       },
+      segments: segments.map((segment) => ({
+        blueprintUsageCount: usageCounts.get(segment.id) ?? 0,
+        segment: parseSegmentDto(segment),
+      })),
     },
   });
   return result.success
     ? result.data
-    : errorResult(
+    : showDesignErrorResult(
         "IPC_INVALID_RESPONSE",
         "Showflow could not validate the Show response.",
       );
@@ -118,14 +161,14 @@ export const handleCreateShowRequest = async (
   command: CreateShowOperation,
 ): Promise<ShowDesignResult> => {
   if (!senderIsTrusted) {
-    return errorResult(
+    return showDesignErrorResult(
       "IPC_UNTRUSTED_SENDER",
       "The Show creation request did not come from Showflow.",
     );
   }
   const validRequest = CreateShowRequestSchema.safeParse(request);
   if (!validRequest.success) {
-    return errorResult(
+    return showDesignErrorResult(
       "IPC_INVALID_REQUEST",
       "Enter a Show name between 1 and 200 characters.",
     );
@@ -139,9 +182,9 @@ export const handleCreateShowRequest = async (
         ? {}
         : { description: validRequest.data.description }),
     });
-    return successResult(created.show, created.blueprint);
+    return showDesignSuccessResult(created.show, created.blueprint);
   } catch (error) {
-    return errorResult(
+    return showDesignErrorResult(
       applicationErrorCode(error),
       "Showflow could not create the Show. Nothing was saved. Check the details and try again.",
     );
@@ -154,14 +197,17 @@ export const handleGetShowDesignRequest = async (
   query: GetShowDesignOperation,
 ): Promise<ShowDesignResult> => {
   if (!senderIsTrusted) {
-    return errorResult(
+    return showDesignErrorResult(
       "IPC_UNTRUSTED_SENDER",
       "The Design Show request did not come from Showflow.",
     );
   }
   const validRequest = GetShowDesignRequestSchema.safeParse(request);
   if (!validRequest.success) {
-    return errorResult("IPC_INVALID_REQUEST", "The Show request was invalid.");
+    return showDesignErrorResult(
+      "IPC_INVALID_REQUEST",
+      "The Show request was invalid.",
+    );
   }
 
   try {
@@ -169,9 +215,13 @@ export const handleGetShowDesignRequest = async (
       parseEntityId<"studio">(validRequest.data.studioId),
       parseEntityId<"show">(validRequest.data.showId),
     );
-    return successResult(result.show, result.blueprint);
+    return showDesignSuccessResult(
+      result.show,
+      result.blueprint,
+      result.segments,
+    );
   } catch (error) {
-    return errorResult(
+    return showDesignErrorResult(
       applicationErrorCode(error),
       error instanceof ApplicationError && error.code === "NOT_FOUND"
         ? "This Show is no longer available. Return to Studio Home."

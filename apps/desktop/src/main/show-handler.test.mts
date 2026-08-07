@@ -43,17 +43,24 @@ const blueprint = {
 
 describe("Show IPC handlers", () => {
   test("creates and reloads a Show design through application operations", async () => {
-    const operation = { execute: async () => ({ show, blueprint }) };
+    const createOperation = { execute: async () => ({ show, blueprint }) };
+    const getOperation = {
+      execute: async () => ({ show, blueprint, segments: [] }),
+    };
     const request = { studioId, showId };
 
     await expect(
-      handleCreateShowRequest({ studioId, name: show.name }, true, operation),
+      handleCreateShowRequest(
+        { studioId, name: show.name },
+        true,
+        createOperation,
+      ),
     ).resolves.toMatchObject({
       ok: true,
       data: { show: { id: showId }, blueprint: { placementCount: 0, showId } },
     });
     await expect(
-      handleGetShowDesignRequest(request, true, operation),
+      handleGetShowDesignRequest(request, true, getOperation),
     ).resolves.toMatchObject({ ok: true, data: { show: { id: showId } } });
   });
 
@@ -88,7 +95,11 @@ describe("Show IPC handlers", () => {
   test("contains invalid, untrusted, not-found, and persistence failures", async () => {
     const success = { execute: async () => ({ show, blueprint }) };
     const missing = {
-      execute: async (): Promise<{ show: Show; blueprint: ShowBlueprint }> => {
+      execute: async (): Promise<{
+        show: Show;
+        blueprint: ShowBlueprint;
+        segments: [];
+      }> => {
         throw new ApplicationError("NOT_FOUND", "Show was not found.");
       },
     };

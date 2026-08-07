@@ -1,0 +1,38 @@
+declare const styles: Readonly<{
+  workspace: string;
+  header: string;
+  intro: string;
+  eyebrow: string;
+  metadata: string;
+  heading: string;
+  description: string;
+  error: string;
+  placeholderCopy: string;
+  tabContent: string;
+  toolbar: string;
+  catalogToolbar: string;
+  cardActions: string;
+  pickerActions: string;
+  placeholderActions: string;
+  catalogControls: string;
+  search: string;
+  sort: string;
+  storyboard: string;
+  catalogGrid: string;
+  pickerList: string;
+  storyboardItem: string;
+  sortableCard: string;
+  dragHandle: string;
+  preview: string;
+  catalogCard: string;
+  pickerItem: string;
+  pickerItemCopy: string;
+  pickerItemTitle: string;
+  form: string;
+  formDivider: string;
+  placeholder: string;
+  placeholderTitle: string;
+  emptyWrap: string;
+}>;
+
+export default styles;

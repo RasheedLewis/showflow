@@ -55,6 +55,10 @@ export interface ShowSegmentRepository extends EntityRepository<
   listByShowId(showId: ShowId): Promise<readonly ShowSegment[]>;
 }
 
+export interface SegmentBlueprintCreationRepository {
+  create(segment: ShowSegment, blueprint: ShowBlueprint): Promise<void>;
+}
+
 export interface LayoutRepository extends EntityRepository<Layout, LayoutId> {
   listByShowId(showId: ShowId): Promise<readonly Layout[]>;
 }

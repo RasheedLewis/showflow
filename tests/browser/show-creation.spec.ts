@@ -52,9 +52,7 @@ test("creates a blank Show and opens its empty Blueprint", async ({ page }) => {
     }),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "Changes here become the default Storyboard for future Episodes.",
-    ),
+    page.getByText("Changes become the default for future Episodes.").first(),
   ).toBeVisible();
 
   const accessibility = await new AxeBuilder({ page })
