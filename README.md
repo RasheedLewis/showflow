@@ -7,7 +7,7 @@
 Showflow is a local-first desktop production workspace for creators who design,
 prepare, preview, and rehearse recurring shows.
 
-![Project status](https://img.shields.io/badge/status-sprint%204%20complete-2F855A?style=flat-square)
+![Project status](https://img.shields.io/badge/status-sprint%206%20complete-2F855A?style=flat-square)
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
@@ -18,10 +18,10 @@ prepare, preview, and rehearse recurring shows.
 </div>
 
 > [!IMPORTANT]
-> **Sprints 0–4 are complete.** In addition to the secure Electron and SQLite
-> foundation, Showflow now has the first complete user-facing path from launch
-> through persisted Studios and Shows into Show Detail and Design Show. Sprint 5
-> adds the Segment Catalog and editable Show Blueprint.
+> **Sprints 0–6 are complete.** Showflow now carries a creator from launch
+> through persisted Studios and Shows, reusable Show Blueprint design, and
+> transactional Episode creation into an independently editable Episode
+> Storyboard.
 
 ## The product
 
@@ -46,11 +46,13 @@ The desktop application currently supports:
   the current Studio;
 - opening Show Detail with Create New Episode, Design Show, and Recent Episodes
   presented in the required hierarchy; and
+- building a Show-scoped Segment Catalog and arranging the reusable Show
+  Blueprint;
+- creating Episodes transactionally from that Blueprint, then reordering,
+  duplicating, removing, restoring, and inserting Episode Segments with
+  autosave and undo/redo; and
 - restoring the last safe Studio, Show Detail, or Design Show route after
   restart, with recovery to Studio Home when a saved Show is unavailable.
-
-Show Blueprint editing arrives in Sprint 5. Episode creation and the Episode
-Storyboard remain unavailable until Sprint 6.
 
 ```text
 Design the reusable Show
@@ -271,7 +273,7 @@ pnpm install --frozen-lockfile
 ```
 
 The workspace includes the secure Electron desktop shell, shared design system,
-and completed Sprint 4 Studio and Show workflow. Start it with `pnpm dev`;
+and completed Sprint 6 Episode Storyboard workflow. Start it with `pnpm dev`;
 package it locally with `pnpm package`; or create the installer format for the
 current platform with `pnpm make`.
 
@@ -327,8 +329,8 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
-**Current milestone:** Sprints 0–4 are complete. Sprint 5—Segment Catalog and
-Show Blueprint—is next.
+**Current milestone:** Sprints 0–6 are complete. Sprint 7—Show Segment schema
+and behavior editor—is next.
 
 | Phase              | Sprints | Outcome                                                                     |
 | ------------------ | ------: | --------------------------------------------------------------------------- |
@@ -346,8 +348,8 @@ Show Blueprint—is next.
 - [x] **Sprint 2:** Domain and application kernel
 - [x] **Sprint 3:** Design system foundation and application shell
 - [x] **Sprint 4:** Studios, Shows, and Show Detail
-- [ ] **Sprint 5:** Segment Catalog and Show Blueprint
-- [ ] **Sprint 6:** Episodes and Episode Storyboard
+- [x] **Sprint 5:** Segment Catalog and Show Blueprint
+- [x] **Sprint 6:** Episodes and Episode Storyboard
 - [ ] **Sprint 7:** Show Segment schema and behavior editor
 - [ ] **Sprint 8:** Episode Segment content editor
 - [ ] **Sprint 9:** Resource system

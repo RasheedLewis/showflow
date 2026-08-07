@@ -21,6 +21,16 @@ import {
   ShowMutationRequestSchema,
   ShowResultSchema,
   UpdateNavigationSettingsRequestSchema,
+  CreateEpisodeRequestSchema,
+  CreateEpisodeSegmentRequestSchema,
+  EpisodeListResultSchema,
+  EpisodeSegmentMutationRequestSchema,
+  EpisodeStoryboardResultSchema,
+  GetEpisodeRequestSchema,
+  InsertEpisodeSegmentRequestSchema,
+  ListEpisodesRequestSchema,
+  ReorderEpisodeRequestSchema,
+  RestoreEpisodeSegmentRequestSchema,
   type ShowflowDesktopApi,
 } from "@showflow/contracts";
 
@@ -43,6 +53,15 @@ export interface DesktopApiTransports {
   readonly duplicateBlueprintPlacement: (request: unknown) => Promise<unknown>;
   readonly removeBlueprintPlacement: (request: unknown) => Promise<unknown>;
   readonly reorderBlueprint: (request: unknown) => Promise<unknown>;
+  readonly createEpisode: (request: unknown) => Promise<unknown>;
+  readonly createEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly duplicateEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly getEpisode: (request: unknown) => Promise<unknown>;
+  readonly insertEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly listEpisodes: (request: unknown) => Promise<unknown>;
+  readonly removeEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly reorderEpisode: (request: unknown) => Promise<unknown>;
+  readonly restoreEpisodeSegment: (request: unknown) => Promise<unknown>;
 }
 
 export const createShowflowDesktopApi = (
@@ -152,6 +171,62 @@ export const createShowflowDesktopApi = (
       );
     },
   });
+  const episodesApi = Object.freeze({
+    create: async (request: unknown) => {
+      const validRequest = CreateEpisodeRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.createEpisode(validRequest),
+      );
+    },
+    createSegment: async (request: unknown) => {
+      const validRequest = CreateEpisodeSegmentRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.createEpisodeSegment(validRequest),
+      );
+    },
+    duplicateSegment: async (request: unknown) => {
+      const validRequest = EpisodeSegmentMutationRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.duplicateEpisodeSegment(validRequest),
+      );
+    },
+    get: async (request: unknown) => {
+      const validRequest = GetEpisodeRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.getEpisode(validRequest),
+      );
+    },
+    insertSegment: async (request: unknown) => {
+      const validRequest = InsertEpisodeSegmentRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.insertEpisodeSegment(validRequest),
+      );
+    },
+    list: async (request: unknown) => {
+      const validRequest = ListEpisodesRequestSchema.parse(request);
+      return EpisodeListResultSchema.parse(
+        await transports.listEpisodes(validRequest),
+      );
+    },
+    removeSegment: async (request: unknown) => {
+      const validRequest = EpisodeSegmentMutationRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.removeEpisodeSegment(validRequest),
+      );
+    },
+    reorder: async (request: unknown) => {
+      const validRequest = ReorderEpisodeRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.reorderEpisode(validRequest),
+      );
+    },
+    restoreSegment: async (request: unknown) => {
+      const validRequest = RestoreEpisodeSegmentRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.restoreEpisodeSegment(validRequest),
+      );
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -160,5 +235,6 @@ export const createShowflowDesktopApi = (
     shows: showsApi,
     segments: segmentsApi,
     blueprints: blueprintsApi,
+    episodes: episodesApi,
   });
 };

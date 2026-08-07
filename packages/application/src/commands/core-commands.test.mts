@@ -49,6 +49,9 @@ import {
   RenameStudioCommand,
   ReorderBlueprintPlacementsCommand,
   ReorderEpisodeSegmentsCommand,
+  CreateShowSegmentInEpisodeCommand,
+  InsertSegmentIntoEpisodeCommand,
+  RestoreEpisodeSegmentCommand,
 } from "./index.mjs";
 import type { EpisodeFromBlueprintCreator } from "./index.mjs";
 import type { EpisodeCreationRepositories } from "./index.mjs";
@@ -157,7 +160,10 @@ const createTestData = (): TestData => {
     sourceShowSegmentId: firstSegment.id,
     position: 0,
     label: "Opening label",
-    fieldValues: { lowerThirdTitle: "Episode title" },
+    fieldValues: {
+      guest: { name: "Ada" },
+      lowerThirdTitle: "Episode title",
+    },
     notes: "Welcome viewers.",
     expectedDurationOverrideMs: 45_000,
     defaultLayoutOverrideId: entityId<"layout">(40),
@@ -828,7 +834,7 @@ describe("Episode commands", () => {
     expect(context.getTransactionCount()).toBe(1);
   });
 
-  test("reorders every Episode Segment exactly once", async () => {
+  test("6.T2 reorders an Episode independently from its Blueprint", async () => {
     const data = createTestData();
     const context = seededRepositories(data);
     const [first, second] = data.episode.segments;
@@ -851,9 +857,11 @@ describe("Episode commands", () => {
       { id: second.id, position: 0 },
       { id: first.id, position: 1 },
     ]);
+    expect(context.blueprints.get(data.blueprint.id)).toBe(data.blueprint);
+    expect(context.saved.blueprints).toEqual([]);
   });
 
-  test("duplicates an Episode Segment with copied data and the same source", async () => {
+  test("6.T4 and 6.T7 duplicates Episode data into an independent occurrence", async () => {
     const data = createTestData();
     const context = seededRepositories(data);
     const source = data.episode.segments[0];
@@ -884,12 +892,15 @@ describe("Episode commands", () => {
     });
     expect(duplicate?.id).not.toBe(source.id);
     expect(duplicate?.fieldValues).not.toBe(source.fieldValues);
+    expect(duplicate?.fieldValues["guest"]).not.toBe(
+      source.fieldValues["guest"],
+    );
     expect(duplicate?.fixedResourceReplacements).not.toBe(
       source.fixedResourceReplacements,
     );
   });
 
-  test("removes only the Episode Segment and leaves Blueprint and Catalog unchanged", async () => {
+  test("6.T3 removes only the Episode Segment and leaves reusable definitions unchanged", async () => {
     const data = createTestData();
     const context = seededRepositories(data);
     const removed = data.episode.segments[0];
@@ -914,5 +925,96 @@ describe("Episode commands", () => {
     );
     expect(context.saved.blueprints).toEqual([]);
     expect(context.saved.segments).toEqual([]);
+  });
+
+  test("6.T5 inserts an existing Catalog Segment without changing the Blueprint", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const updated = await new InsertSegmentIntoEpisodeCommand(
+      {
+        episodes: context.repositories.episodes,
+        segments: context.repositories.segments,
+      },
+      commandDependencies(),
+    ).execute({
+      episodeId: data.episode.id,
+      position: 1,
+      showSegmentId: data.firstSegment.id,
+    });
+
+    expect(updated.segments).toHaveLength(3);
+    expect(updated.segments[1]).toMatchObject({
+      id: entityId<"episodeSegment">(500),
+      sourceShowSegmentId: data.firstSegment.id,
+      position: 1,
+    });
+    expect(context.blueprints.get(data.blueprint.id)).toBe(data.blueprint);
+    expect(context.saved.blueprints).toEqual([]);
+  });
+
+  test("6.T6 creates a reusable Show Segment and inserts it in one repository operation", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    let received:
+      { readonly episode: Episode; readonly segment: ShowSegment } | undefined;
+    const result = await new CreateShowSegmentInEpisodeCommand(
+      {
+        creation: {
+          create: async (segment, episode) => {
+            received = { episode, segment };
+            context.segments.set(segment.id, segment);
+            context.episodes.set(episode.id, episode);
+          },
+        },
+        episodes: context.repositories.episodes,
+        shows: context.repositories.shows,
+      },
+      commandDependencies(),
+    ).execute({
+      episodeId: data.episode.id,
+      name: "Audience questions",
+      position: 1,
+    });
+
+    expect(received).toEqual(result);
+    expect(result.segment).toMatchObject({
+      id: entityId<"showSegment">(500),
+      showId: data.show.id,
+    });
+    expect(result.episode.segments[1]).toMatchObject({
+      id: entityId<"episodeSegment">(501),
+      sourceShowSegmentId: result.segment.id,
+    });
+    expect(context.blueprints.get(data.blueprint.id)).toBe(data.blueprint);
+  });
+
+  test("restores a removed Episode Segment with its original data and source", async () => {
+    const data = createTestData();
+    const context = seededRepositories(data);
+    const removed = data.episode.segments[0];
+    if (removed === undefined) throw new Error("Expected an Episode Segment.");
+    const without = await new RemoveEpisodeSegmentCommand(
+      context.repositories.episodes,
+      commandDependencies(),
+    ).execute({
+      episodeId: data.episode.id,
+      episodeSegmentId: removed.id,
+    });
+    context.episodes.set(without.id, without);
+
+    const restored = await new RestoreEpisodeSegmentCommand(
+      {
+        episodes: context.repositories.episodes,
+        segments: context.repositories.segments,
+      },
+      commandDependencies(700),
+    ).execute({ episodeId: data.episode.id, segment: removed });
+
+    expect(restored.segments[0]).toMatchObject({
+      id: removed.id,
+      fieldValues: removed.fieldValues,
+      notes: removed.notes,
+      sourceShowSegmentId: removed.sourceShowSegmentId,
+    });
   });
 });

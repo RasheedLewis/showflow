@@ -27,6 +27,7 @@ export {
   type UpdateNavigationSettingsRequest,
 } from "./application-settings.ts";
 export { type ShowflowDesktopApi } from "./desktop-api.ts";
+export * from "./episode.ts";
 export {
   CreateStudioRequestSchema,
   GetStudioRequestSchema,

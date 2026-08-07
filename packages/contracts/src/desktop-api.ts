@@ -28,6 +28,18 @@ import type {
   ShowMutationRequest,
   ShowResult,
 } from "./show.ts";
+import type {
+  CreateEpisodeRequest,
+  CreateEpisodeSegmentRequest,
+  EpisodeListResult,
+  EpisodeSegmentMutationRequest,
+  EpisodeStoryboardResult,
+  GetEpisodeRequest,
+  InsertEpisodeSegmentRequest,
+  ListEpisodesRequest,
+  ReorderEpisodeRequest,
+  RestoreEpisodeSegmentRequest,
+} from "./episode.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -66,5 +78,28 @@ export interface ShowflowDesktopApi {
       request: BlueprintPlacementMutationRequest,
     ) => Promise<ShowDesignResult>;
     reorder: (request: ReorderBlueprintRequest) => Promise<ShowDesignResult>;
+  }>;
+  readonly episodes: Readonly<{
+    create: (request: CreateEpisodeRequest) => Promise<EpisodeStoryboardResult>;
+    createSegment: (
+      request: CreateEpisodeSegmentRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    duplicateSegment: (
+      request: EpisodeSegmentMutationRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    get: (request: GetEpisodeRequest) => Promise<EpisodeStoryboardResult>;
+    insertSegment: (
+      request: InsertEpisodeSegmentRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    list: (request: ListEpisodesRequest) => Promise<EpisodeListResult>;
+    removeSegment: (
+      request: EpisodeSegmentMutationRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    reorder: (
+      request: ReorderEpisodeRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    restoreSegment: (
+      request: RestoreEpisodeSegmentRequest,
+    ) => Promise<EpisodeStoryboardResult>;
   }>;
 }

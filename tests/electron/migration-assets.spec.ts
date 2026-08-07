@@ -33,6 +33,12 @@ test("packages the canonical migration directory", async () => {
       "utf8",
     ),
   ).resolves.toContain("CREATE TABLE blueprint_segment_placements");
+  await expect(
+    fs.readFile(
+      path.join(getPackagedResourcesPath(), "migrations", "005_episodes.sql"),
+      "utf8",
+    ),
+  ).resolves.toContain("CREATE TABLE episode_segments");
 });
 
 test("packages third-party license notices", async () => {

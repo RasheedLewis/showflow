@@ -6,6 +6,8 @@ declare const styles: {
   readonly designSection: string;
   readonly episodeEmptyState: string;
   readonly episodeHero: string;
+  readonly episodeGrid: string;
+  readonly episodeStrip: string;
   readonly error: string;
   readonly eyebrow: string;
   readonly heroHeading: string;

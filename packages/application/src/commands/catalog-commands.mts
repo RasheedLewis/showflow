@@ -47,7 +47,7 @@ export interface CreateShowSegmentCommandInput {
   readonly notesTemplate?: string;
 }
 
-const normalizeSegmentName = (name: string): string => {
+export const normalizeShowSegmentName = (name: string): string => {
   const normalized = name.trim();
   if (normalized.length === 0 || normalized.length > 200) {
     throw new ApplicationError(
@@ -58,7 +58,7 @@ const normalizeSegmentName = (name: string): string => {
   return normalized;
 };
 
-const normalizeDescription = (
+export const normalizeOptionalDescription = (
   description: string | undefined,
 ): string | undefined => {
   const normalized = description?.trim();
@@ -91,11 +91,11 @@ export class CreateShowSegmentCommand {
               "Episode repository",
             ),
           });
-    const description = normalizeDescription(input.description);
+    const description = normalizeOptionalDescription(input.description);
     const segment = createShowSegment(
       {
         showId,
-        name: normalizeSegmentName(input.name),
+        name: normalizeShowSegmentName(input.name),
         ...(description === undefined ? {} : { description }),
         ...(input.expectedDurationMs === undefined
           ? {}
@@ -144,11 +144,11 @@ export class CreateShowSegmentInBlueprintCommand {
     if (currentBlueprint.showId !== input.showId) {
       throw new ApplicationError("NOT_FOUND", "Show Blueprint was not found.");
     }
-    const description = normalizeDescription(input.description);
+    const description = normalizeOptionalDescription(input.description);
     const segment = createShowSegment(
       {
         showId: input.showId,
-        name: normalizeSegmentName(input.name),
+        name: normalizeShowSegmentName(input.name),
         ...(description === undefined ? {} : { description }),
       },
       this.dependencies,

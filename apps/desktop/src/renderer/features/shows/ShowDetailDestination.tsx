@@ -3,6 +3,8 @@ import {
   Button,
   EmptyState,
   IconButton,
+  Badge,
+  ObjectCard,
   Skeleton,
 } from "@showflow/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +13,8 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import {
   getDesignShowRoute,
+  getEpisodeCreationRoute,
+  getProduceEpisodeRoute,
   getShowDetailRoute,
   getStudioHomeRoute,
 } from "../../app-routes.mts";
@@ -18,6 +22,7 @@ import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
+import { episodeListQueryKey, loadEpisodes } from "../episodes/episode-queries";
 import styles from "./show-detail.module.css";
 
 const formatLastEdited = (value: string): string =>
@@ -50,6 +55,16 @@ export const ShowDetailDestination = () => {
   });
   const studio = studioQuery.data;
   const detail = detailQuery.data;
+  const episodesQuery = useQuery({
+    enabled: routeIsComplete,
+    queryFn: () => loadEpisodes(studioId ?? "", showId ?? ""),
+    queryKey: episodeListQueryKey(
+      studioId ?? "incomplete",
+      showId ?? "incomplete",
+    ),
+    retry: false,
+  });
+  const episodes = episodesQuery.data ?? [];
   const navigationError = usePersistedNavigation({
     route:
       detail === undefined
@@ -57,12 +72,18 @@ export const ShowDetailDestination = () => {
         : getShowDetailRoute(detail.show.studioId, detail.show.id),
     studioId: detail?.show.studioId,
   });
-  const isPending = studioQuery.isPending || detailQuery.isPending;
+  const isPending =
+    studioQuery.isPending || detailQuery.isPending || episodesQuery.isPending;
   const isError =
     !routeIsComplete || studioQuery.isError || detailQuery.isError;
   const openDesignShow = (): void => {
     if (studioId !== undefined && showId !== undefined) {
       navigate(getDesignShowRoute(studioId, showId));
+    }
+  };
+  const openEpisodeCreation = (): void => {
+    if (studioId !== undefined && showId !== undefined) {
+      navigate(getEpisodeCreationRoute(studioId, showId));
     }
   };
 
@@ -90,7 +111,13 @@ export const ShowDetailDestination = () => {
         />
       }
       primaryAction={
-        <Button disabled leadingIcon="plus" size="small" variant="primary">
+        <Button
+          disabled={!routeIsComplete}
+          leadingIcon="plus"
+          onClick={openEpisodeCreation}
+          size="small"
+          variant="primary"
+        >
           Create New Episode
         </Button>
       }
@@ -174,9 +201,9 @@ export const ShowDetailDestination = () => {
                   Create New Episode
                 </h2>
                 <p className={styles.description}>
-                  This Show does not have a Blueprint yet. You can design the
-                  Show first or create a blank Episode when Episode creation is
-                  available.
+                  {detail.blueprint.placementCount === 0
+                    ? "This Show does not have a Blueprint yet. You can design the Show first or explicitly create a blank Episode."
+                    : `Start from ${detail.blueprint.placementCount} reusable Segment${detail.blueprint.placementCount === 1 ? "" : "s"} in the current Show Blueprint.`}
                 </p>
               </div>
               <div className={styles.actions}>
@@ -184,17 +211,14 @@ export const ShowDetailDestination = () => {
                   Design Show
                 </Button>
                 <Button
-                  disabled
                   leadingIcon="plus"
+                  onClick={openEpisodeCreation}
                   size="large"
                   variant="primary"
                 >
-                  Create Blank Episode
+                  Create New Episode
                 </Button>
               </div>
-              <p className={styles.availability}>
-                Episode creation arrives in Sprint 6.
-              </p>
             </section>
 
             <section
@@ -246,17 +270,92 @@ export const ShowDetailDestination = () => {
                   Recent Episodes
                 </h2>
               </div>
-              <EmptyState
-                action={
-                  <Button disabled leadingIcon="plus" variant="primary">
-                    Create New Episode
-                  </Button>
-                }
-                className={styles.episodeEmptyState}
-                description="Episodes created from this Show will appear here."
-                heading="No Episodes yet"
-                icon="plus"
-              />
+              {episodesQuery.isError ? (
+                <p className={styles.error} role="alert">
+                  {episodesQuery.error instanceof Error
+                    ? episodesQuery.error.message
+                    : "Showflow could not load recent Episodes. Try again."}
+                </p>
+              ) : episodes.length === 0 ? (
+                <EmptyState
+                  action={
+                    <Button
+                      leadingIcon="plus"
+                      onClick={openEpisodeCreation}
+                      variant="primary"
+                    >
+                      Create New Episode
+                    </Button>
+                  }
+                  className={styles.episodeEmptyState}
+                  description="Episodes created from this Show will appear here."
+                  heading="No Episodes yet"
+                  icon="plus"
+                />
+              ) : (
+                <ul aria-label="Recent Episodes" className={styles.episodeGrid}>
+                  {episodes.slice(0, 3).map((episode) => (
+                    <li key={episode.id}>
+                      <ObjectCard
+                        description={
+                          episode.episodeNumber === null
+                            ? episode.plannedAt === null
+                              ? "Episode"
+                              : formatLastEdited(episode.plannedAt)
+                            : `Episode ${episode.episodeNumber}${
+                                episode.plannedAt === null
+                                  ? ""
+                                  : ` · ${formatLastEdited(episode.plannedAt)}`
+                              }`
+                        }
+                        metadata={
+                          <>
+                            <span>{episode.segmentCount} Segments</span>
+                            <span>
+                              Edited {formatLastEdited(episode.updatedAt)}
+                            </span>
+                          </>
+                        }
+                        onOpen={() =>
+                          navigate(
+                            getProduceEpisodeRoute(
+                              detail.show.studioId,
+                              detail.show.id,
+                              episode.id,
+                            ),
+                          )
+                        }
+                        preview={
+                          <div
+                            aria-label="Storyboard thumbnail strip placeholder"
+                            className={styles.episodeStrip}
+                            role="img"
+                          >
+                            {Array.from({
+                              length: Math.min(
+                                Math.max(episode.segmentCount, 1),
+                                4,
+                              ),
+                            }).map((_, index) => (
+                              <span aria-hidden="true" key={index} />
+                            ))}
+                          </div>
+                        }
+                        status={
+                          <Badge
+                            tone={
+                              episode.status === "ready" ? "success" : "info"
+                            }
+                          >
+                            {episode.status === "ready" ? "Ready" : "Draft"}
+                          </Badge>
+                        }
+                        title={episode.title}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </>
         )}

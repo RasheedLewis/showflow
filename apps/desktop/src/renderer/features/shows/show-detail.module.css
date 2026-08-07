@@ -29,6 +29,31 @@
   background: var(--sf-bg-panel);
 }
 
+.episodeGrid {
+  display: grid;
+  gap: var(--sf-space-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.episodeStrip {
+  align-items: stretch;
+  background: var(--sf-bg-canvas);
+  display: grid;
+  gap: var(--sf-space-1);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 8rem;
+  padding: var(--sf-space-4);
+}
+
+.episodeStrip span {
+  background: var(--sf-bg-card);
+  border: 1px solid var(--sf-border-subtle);
+  border-radius: var(--sf-radius-sm);
+}
+
 .card {
   width: min(100%, var(--sf-dialog-width-md));
 }

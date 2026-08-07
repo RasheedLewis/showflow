@@ -17,6 +17,15 @@ import {
   BLUEPRINTS_REORDER_CHANNEL,
   SEGMENTS_ARCHIVE_CHANNEL,
   SEGMENTS_CREATE_CHANNEL,
+  EPISODES_CREATE_CHANNEL,
+  EPISODES_CREATE_SEGMENT_CHANNEL,
+  EPISODES_DUPLICATE_SEGMENT_CHANNEL,
+  EPISODES_GET_CHANNEL,
+  EPISODES_INSERT_SEGMENT_CHANNEL,
+  EPISODES_LIST_CHANNEL,
+  EPISODES_REMOVE_SEGMENT_CHANNEL,
+  EPISODES_REORDER_CHANNEL,
+  EPISODES_RESTORE_SEGMENT_CHANNEL,
 } from "@showflow/contracts";
 import { contextBridge, ipcRenderer } from "electron";
 
@@ -52,6 +61,22 @@ const showflowDesktopApi = createShowflowDesktopApi({
     ipcRenderer.invoke(BLUEPRINTS_REORDER_CHANNEL, request),
   updateNavigation: (request) =>
     ipcRenderer.invoke(SETTINGS_UPDATE_NAVIGATION_CHANNEL, request),
+  createEpisode: (request) =>
+    ipcRenderer.invoke(EPISODES_CREATE_CHANNEL, request),
+  createEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_CREATE_SEGMENT_CHANNEL, request),
+  duplicateEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_DUPLICATE_SEGMENT_CHANNEL, request),
+  getEpisode: (request) => ipcRenderer.invoke(EPISODES_GET_CHANNEL, request),
+  insertEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_INSERT_SEGMENT_CHANNEL, request),
+  listEpisodes: (request) => ipcRenderer.invoke(EPISODES_LIST_CHANNEL, request),
+  removeEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_REMOVE_SEGMENT_CHANNEL, request),
+  reorderEpisode: (request) =>
+    ipcRenderer.invoke(EPISODES_REORDER_CHANNEL, request),
+  restoreEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_RESTORE_SEGMENT_CHANNEL, request),
 });
 
 contextBridge.exposeInMainWorld("showflow", showflowDesktopApi);

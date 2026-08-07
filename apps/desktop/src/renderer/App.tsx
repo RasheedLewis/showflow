@@ -18,6 +18,8 @@ import {
   SHOW_DETAIL_ROUTE,
   DESIGN_SHOW_ROUTE,
   DESIGN_SHOW_SEGMENT_ROUTE,
+  EPISODE_CREATION_ROUTE,
+  PRODUCE_EPISODE_ROUTE,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
@@ -27,6 +29,8 @@ import { ShowCreationPage } from "./features/shows/ShowCreationPage";
 import { DesignShowDestination } from "./features/shows/DesignShowDestination";
 import { ShowDetailDestination } from "./features/shows/ShowDetailDestination";
 import { StartupDestination } from "./features/startup/StartupDestination";
+import { EpisodeCreationPage } from "./features/episodes/EpisodeCreationPage";
+import { ProduceEpisodeDestination } from "./features/episodes/ProduceEpisodeDestination";
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
@@ -109,6 +113,11 @@ const AppRoutes = () => (
     <Route
       element={<DesignShowDestination />}
       path={DESIGN_SHOW_SEGMENT_ROUTE}
+    />
+    <Route element={<EpisodeCreationPage />} path={EPISODE_CREATION_ROUTE} />
+    <Route
+      element={<ProduceEpisodeDestination />}
+      path={PRODUCE_EPISODE_ROUTE}
     />
     <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>

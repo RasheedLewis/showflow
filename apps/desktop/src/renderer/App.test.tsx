@@ -221,7 +221,10 @@ describe("App", () => {
       }),
     ).toBeVisible();
     expect(
-      screen.getByRole("heading", { level: 2, name: "Create New Episode" }),
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create New Episode",
+      }),
     ).toBeVisible();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
@@ -904,7 +907,7 @@ describe("App", () => {
     ).toBeVisible();
     expect(
       screen.getAllByRole("button", { name: "Create New Episode" })[0],
-    ).toBeDisabled();
+    ).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Design Show" }));
     expect(
@@ -1170,5 +1173,223 @@ describe("App", () => {
     expect(
       screen.queryByRole("heading", { level: 1, name: "Public Sphere" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("6.T8 opens Design Show from an empty Blueprint choice", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/episodes/new`,
+      api,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Design Show" }));
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Show Blueprint" }),
+    ).toBeVisible();
+  });
+
+  it("6.T8 and 6.T9 creates an explicit blank Episode and keeps Episode scope visible", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/episodes/new`,
+      api,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create a new Episode",
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Design Show" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Create Blank Episode" }),
+    ).toBeVisible();
+    fireEvent.change(screen.getByRole("textbox", { name: "Episode title" }), {
+      target: { value: "Week 32" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create Blank Episode" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Week 32" }),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText("Changes apply only to this Episode.").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("heading", {
+        name: "Build this Episode’s Storyboard",
+      }),
+    ).toBeVisible();
+  });
+
+  it("6.T11 and 6.T12 creates from Blueprint and persistently undoes every structural change", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Top 10 Music Videos",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      position: 0,
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Closing",
+      position: 1,
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
+    expect(await screen.findByText("0 Episodes")).toBeVisible();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Top 10 Music Videos" }),
+    );
+    const createEpisodeButton = (
+      await screen.findAllByRole("button", { name: "Create New Episode" })
+    )[0];
+    if (createEpisodeButton === undefined) {
+      throw new Error("Expected a Create New Episode action.");
+    }
+    fireEvent.click(createEpisodeButton);
+    fireEvent.change(
+      await screen.findByRole("textbox", { name: "Episode title" }),
+      { target: { value: "Episode 24" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create Episode" }));
+
+    const storyboard = await screen.findByRole("list", {
+      name: "Episode Storyboard",
+    });
+    const names = (): string[] =>
+      within(storyboard)
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent ?? "");
+    const openActions = (name: string): void => {
+      fireEvent.pointerDown(
+        screen.getByRole("button", { name: `More actions for ${name}` }),
+        { button: 0, ctrlKey: false },
+      );
+    };
+    expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2);
+    expect(names()).toEqual(["Opening", "Closing"]);
+
+    openActions("Opening");
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Closing", "Opening"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Opening", "Closing"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Closing", "Opening"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Opening", "Closing"]));
+
+    openActions("Opening");
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Duplicate Segment" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(3),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Episode change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(3),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+
+    openActions("Opening");
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove from Episode" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Closing"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Opening", "Closing"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Closing"]));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() => expect(names()).toEqual(["Opening", "Closing"]));
+
+    const firstAddSegmentButton = screen.getAllByRole("button", {
+      name: "Add Segment",
+    })[0];
+    if (firstAddSegmentButton === undefined) {
+      throw new Error("Expected an Add Segment action.");
+    }
+    fireEvent.click(firstAddSegmentButton);
+    const picker = await screen.findByRole("dialog", { name: "Add Segment" });
+    const firstCatalogAddButton = within(picker).getAllByRole("button", {
+      name: "Add",
+    })[0];
+    if (firstCatalogAddButton === undefined) {
+      throw new Error("Expected a Catalog Segment to add.");
+    }
+    fireEvent.click(firstCatalogAddButton);
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(3),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Episode change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(2),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Redo Episode change" }),
+    );
+    await waitFor(() =>
+      expect(within(storyboard).getAllByRole("listitem")).toHaveLength(3),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to Show Detail" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Episode 24" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Back to Shows" }));
+    expect(await screen.findByText("1 Episode")).toBeVisible();
   });
 });

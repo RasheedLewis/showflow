@@ -6,7 +6,7 @@ import styles from "./design-show.module.css";
 
 export interface SegmentPickerProps {
   readonly isSaving: boolean;
-  readonly mode: "blueprint" | "catalog";
+  readonly mode: "blueprint" | "catalog" | "episode";
   readonly onAdd: (showSegmentId: string) => Promise<void>;
   readonly onCreate: (input: {
     readonly description?: string;
@@ -70,15 +70,15 @@ export const SegmentPicker = ({
   return (
     <Drawer
       description={
-        mode === "blueprint"
-          ? "Choose a reusable Segment or create one at Show scope."
-          : "Create a reusable production role for this Show."
+        mode === "catalog"
+          ? "Create a reusable production role for this Show."
+          : "Choose a reusable Segment or create one at Show scope."
       }
       onOpenChange={onOpenChange}
       open={open}
-      title={mode === "blueprint" ? "Add Segment" : "New Segment"}
+      title={mode === "catalog" ? "New Segment" : "Add Segment"}
     >
-      {mode === "blueprint" ? (
+      {mode !== "catalog" ? (
         <>
           <TextInput
             label="Search Segment Catalog"
@@ -147,7 +147,7 @@ export const SegmentPicker = ({
         />
         <div className={styles.pickerActions}>
           <Button disabled={isSaving} type="submit" variant="primary">
-            {mode === "blueprint" ? "Create and Add" : "Create Segment"}
+            {mode === "catalog" ? "Create Segment" : "Create and Add"}
           </Button>
           <Button onClick={() => onOpenChange(false)} variant="ghost">
             Cancel

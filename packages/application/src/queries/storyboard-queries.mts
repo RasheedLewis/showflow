@@ -11,6 +11,7 @@ import type {
   ShowBlueprint,
   ShowId,
   ShowSegment,
+  StudioId,
 } from "@showflow/domain";
 
 import { loadEntitiesById, requireQueryEntity } from "./query-support.mjs";
@@ -20,6 +21,7 @@ import type {
   ShowRepository,
   ShowSegmentRepository,
 } from "../repositories/repositories.mjs";
+import { ApplicationError } from "../errors/application-error.mjs";
 
 export interface BlueprintPlacementDetail {
   readonly placement: BlueprintSegmentPlacement;
@@ -77,6 +79,29 @@ export interface EpisodeStoryboard {
   readonly items: readonly EpisodeStoryboardItem[];
 }
 
+export interface EpisodeProgress {
+  readonly estimatedRuntimeMs: number;
+  readonly needsContentCount: number;
+  readonly readyCount: number;
+  readonly segmentCount: number;
+}
+
+export const calculateEpisodeProgress = (
+  items: readonly EpisodeStoryboardItem[],
+): EpisodeProgress => ({
+  estimatedRuntimeMs: items.reduce(
+    (total, { episodeSegment, sourceSegment }) =>
+      total +
+      (episodeSegment.expectedDurationOverrideMs ??
+        sourceSegment.expectedDurationMs ??
+        0),
+    0,
+  ),
+  needsContentCount: items.length,
+  readyCount: 0,
+  segmentCount: items.length,
+});
+
 type EpisodeStoryboardRepositories = {
   readonly episodes: EpisodeRepository;
   readonly shows: ShowRepository;
@@ -119,5 +144,37 @@ export class GetEpisodeStoryboardQuery {
     });
 
     return { episode, show, items };
+  }
+}
+
+type EpisodeListRepositories = {
+  readonly episodes: EpisodeRepository;
+  readonly shows: ShowRepository;
+};
+
+export class ListEpisodesQuery {
+  constructor(readonly repositories: EpisodeListRepositories) {}
+
+  async execute(
+    studioId: StudioId,
+    showId: ShowId,
+  ): Promise<readonly Episode[]> {
+    const show = requireQueryEntity(
+      await this.repositories.shows.getById(showId),
+      "Show",
+    );
+    if (show.studioId !== studioId) {
+      throw new ApplicationError("NOT_FOUND", "Show was not found.");
+    }
+    const episodes = await this.repositories.episodes.listByShowId(show.id);
+    for (const episode of episodes) {
+      if (episode.showId !== show.id) {
+        throw new ApplicationError(
+          "VALIDATION_ERROR",
+          "Episode belongs to another Show.",
+        );
+      }
+    }
+    return episodes;
   }
 }

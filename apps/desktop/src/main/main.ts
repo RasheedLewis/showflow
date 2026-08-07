@@ -19,6 +19,15 @@ import {
   RenameShowCommand,
   RemoveBlueprintPlacementCommand,
   ReorderBlueprintPlacementsCommand,
+  CreateEpisodeFromBlueprintCommand,
+  CreateShowSegmentInEpisodeCommand,
+  DuplicateEpisodeSegmentCommand,
+  GetEpisodeStoryboardQuery,
+  InsertSegmentIntoEpisodeCommand,
+  ListEpisodesQuery,
+  RemoveEpisodeSegmentCommand,
+  ReorderEpisodeSegmentsCommand,
+  RestoreEpisodeSegmentCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -29,6 +38,8 @@ import {
   SqliteShowSegmentRepository,
   SqliteSegmentBlueprintCreationRepository,
   SqliteStudioRepository,
+  SqliteEpisodeRepository,
+  SqliteSegmentEpisodeCreationRepository,
   type InitializedPersistence,
   type MigrationLogger,
 } from "@showflow/persistence";
@@ -37,6 +48,8 @@ import { app, BrowserWindow, shell, type Session } from "electron";
 import { registerApplicationSettingsIpc } from "./application-settings-ipc.mjs";
 import { registerDesignShowIpc } from "./design-show-ipc.mjs";
 import type { DesignShowOperations } from "./design-show-handler.mjs";
+import { registerEpisodeIpc } from "./episode-ipc.mjs";
+import type { EpisodeOperations } from "./episode-handler.mjs";
 import {
   createSecureWebPreferences,
   getTrustedDevelopmentUrl,
@@ -59,6 +72,7 @@ interface DesktopServices {
   readonly studios: StudioIpcOperations;
   readonly shows: ShowIpcOperations;
   readonly designShow: DesignShowOperations;
+  readonly episodes: EpisodeOperations;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -122,10 +136,16 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
   const segmentRepository = new SqliteShowSegmentRepository(
     persistence.database,
   );
+  const episodeRepository = new SqliteEpisodeRepository(persistence.database);
   const getDesign = new GetShowDesignQuery({
     shows: showRepository,
     blueprints: blueprintRepository,
     segments: segmentRepository,
+  });
+  const getEpisode = new GetEpisodeStoryboardQuery({
+    episodes: episodeRepository,
+    segments: segmentRepository,
+    shows: showRepository,
   });
 
   return {
@@ -155,6 +175,38 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       removePlacement: new RemoveBlueprintPlacementCommand(blueprintRepository),
       reorder: new ReorderBlueprintPlacementsCommand(blueprintRepository),
     },
+    episodes: {
+      create: new CreateEpisodeFromBlueprintCommand({
+        blueprints: blueprintRepository,
+        episodes: episodeRepository,
+        segments: segmentRepository,
+        shows: showRepository,
+      }),
+      createSegment: new CreateShowSegmentInEpisodeCommand({
+        creation: new SqliteSegmentEpisodeCreationRepository(
+          persistence.database,
+        ),
+        episodes: episodeRepository,
+        shows: showRepository,
+      }),
+      duplicateSegment: new DuplicateEpisodeSegmentCommand(episodeRepository),
+      get: getEpisode,
+      getDesign,
+      insertSegment: new InsertSegmentIntoEpisodeCommand({
+        episodes: episodeRepository,
+        segments: segmentRepository,
+      }),
+      list: new ListEpisodesQuery({
+        episodes: episodeRepository,
+        shows: showRepository,
+      }),
+      removeSegment: new RemoveEpisodeSegmentCommand(episodeRepository),
+      reorder: new ReorderEpisodeSegmentsCommand(episodeRepository),
+      restoreSegment: new RestoreEpisodeSegmentCommand({
+        episodes: episodeRepository,
+        segments: segmentRepository,
+      }),
+    },
     studios: {
       create: new CreateStudioCommand(studioRepository),
       get: new GetStudioQuery(studioRepository),
@@ -172,6 +224,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       }),
       getDesign,
       list: new ListStudioShowsQuery({
+        episodes: episodeRepository,
         studios: studioRepository,
         shows: showRepository,
       }),
@@ -237,6 +290,7 @@ const createMainWindow = async (
   studios: StudioIpcOperations,
   shows: ShowIpcOperations,
   designShow: DesignShowOperations,
+  episodes: EpisodeOperations,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -263,6 +317,7 @@ const createMainWindow = async (
   registerStudioIpc(window, content.trustedUrl, studios);
   registerShowIpc(window, content.trustedUrl, shows);
   registerDesignShowIpc(window, content.trustedUrl, designShow);
+  registerEpisodeIpc(window, content.trustedUrl, episodes);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -310,6 +365,7 @@ app
       services.studios,
       services.shows,
       services.designShow,
+      services.episodes,
     );
 
     app.on("activate", () => {
@@ -319,6 +375,7 @@ app
           services.studios,
           services.shows,
           services.designShow,
+          services.episodes,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
         });

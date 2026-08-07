@@ -40,9 +40,7 @@ export interface StudioHomeShow {
 }
 
 export class ListStudioShowsQuery {
-  constructor(
-    readonly repositories: Pick<StudioHomeRepositories, "studios" | "shows">,
-  ) {}
+  constructor(readonly repositories: StudioHomeRepositories) {}
 
   async execute(studioId: StudioId): Promise<readonly StudioHomeShow[]> {
     const studio = requireQueryEntity(
@@ -50,7 +48,13 @@ export class ListStudioShowsQuery {
       "Studio",
     );
     const shows = await this.repositories.shows.listByStudioId(studio.id);
-    return shows.map((show) => ({ show, episodeCount: 0 }));
+    return Promise.all(
+      shows.map(async (show) => ({
+        show,
+        episodeCount: (await this.repositories.episodes.listByShowId(show.id))
+          .length,
+      })),
+    );
   }
 }
 

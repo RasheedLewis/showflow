@@ -34,8 +34,10 @@ import {
   GetShowDetailQuery,
   GetStudioQuery,
   GetStudioHomeQuery,
+  ListStudioShowsQuery,
   ListSegmentCatalogQuery,
   ListStudiosQuery,
+  calculateEpisodeProgress,
 } from "./index.mjs";
 import type {
   EpisodeRepository,
@@ -294,6 +296,20 @@ describe("Studio queries", () => {
     });
     expect(result.shows[0]).not.toHaveProperty("episodes");
   });
+
+  test("lists Show cards with authoritative Episode counts", async () => {
+    const data = createQueryTestData();
+    const result = await new ListStudioShowsQuery({
+      episodes: episodeRepository([data.firstEpisode, data.secondEpisode]),
+      studios: studioRepository([data.studio]),
+      shows: showRepository([data.firstShow, data.secondShow]),
+    }).execute(data.studio.id);
+
+    expect(result).toEqual([
+      { show: data.firstShow, episodeCount: 1 },
+      { show: data.secondShow, episodeCount: 1 },
+    ]);
+  });
 });
 
 describe("Show queries", () => {
@@ -399,6 +415,36 @@ describe("Storyboard queries", () => {
       })),
     );
     expect(sourceLoadCount).toBe(1);
+  });
+
+  test("6.T10 sums resolved expected durations and tolerates missing values", () => {
+    const data = createQueryTestData();
+    const first = data.firstEpisode.segments[0];
+    const second = data.firstEpisode.segments[1];
+    if (first === undefined || second === undefined) {
+      throw new Error("Expected two Episode Segments.");
+    }
+    const progress = calculateEpisodeProgress([
+      {
+        episodeSegment: { ...first, expectedDurationOverrideMs: 30_000 },
+        sourceSegment: { ...data.firstSegment, expectedDurationMs: 90_000 },
+      },
+      {
+        episodeSegment: second,
+        sourceSegment: { ...data.firstSegment, expectedDurationMs: 90_000 },
+      },
+      {
+        episodeSegment: { ...second, id: entityId<"episodeSegment">(200) },
+        sourceSegment: data.firstSegment,
+      },
+    ]);
+
+    expect(progress).toEqual({
+      estimatedRuntimeMs: 120_000,
+      needsContentCount: 3,
+      readyCount: 0,
+      segmentCount: 3,
+    });
   });
 
   test("rejects an Episode Storyboard source that crosses Shows", async () => {

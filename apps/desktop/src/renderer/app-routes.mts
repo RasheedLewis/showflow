@@ -6,6 +6,10 @@ export const SHOW_DETAIL_ROUTE = "/studio/:studioId/show/:showId";
 export const DESIGN_SHOW_ROUTE = "/studio/:studioId/show/:showId/design";
 export const DESIGN_SHOW_SEGMENT_ROUTE =
   "/studio/:studioId/show/:showId/design/segments/:segmentId";
+export const EPISODE_CREATION_ROUTE =
+  "/studio/:studioId/show/:showId/episodes/new";
+export const PRODUCE_EPISODE_ROUTE =
+  "/studio/:studioId/show/:showId/episodes/:episodeId";
 
 export const getStudioHomeRoute = (studioId: string): string =>
   `/studio/${studioId}`;
@@ -24,3 +28,14 @@ export const getDesignShowSegmentRoute = (
   showId: string,
   segmentId: string,
 ): string => `/studio/${studioId}/show/${showId}/design/segments/${segmentId}`;
+
+export const getEpisodeCreationRoute = (
+  studioId: string,
+  showId: string,
+): string => `/studio/${studioId}/show/${showId}/episodes/new`;
+
+export const getProduceEpisodeRoute = (
+  studioId: string,
+  showId: string,
+  episodeId: string,
+): string => `/studio/${studioId}/show/${showId}/episodes/${episodeId}`;

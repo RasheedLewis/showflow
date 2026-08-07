@@ -59,6 +59,35 @@ const validShowResult = {
     segments: [],
   },
 } as const;
+const validEpisodeResult = {
+  ok: true,
+  data: {
+    episode: {
+      createdAt: "2026-08-06T14:30:00.000Z",
+      description: null,
+      episodeNumber: 1,
+      guestNames: [],
+      id: "d7c3ec07-0f21-49b9-9c95-f7d1391acc79",
+      internalNotes: "",
+      plannedAt: null,
+      segmentCount: 0,
+      showId: validShowResult.data.show.id,
+      sponsorInformation: null,
+      status: "draft",
+      subtitle: null,
+      title: "Episode 1",
+      updatedAt: "2026-08-06T14:30:00.000Z",
+    },
+    items: [],
+    progress: {
+      estimatedRuntimeMs: 0,
+      needsContentCount: 0,
+      readyCount: 0,
+      segmentCount: 0,
+    },
+    show: validShowResult.data.show,
+  },
+} as const;
 
 const createValidTransports = () => ({
   addBlueprintSegment: async () => validShowResult,
@@ -85,6 +114,23 @@ const createValidTransports = () => ({
   removeBlueprintPlacement: async () => validShowResult,
   reorderBlueprint: async () => validShowResult,
   updateNavigation: async () => validSettingsResult,
+  createEpisode: async () => validEpisodeResult,
+  createEpisodeSegment: async () => validEpisodeResult,
+  duplicateEpisodeSegment: async () => validEpisodeResult,
+  getEpisode: async () => validEpisodeResult,
+  insertEpisodeSegment: async () => validEpisodeResult,
+  listEpisodes: async () => ({
+    ok: true,
+    data: [
+      {
+        ...validEpisodeResult.data.episode,
+        estimatedRuntimeMs: 0,
+      },
+    ],
+  }),
+  removeEpisodeSegment: async () => validEpisodeResult,
+  reorderEpisode: async () => validEpisodeResult,
+  restoreEpisodeSegment: async () => validEpisodeResult,
 });
 
 test("the preload validates Show creation and Design Show responses", async () => {
@@ -200,6 +246,7 @@ test("the preload exposes no generic invocation surface", () => {
     "shows",
     "segments",
     "blueprints",
+    "episodes",
   ]);
   expect(Object.keys(api.app)).toEqual([
     "getApplicationSettings",
@@ -224,4 +271,5 @@ test("the preload exposes no generic invocation surface", () => {
   expect(Object.isFrozen(api.shows)).toBe(true);
   expect(Object.isFrozen(api.segments)).toBe(true);
   expect(Object.isFrozen(api.blueprints)).toBe(true);
+  expect(Object.isFrozen(api.episodes)).toBe(true);
 });

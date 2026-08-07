@@ -23,6 +23,15 @@ import {
   type StudioDto,
   type StudioResult,
   type UpdateNavigationSettingsRequest,
+  type CreateEpisodeRequest,
+  type CreateEpisodeSegmentRequest,
+  type EpisodeSegmentMutationRequest,
+  type EpisodeStoryboardDto,
+  type GetEpisodeRequest,
+  type InsertEpisodeSegmentRequest,
+  type ListEpisodesRequest,
+  type ReorderEpisodeRequest,
+  type RestoreEpisodeSegmentRequest,
 } from "@showflow/contracts";
 import type { Page } from "@playwright/test";
 
@@ -59,6 +68,7 @@ export const createMockDesktopApi = (
   const studios = new Map<string, StudioDto>();
   const studioIds = [DEFAULT_STUDIO_ID, SECOND_STUDIO_ID] as const;
   const shows = new Map<string, ShowDesignDto>();
+  const episodes = new Map<string, EpisodeStoryboardDto>();
   const createPlacement = (
     design: ShowDesignDto,
     showSegmentId: string,
@@ -125,6 +135,45 @@ export const createMockDesktopApi = (
       message: "This Show is no longer available. Return to Studio Home.",
     },
   });
+  const episodeNotFound = () => ({
+    ok: false as const,
+    error: {
+      code: "NOT_FOUND" as const,
+      message: "This Episode is no longer available. Return to Show Detail.",
+    },
+  });
+  const withEpisodeItems = (
+    storyboard: EpisodeStoryboardDto,
+    items: EpisodeStoryboardDto["items"],
+  ): EpisodeStoryboardDto => {
+    const positioned = items.map((item, position) => ({
+      ...item,
+      episodeSegment: { ...item.episodeSegment, position },
+    }));
+    return {
+      ...storyboard,
+      episode: { ...storyboard.episode, segmentCount: positioned.length },
+      items: positioned,
+      progress: {
+        estimatedRuntimeMs: positioned.reduce(
+          (total, item) => total + (item.expectedDurationMs ?? 0),
+          0,
+        ),
+        needsContentCount: positioned.length,
+        readyCount: 0,
+        segmentCount: positioned.length,
+      },
+    };
+  };
+  const getScopedEpisode = (
+    request: GetEpisodeRequest,
+  ): EpisodeStoryboardDto | undefined => {
+    const episode = episodes.get(request.episodeId);
+    return episode?.episode.showId === request.showId &&
+      episode.show.studioId === request.studioId
+      ? episode
+      : undefined;
+  };
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -236,7 +285,12 @@ export const createMockDesktopApi = (
             ({ show }) =>
               show.studioId === request.studioId && show.archivedAt === null,
           )
-          .map(({ show }) => ({ episodeCount: 0, show })),
+          .map(({ show }) => ({
+            episodeCount: [...episodes.values()].filter(
+              ({ episode }) => episode.showId === show.id,
+            ).length,
+            show,
+          })),
       }),
       rename: async (request: RenameShowRequest) => {
         const design = shows.get(request.showId);
@@ -376,6 +430,259 @@ export const createMockDesktopApi = (
         return { ok: true, data: updated } as const;
       },
     }),
+    episodes: Object.freeze({
+      create: async (request: CreateEpisodeRequest) => {
+        const design = shows.get(request.showId);
+        if (design === undefined || design.show.studioId !== request.studioId)
+          return episodeNotFound();
+        const episodeId = crypto.randomUUID();
+        const placements =
+          request.source === "blank" ? [] : design.blueprint.placements;
+        const items = placements.flatMap((placement, position) => {
+          const sourceSegment = design.segments.find(
+            ({ segment }) => segment.id === placement.showSegmentId,
+          )?.segment;
+          if (sourceSegment === undefined) return [];
+          return [
+            {
+              episodeSegment: {
+                createdAt: DEFAULT_TIMESTAMP,
+                defaultLayoutOverrideId: null,
+                episodeId,
+                expectedDurationOverrideMs: placement.defaultDurationMs,
+                fieldValues: placement.defaultData,
+                fixedResourceReplacements: [],
+                id: crypto.randomUUID(),
+                label: placement.label,
+                notes: "",
+                position,
+                sourceShowSegmentId: sourceSegment.id,
+                updatedAt: DEFAULT_TIMESTAMP,
+              },
+              expectedDurationMs:
+                placement.defaultDurationMs ?? sourceSegment.expectedDurationMs,
+              readiness: "needs-content" as const,
+              sourceSegment,
+              summary: placement.label,
+              validationIssueCount: 0,
+            },
+          ];
+        });
+        const storyboard = withEpisodeItems(
+          {
+            episode: {
+              createdAt: DEFAULT_TIMESTAMP,
+              description: null,
+              episodeNumber: request.episodeNumber ?? null,
+              guestNames: [],
+              id: episodeId,
+              internalNotes: "",
+              plannedAt:
+                request.plannedDate === undefined
+                  ? null
+                  : `${request.plannedDate}T12:00:00.000Z`,
+              segmentCount: 0,
+              showId: request.showId,
+              sponsorInformation: null,
+              status: "draft",
+              subtitle: null,
+              title: request.title,
+              updatedAt: DEFAULT_TIMESTAMP,
+            },
+            items: [],
+            progress: {
+              estimatedRuntimeMs: 0,
+              needsContentCount: 0,
+              readyCount: 0,
+              segmentCount: 0,
+            },
+            show: design.show,
+          },
+          items,
+        );
+        episodes.set(episodeId, storyboard);
+        return { ok: true as const, data: storyboard };
+      },
+      createSegment: async (request: CreateEpisodeSegmentRequest) => {
+        const storyboard = getScopedEpisode(request);
+        const design = shows.get(request.showId);
+        if (storyboard === undefined || design === undefined)
+          return episodeNotFound();
+        const sourceSegment = {
+          archivedAt: null,
+          createdAt: DEFAULT_TIMESTAMP,
+          description: request.description?.trim() || null,
+          expectedDurationMs: null,
+          id: crypto.randomUUID(),
+          name: request.name.trim(),
+          showId: request.showId,
+          updatedAt: DEFAULT_TIMESTAMP,
+        };
+        shows.set(request.showId, {
+          ...design,
+          segments: [
+            ...design.segments,
+            { blueprintUsageCount: 0, segment: sourceSegment },
+          ],
+        });
+        const item = {
+          episodeSegment: {
+            createdAt: DEFAULT_TIMESTAMP,
+            defaultLayoutOverrideId: null,
+            episodeId: request.episodeId,
+            expectedDurationOverrideMs: null,
+            fieldValues: {},
+            fixedResourceReplacements: [],
+            id: crypto.randomUUID(),
+            label: null,
+            notes: "",
+            position: request.position ?? storyboard.items.length,
+            sourceShowSegmentId: sourceSegment.id,
+            updatedAt: DEFAULT_TIMESTAMP,
+          },
+          expectedDurationMs: null,
+          readiness: "needs-content" as const,
+          sourceSegment,
+          summary: null,
+          validationIssueCount: 0,
+        };
+        const items = [...storyboard.items];
+        items.splice(request.position ?? items.length, 0, item);
+        const updated = withEpisodeItems(storyboard, items);
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      duplicateSegment: async (request: EpisodeSegmentMutationRequest) => {
+        const storyboard = getScopedEpisode(request);
+        if (storyboard === undefined) return episodeNotFound();
+        const index = storyboard.items.findIndex(
+          ({ episodeSegment }) =>
+            episodeSegment.id === request.episodeSegmentId,
+        );
+        const source = storyboard.items[index];
+        if (source === undefined) return episodeNotFound();
+        const items = [...storyboard.items];
+        items.splice(index + 1, 0, {
+          ...source,
+          episodeSegment: {
+            ...source.episodeSegment,
+            id: crypto.randomUUID(),
+            fieldValues: { ...source.episodeSegment.fieldValues },
+          },
+        });
+        const updated = withEpisodeItems(storyboard, items);
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      get: async (request: GetEpisodeRequest) => {
+        const storyboard = getScopedEpisode(request);
+        return storyboard === undefined
+          ? episodeNotFound()
+          : ({ ok: true as const, data: storyboard } as const);
+      },
+      insertSegment: async (request: InsertEpisodeSegmentRequest) => {
+        const storyboard = getScopedEpisode(request);
+        const sourceSegment = shows
+          .get(request.showId)
+          ?.segments.find(
+            ({ segment }) => segment.id === request.showSegmentId,
+          )?.segment;
+        if (storyboard === undefined || sourceSegment === undefined)
+          return episodeNotFound();
+        const item = {
+          episodeSegment: {
+            createdAt: DEFAULT_TIMESTAMP,
+            defaultLayoutOverrideId: null,
+            episodeId: request.episodeId,
+            expectedDurationOverrideMs: null,
+            fieldValues: {},
+            fixedResourceReplacements: [],
+            id: crypto.randomUUID(),
+            label: null,
+            notes: "",
+            position: request.position ?? storyboard.items.length,
+            sourceShowSegmentId: sourceSegment.id,
+            updatedAt: DEFAULT_TIMESTAMP,
+          },
+          expectedDurationMs: sourceSegment.expectedDurationMs,
+          readiness: "needs-content" as const,
+          sourceSegment,
+          summary: null,
+          validationIssueCount: 0,
+        };
+        const items = [...storyboard.items];
+        items.splice(request.position ?? items.length, 0, item);
+        const updated = withEpisodeItems(storyboard, items);
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      list: async (request: ListEpisodesRequest) => ({
+        ok: true as const,
+        data: [...episodes.values()]
+          .filter(
+            ({ episode, show }) =>
+              episode.showId === request.showId &&
+              show.studioId === request.studioId,
+          )
+          .map(({ episode, progress }) => ({
+            ...episode,
+            estimatedRuntimeMs: progress.estimatedRuntimeMs,
+          })),
+      }),
+      removeSegment: async (request: EpisodeSegmentMutationRequest) => {
+        const storyboard = getScopedEpisode(request);
+        if (storyboard === undefined) return episodeNotFound();
+        const updated = withEpisodeItems(
+          storyboard,
+          storyboard.items.filter(
+            ({ episodeSegment }) =>
+              episodeSegment.id !== request.episodeSegmentId,
+          ),
+        );
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      reorder: async (request: ReorderEpisodeRequest) => {
+        const storyboard = getScopedEpisode(request);
+        if (storyboard === undefined) return episodeNotFound();
+        const byId = new Map(
+          storyboard.items.map((item) => [item.episodeSegment.id, item]),
+        );
+        const updated = withEpisodeItems(
+          storyboard,
+          request.orderedEpisodeSegmentIds.flatMap((id) => {
+            const item = byId.get(id);
+            return item === undefined ? [] : [item];
+          }),
+        );
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      restoreSegment: async (request: RestoreEpisodeSegmentRequest) => {
+        const storyboard = getScopedEpisode(request);
+        const sourceSegment = shows
+          .get(request.showId)
+          ?.segments.find(
+            ({ segment }) => segment.id === request.segment.sourceShowSegmentId,
+          )?.segment;
+        if (storyboard === undefined || sourceSegment === undefined)
+          return episodeNotFound();
+        const items = [...storyboard.items];
+        items.splice(request.segment.position, 0, {
+          episodeSegment: request.segment,
+          expectedDurationMs:
+            request.segment.expectedDurationOverrideMs ??
+            sourceSegment.expectedDurationMs,
+          readiness: "needs-content",
+          sourceSegment,
+          summary: request.segment.label,
+          validationIssueCount: 0,
+        });
+        const updated = withEpisodeItems(storyboard, items);
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+    }),
   });
 };
 
@@ -445,7 +752,60 @@ export const installMockDesktopApi = async (
           updatedAt: string;
         };
       };
+      type BrowserEpisodeSegment = {
+        createdAt: string;
+        defaultLayoutOverrideId: string | null;
+        episodeId: string;
+        expectedDurationOverrideMs: number | null;
+        fieldValues: Record<string, unknown>;
+        fixedResourceReplacements: Array<{
+          componentPlacementId: string;
+          propertyKey: string;
+          resourceId: string;
+        }>;
+        id: string;
+        label: string | null;
+        notes: string;
+        position: number;
+        sourceShowSegmentId: string;
+        updatedAt: string;
+      };
+      type BrowserEpisodeItem = {
+        episodeSegment: BrowserEpisodeSegment;
+        expectedDurationMs: number | null;
+        readiness: "needs-content";
+        sourceSegment: BrowserSegment;
+        summary: string | null;
+        validationIssueCount: number;
+      };
+      type BrowserStoryboard = {
+        episode: {
+          createdAt: string;
+          description: string | null;
+          episodeNumber: number | null;
+          guestNames: string[];
+          id: string;
+          internalNotes: string;
+          plannedAt: string | null;
+          segmentCount: number;
+          showId: string;
+          sponsorInformation: string | null;
+          status: "draft" | "ready";
+          subtitle: string | null;
+          title: string;
+          updatedAt: string;
+        };
+        items: BrowserEpisodeItem[];
+        progress: {
+          estimatedRuntimeMs: number;
+          needsContentCount: number;
+          readyCount: number;
+          segmentCount: number;
+        };
+        show: BrowserDesign["show"];
+      };
       const shows = new Map<string, BrowserDesign>();
+      const episodes = new Map<string, BrowserStoryboard>();
       const withPlacements = (
         design: BrowserDesign,
         placements: BrowserPlacement[],
@@ -482,6 +842,48 @@ export const installMockDesktopApi = async (
         showSegmentId,
         updatedAt: timestamp,
       });
+      const withEpisodeItems = (
+        storyboard: BrowserStoryboard,
+        items: BrowserEpisodeItem[],
+      ): BrowserStoryboard => {
+        const positioned = items.map((item, position) => ({
+          ...item,
+          episodeSegment: { ...item.episodeSegment, position },
+        }));
+        return {
+          ...storyboard,
+          episode: { ...storyboard.episode, segmentCount: positioned.length },
+          items: positioned,
+          progress: {
+            estimatedRuntimeMs: positioned.reduce(
+              (total, item) => total + (item.expectedDurationMs ?? 0),
+              0,
+            ),
+            needsContentCount: positioned.length,
+            readyCount: 0,
+            segmentCount: positioned.length,
+          },
+        };
+      };
+      const episodeNotFound = () => ({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message:
+            "This Episode is no longer available. Return to Show Detail.",
+        },
+      });
+      const scopedEpisode = (request: {
+        episodeId: string;
+        showId: string;
+        studioId: string;
+      }): BrowserStoryboard | undefined => {
+        const storyboard = episodes.get(request.episodeId);
+        return storyboard?.episode.showId === request.showId &&
+          storyboard.show.studioId === request.studioId
+          ? storyboard
+          : undefined;
+      };
       const mockApi = Object.freeze({
         apiVersion,
         app: Object.freeze({
@@ -628,7 +1030,12 @@ export const installMockDesktopApi = async (
                   show.studioId === request.studioId &&
                   show.archivedAt === null,
               )
-              .map(({ show }) => ({ episodeCount: 0, show })),
+              .map(({ show }) => ({
+                episodeCount: [...episodes.values()].filter(
+                  (storyboard) => storyboard.episode.showId === show.id,
+                ).length,
+                show,
+              })),
           }),
           rename: async (request: {
             studioId: string;
@@ -828,6 +1235,301 @@ export const installMockDesktopApi = async (
               }),
             );
             shows.set(request.showId, updated);
+            return { ok: true, data: updated };
+          },
+        }),
+        episodes: Object.freeze({
+          create: async (request: {
+            episodeNumber?: number;
+            plannedDate?: string;
+            showId: string;
+            source: "blueprint" | "blank";
+            studioId: string;
+            title: string;
+          }) => {
+            const design = shows.get(request.showId);
+            if (design === undefined) return episodeNotFound();
+            const episodeId = crypto.randomUUID();
+            const placements =
+              request.source === "blank" ? [] : design.blueprint.placements;
+            const items = placements.flatMap((placement, position) => {
+              const sourceSegment = design.segments.find(
+                (item) => item.segment.id === placement.showSegmentId,
+              )?.segment;
+              if (sourceSegment === undefined) return [];
+              return [
+                {
+                  episodeSegment: {
+                    createdAt: timestamp,
+                    defaultLayoutOverrideId: null,
+                    episodeId,
+                    expectedDurationOverrideMs: placement.defaultDurationMs,
+                    fieldValues: placement.defaultData,
+                    fixedResourceReplacements: [],
+                    id: crypto.randomUUID(),
+                    label: placement.label,
+                    notes: "",
+                    position,
+                    sourceShowSegmentId: sourceSegment.id,
+                    updatedAt: timestamp,
+                  },
+                  expectedDurationMs:
+                    placement.defaultDurationMs ??
+                    sourceSegment.expectedDurationMs,
+                  readiness: "needs-content" as const,
+                  sourceSegment,
+                  summary: placement.label,
+                  validationIssueCount: 0,
+                },
+              ];
+            });
+            const storyboard = withEpisodeItems(
+              {
+                episode: {
+                  createdAt: timestamp,
+                  description: null,
+                  episodeNumber: request.episodeNumber ?? null,
+                  guestNames: [],
+                  id: episodeId,
+                  internalNotes: "",
+                  plannedAt:
+                    request.plannedDate === undefined
+                      ? null
+                      : `${request.plannedDate}T12:00:00.000Z`,
+                  segmentCount: 0,
+                  showId: request.showId,
+                  sponsorInformation: null,
+                  status: "draft",
+                  subtitle: null,
+                  title: request.title,
+                  updatedAt: timestamp,
+                },
+                items: [],
+                progress: {
+                  estimatedRuntimeMs: 0,
+                  needsContentCount: 0,
+                  readyCount: 0,
+                  segmentCount: 0,
+                },
+                show: design.show,
+              },
+              items,
+            );
+            episodes.set(episodeId, storyboard);
+            return { ok: true, data: storyboard };
+          },
+          createSegment: async (request: {
+            description?: string;
+            episodeId: string;
+            name: string;
+            position?: number;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            const design = shows.get(request.showId);
+            if (storyboard === undefined || design === undefined)
+              return episodeNotFound();
+            const sourceSegment: BrowserSegment = {
+              archivedAt: null,
+              createdAt: timestamp,
+              description: request.description?.trim() || null,
+              expectedDurationMs: null,
+              id: crypto.randomUUID(),
+              name: request.name.trim(),
+              showId: request.showId,
+              updatedAt: timestamp,
+            };
+            shows.set(request.showId, {
+              ...design,
+              segments: [
+                ...design.segments,
+                { blueprintUsageCount: 0, segment: sourceSegment },
+              ],
+            });
+            const item: BrowserEpisodeItem = {
+              episodeSegment: {
+                createdAt: timestamp,
+                defaultLayoutOverrideId: null,
+                episodeId: request.episodeId,
+                expectedDurationOverrideMs: null,
+                fieldValues: {},
+                fixedResourceReplacements: [],
+                id: crypto.randomUUID(),
+                label: null,
+                notes: "",
+                position: request.position ?? storyboard.items.length,
+                sourceShowSegmentId: sourceSegment.id,
+                updatedAt: timestamp,
+              },
+              expectedDurationMs: null,
+              readiness: "needs-content",
+              sourceSegment,
+              summary: null,
+              validationIssueCount: 0,
+            };
+            const items = [...storyboard.items];
+            items.splice(request.position ?? items.length, 0, item);
+            const updated = withEpisodeItems(storyboard, items);
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          duplicateSegment: async (request: {
+            episodeId: string;
+            episodeSegmentId: string;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            if (storyboard === undefined) return episodeNotFound();
+            const index = storyboard.items.findIndex(
+              (item) => item.episodeSegment.id === request.episodeSegmentId,
+            );
+            const source = storyboard.items[index];
+            if (source === undefined) return episodeNotFound();
+            const items = [...storyboard.items];
+            items.splice(index + 1, 0, {
+              ...source,
+              episodeSegment: {
+                ...source.episodeSegment,
+                id: crypto.randomUUID(),
+              },
+            });
+            const updated = withEpisodeItems(storyboard, items);
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          get: async (request: {
+            episodeId: string;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            return storyboard === undefined
+              ? episodeNotFound()
+              : { ok: true, data: storyboard };
+          },
+          insertSegment: async (request: {
+            episodeId: string;
+            position?: number;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            const sourceSegment = shows
+              .get(request.showId)
+              ?.segments.find(
+                (item) => item.segment.id === request.showSegmentId,
+              )?.segment;
+            if (storyboard === undefined || sourceSegment === undefined)
+              return episodeNotFound();
+            const item: BrowserEpisodeItem = {
+              episodeSegment: {
+                createdAt: timestamp,
+                defaultLayoutOverrideId: null,
+                episodeId: request.episodeId,
+                expectedDurationOverrideMs: null,
+                fieldValues: {},
+                fixedResourceReplacements: [],
+                id: crypto.randomUUID(),
+                label: null,
+                notes: "",
+                position: request.position ?? storyboard.items.length,
+                sourceShowSegmentId: sourceSegment.id,
+                updatedAt: timestamp,
+              },
+              expectedDurationMs: sourceSegment.expectedDurationMs,
+              readiness: "needs-content",
+              sourceSegment,
+              summary: null,
+              validationIssueCount: 0,
+            };
+            const items = [...storyboard.items];
+            items.splice(request.position ?? items.length, 0, item);
+            const updated = withEpisodeItems(storyboard, items);
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          list: async (request: { showId: string; studioId: string }) => ({
+            ok: true,
+            data: [...episodes.values()]
+              .filter(
+                (storyboard) =>
+                  storyboard.episode.showId === request.showId &&
+                  storyboard.show.studioId === request.studioId,
+              )
+              .map((storyboard) => ({
+                ...storyboard.episode,
+                estimatedRuntimeMs: storyboard.progress.estimatedRuntimeMs,
+              })),
+          }),
+          removeSegment: async (request: {
+            episodeId: string;
+            episodeSegmentId: string;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            if (storyboard === undefined) return episodeNotFound();
+            const updated = withEpisodeItems(
+              storyboard,
+              storyboard.items.filter(
+                (item) => item.episodeSegment.id !== request.episodeSegmentId,
+              ),
+            );
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          reorder: async (request: {
+            episodeId: string;
+            orderedEpisodeSegmentIds: string[];
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            if (storyboard === undefined) return episodeNotFound();
+            const byId = new Map(
+              storyboard.items.map((item) => [item.episodeSegment.id, item]),
+            );
+            const updated = withEpisodeItems(
+              storyboard,
+              request.orderedEpisodeSegmentIds.flatMap((id) => {
+                const item = byId.get(id);
+                return item === undefined ? [] : [item];
+              }),
+            );
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          restoreSegment: async (request: {
+            episodeId: string;
+            segment: BrowserEpisodeSegment;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            const sourceSegment = shows
+              .get(request.showId)
+              ?.segments.find(
+                (item) =>
+                  item.segment.id === request.segment.sourceShowSegmentId,
+              )?.segment;
+            if (storyboard === undefined || sourceSegment === undefined)
+              return episodeNotFound();
+            const items = [...storyboard.items];
+            items.splice(request.segment.position, 0, {
+              episodeSegment: request.segment,
+              expectedDurationMs:
+                request.segment.expectedDurationOverrideMs ??
+                sourceSegment.expectedDurationMs,
+              readiness: "needs-content",
+              sourceSegment,
+              summary: request.segment.label,
+              validationIssueCount: 0,
+            });
+            const updated = withEpisodeItems(storyboard, items);
+            episodes.set(request.episodeId, updated);
             return { ok: true, data: updated };
           },
         }),
