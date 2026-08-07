@@ -1,8 +1,11 @@
 import {
   assertEpisodeSegmentOwnership,
+  assertValidEpisodeSegmentFieldValues,
   createEntityMetadata,
   createEpisodeSegment,
   createShowSegment,
+  normalizeExpectedDurationMs,
+  resolveInitialEpisodeSegmentFieldValues,
   updateEntityMetadata,
 } from "@showflow/domain";
 import type {
@@ -114,7 +117,13 @@ const insertEpisodeSegment = (
     );
   }
   const inserted = createEpisodeSegment(
-    { episode, sourceSegment, position, notes: sourceSegment.notesTemplate },
+    {
+      episode,
+      sourceSegment,
+      position,
+      fieldValues: resolveInitialEpisodeSegmentFieldValues(sourceSegment),
+      notes: sourceSegment.notesTemplate,
+    },
     dependencies,
   );
   const segments = [...episode.segments];
@@ -410,5 +419,86 @@ export class RemoveEpisodeSegmentCommand {
       this.#repository,
       touchEntity({ ...episode, segments }, this.#dependencies),
     );
+  }
+}
+
+export interface UpdateEpisodeSegmentContentCommandInput {
+  readonly episodeId: EpisodeId;
+  readonly episodeSegmentId: EpisodeSegmentId;
+  readonly expectedDurationOverrideMs?: number;
+  readonly expectedUpdatedAt: EpisodeSegment["updatedAt"];
+  readonly fieldValues: JsonObject;
+  readonly notes: string;
+}
+
+export class UpdateEpisodeSegmentContentCommand {
+  constructor(
+    readonly repositories: Pick<
+      TransactionRepositories,
+      "episodes" | "segments"
+    >,
+    readonly dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
+  ) {}
+
+  async execute(
+    input: UpdateEpisodeSegmentContentCommandInput,
+  ): Promise<Episode> {
+    const episode = requireEntity(
+      await this.repositories.episodes.getById(input.episodeId),
+      "Episode",
+    );
+    const current = requireEntity(
+      episode.segments.find(({ id }) => id === input.episodeSegmentId) ?? null,
+      "Episode Segment",
+    );
+    if (current.updatedAt !== input.expectedUpdatedAt) {
+      throw new ApplicationError(
+        "CONFLICT",
+        "This Episode Segment changed while you were editing. Showflow kept the newer saved version; review it and try again.",
+      );
+    }
+    const sourceSegment = requireEntity(
+      await this.repositories.segments.getById(current.sourceShowSegmentId),
+      "Show Segment",
+    );
+    assertEpisodeSegmentOwnership({
+      episode,
+      episodeSegment: current,
+      sourceSegment,
+    });
+    try {
+      assertValidEpisodeSegmentFieldValues(sourceSegment, input.fieldValues);
+    } catch (error) {
+      throw new ApplicationError(
+        "VALIDATION_ERROR",
+        "One or more Episode content values do not match this Show Segment. Review the highlighted fields and try again.",
+        { cause: error },
+      );
+    }
+    const duration =
+      input.expectedDurationOverrideMs === undefined
+        ? undefined
+        : normalizeExpectedDurationMs(input.expectedDurationOverrideMs);
+    const { expectedDurationOverrideMs: previousDuration, ...withoutDuration } =
+      current;
+    void previousDuration;
+    const updatedSegment: EpisodeSegment = {
+      ...withoutDuration,
+      fieldValues: cloneJsonObject(input.fieldValues),
+      notes: input.notes,
+      ...(duration === undefined
+        ? {}
+        : { expectedDurationOverrideMs: duration }),
+      ...updateEntityMetadata(current, this.dependencies.clock),
+    };
+    const nextEpisode: Episode = {
+      ...episode,
+      status: "draft",
+      segments: episode.segments.map((segment) =>
+        segment.id === updatedSegment.id ? updatedSegment : segment,
+      ),
+    };
+    const updatedEpisode = touchEntity(nextEpisode, this.dependencies);
+    return saveEpisode(this.repositories.episodes, updatedEpisode);
   }
 }

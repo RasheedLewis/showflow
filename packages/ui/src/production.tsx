@@ -12,6 +12,7 @@ export interface ObjectCardProps extends Omit<
   "title"
 > {
   readonly actions?: ReactNode;
+  readonly actionsVisible?: boolean;
   readonly archived?: boolean;
   readonly current?: boolean;
   readonly description?: string;
@@ -28,6 +29,7 @@ export interface ObjectCardProps extends Omit<
 
 export const ObjectCard = ({
   actions,
+  actionsVisible = false,
   archived = false,
   className,
   current = false,
@@ -54,6 +56,7 @@ export const ObjectCard = ({
       aria-labelledby={titleId}
       className={classNames(styles.objectCard, className)}
       data-archived={archived || undefined}
+      data-actions-visible={actionsVisible || undefined}
       data-current={current || undefined}
       data-dragging={dragging || undefined}
       data-invalid={invalid || undefined}

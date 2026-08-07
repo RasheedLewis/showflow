@@ -6,6 +6,7 @@ export * from "./entities/component.mjs";
 export * from "./entities/composition.mjs";
 export * from "./entities/core.mjs";
 export * from "./entities/entity-metadata.mjs";
+export * from "./entities/episode-content.mjs";
 export * from "./entities/episode.mjs";
 export * from "./entities/factories.mjs";
 export * from "./entities/host-cue.mjs";

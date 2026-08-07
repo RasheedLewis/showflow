@@ -26,6 +26,7 @@ import {
   EPISODES_REMOVE_SEGMENT_CHANNEL,
   EPISODES_REORDER_CHANNEL,
   EPISODES_RESTORE_SEGMENT_CHANNEL,
+  EPISODES_UPDATE_SEGMENT_CHANNEL,
   SEGMENTS_CREATE_FIELD_CHANNEL,
   SEGMENTS_DELETE_FIELD_CHANNEL,
   SEGMENTS_GET_EDITOR_CHANNEL,
@@ -98,6 +99,8 @@ const showflowDesktopApi = createShowflowDesktopApi({
     ipcRenderer.invoke(EPISODES_REORDER_CHANNEL, request),
   restoreEpisodeSegment: (request) =>
     ipcRenderer.invoke(EPISODES_RESTORE_SEGMENT_CHANNEL, request),
+  updateEpisodeSegment: (request) =>
+    ipcRenderer.invoke(EPISODES_UPDATE_SEGMENT_CHANNEL, request),
 });
 
 contextBridge.exposeInMainWorld("showflow", showflowDesktopApi);

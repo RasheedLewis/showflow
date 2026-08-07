@@ -4,6 +4,7 @@ import {
   createEpisode,
   createFixedClock,
   createLayout,
+  createSegmentDataField,
   createShowSegment,
   parseEntityId,
   parseUtcTimestamp,
@@ -96,10 +97,24 @@ const createQueryTestData = (): QueryTestData => {
     styleDefaults: {},
     ...metadata,
   } satisfies Show;
-  const firstSegment = createShowSegment(
+  const firstSegmentBase = createShowSegment(
     { showId: firstShow.id, name: "Opening" },
     factoryDependencies(10),
   );
+  const firstSegment = {
+    ...firstSegmentBase,
+    dataFields: [
+      createSegmentDataField(
+        {
+          label: "Title",
+          position: 0,
+          showSegmentId: firstSegmentBase.id,
+          type: "shortText",
+        },
+        factoryDependencies(12),
+      ),
+    ],
+  };
   const secondSegment = createShowSegment(
     { showId: firstShow.id, name: "Interview" },
     factoryDependencies(11),
@@ -411,7 +426,10 @@ describe("Storyboard queries", () => {
     expect(result.items).toEqual(
       data.firstEpisode.segments.map((episodeSegment) => ({
         episodeSegment,
+        readiness: "ready",
         sourceSegment: data.firstSegment,
+        summary: String(episodeSegment.fieldValues["title"]),
+        validationIssues: [],
       })),
     );
     expect(sourceLoadCount).toBe(1);
@@ -427,15 +445,21 @@ describe("Storyboard queries", () => {
     const progress = calculateEpisodeProgress([
       {
         episodeSegment: { ...first, expectedDurationOverrideMs: 30_000 },
+        readiness: "needs-content",
         sourceSegment: { ...data.firstSegment, expectedDurationMs: 90_000 },
+        validationIssues: [],
       },
       {
         episodeSegment: second,
+        readiness: "needs-content",
         sourceSegment: { ...data.firstSegment, expectedDurationMs: 90_000 },
+        validationIssues: [],
       },
       {
         episodeSegment: { ...second, id: entityId<"episodeSegment">(200) },
+        readiness: "needs-content",
         sourceSegment: data.firstSegment,
+        validationIssues: [],
       },
     ]);
 

@@ -8,6 +8,7 @@ import {
   EPISODES_REMOVE_SEGMENT_CHANNEL,
   EPISODES_REORDER_CHANNEL,
   EPISODES_RESTORE_SEGMENT_CHANNEL,
+  EPISODES_UPDATE_SEGMENT_CHANNEL,
   type EpisodeListResult,
   type EpisodeStoryboardResult,
 } from "@showflow/contracts";
@@ -31,7 +32,14 @@ export const registerEpisodeIpc = (
     isTrustedIpcSender(event, window, trustedEntryUrl);
   const storyboardHandler = (
     channel: string,
-    kind: "reorder" | "duplicate" | "remove" | "insert" | "create" | "restore",
+    kind:
+      | "reorder"
+      | "duplicate"
+      | "remove"
+      | "insert"
+      | "create"
+      | "restore"
+      | "update",
   ): void => {
     ipcMain.removeHandler(channel);
     ipcMain.handle(
@@ -65,4 +73,5 @@ export const registerEpisodeIpc = (
   storyboardHandler(EPISODES_INSERT_SEGMENT_CHANNEL, "insert");
   storyboardHandler(EPISODES_CREATE_SEGMENT_CHANNEL, "create");
   storyboardHandler(EPISODES_RESTORE_SEGMENT_CHANNEL, "restore");
+  storyboardHandler(EPISODES_UPDATE_SEGMENT_CHANNEL, "update");
 };

@@ -78,6 +78,8 @@ const SortablePlacement = ({
     transition,
   };
   const title = segment?.name ?? "Archived Segment";
+  const effectiveDurationMs =
+    placement.defaultDurationMs ?? segment?.expectedDurationMs ?? null;
 
   return (
     <li
@@ -135,9 +137,9 @@ const SortablePlacement = ({
         className={styles.sortableCard}
         dragging={isDragging}
         duration={
-          placement.defaultDurationMs === null
+          effectiveDurationMs === null
             ? "Duration not set"
-            : `${Math.round(placement.defaultDurationMs / 1_000)} sec`
+            : `${Math.round(effectiveDurationMs / 1_000)} sec`
         }
         onClick={onSelect}
         onDoubleClick={onOpen}

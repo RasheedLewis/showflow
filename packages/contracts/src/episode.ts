@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ApiErrorSchema } from "./api-result.ts";
+import { SegmentDataFieldDtoSchema } from "./segment-editor.ts";
 import { ShowDtoSchema, ShowSegmentDtoSchema } from "./show.ts";
 
 export const EPISODES_CREATE_CHANNEL = "showflow:v1:episodes:create" as const;
@@ -17,6 +18,8 @@ export const EPISODES_CREATE_SEGMENT_CHANNEL =
   "showflow:v1:episodes:create-segment" as const;
 export const EPISODES_RESTORE_SEGMENT_CHANNEL =
   "showflow:v1:episodes:restore-segment" as const;
+export const EPISODES_UPDATE_SEGMENT_CHANNEL =
+  "showflow:v1:episodes:update-segment" as const;
 
 const CanonicalUtcTimestampSchema = z.string().refine((value) => {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value)) {
@@ -32,6 +35,7 @@ const DateOnlySchema = z
     (value) => !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()),
   );
 const JsonObjectSchema = z.record(z.string(), z.unknown());
+const JsonValueObjectSchema = z.record(z.string(), z.json());
 
 export const FixedResourceReplacementDtoSchema = z
   .object({
@@ -88,12 +92,35 @@ export const EpisodeProgressDtoSchema = z
 
 export const EpisodeStoryboardItemDtoSchema = z
   .object({
+    dataFields: z.array(
+      SegmentDataFieldDtoSchema.omit({ episodeValueUsageCount: true }),
+    ),
     episodeSegment: EpisodeSegmentDtoSchema,
     expectedDurationMs: z.number().int().nonnegative().nullable(),
-    readiness: z.enum(["needs-content", "ready", "has-warnings"]),
+    readiness: z.enum([
+      "needs-content",
+      "ready",
+      "has-warnings",
+      "blocking-issue",
+    ]),
     sourceSegment: ShowSegmentDtoSchema,
+    sourceNotesTemplate: z.string(),
     summary: z.string().nullable(),
     validationIssueCount: z.number().int().nonnegative(),
+    validationIssues: z.array(
+      z
+        .object({
+          code: z.enum([
+            "EPISODE_FIELD_REQUIRED",
+            "EPISODE_FIELD_VALUE_INVALID",
+            "EPISODE_FIELD_UNKNOWN",
+          ]),
+          fieldKey: z.string().min(1),
+          message: z.string().min(1),
+          severity: z.enum(["blocking", "warning"]),
+        })
+        .strict(),
+    ),
   })
   .strict();
 
@@ -162,6 +189,15 @@ export const RestoreEpisodeSegmentRequestSchema =
     segment: EpisodeSegmentDtoSchema,
   }).strict();
 
+export const UpdateEpisodeSegmentRequestSchema =
+  EpisodeMutationRequestSchema.extend({
+    episodeSegmentId: z.string().uuid(),
+    expectedDurationOverrideMs: z.number().int().nonnegative().nullable(),
+    expectedUpdatedAt: CanonicalUtcTimestampSchema,
+    fieldValues: JsonValueObjectSchema,
+    notes: z.string(),
+  }).strict();
+
 export const EpisodeStoryboardResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), data: EpisodeStoryboardDtoSchema }).strict(),
   z.object({ ok: z.literal(false), error: ApiErrorSchema }).strict(),
@@ -189,6 +225,9 @@ export type CreateEpisodeSegmentRequest = z.infer<
 >;
 export type RestoreEpisodeSegmentRequest = z.infer<
   typeof RestoreEpisodeSegmentRequestSchema
+>;
+export type UpdateEpisodeSegmentRequest = z.infer<
+  typeof UpdateEpisodeSegmentRequestSchema
 >;
 export type EpisodeDto = z.infer<typeof EpisodeDtoSchema>;
 export type EpisodeSegmentDto = z.infer<typeof EpisodeSegmentDtoSchema>;

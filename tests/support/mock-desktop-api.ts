@@ -26,12 +26,15 @@ import {
   type CreateEpisodeRequest,
   type CreateEpisodeSegmentRequest,
   type EpisodeSegmentMutationRequest,
+  type EpisodeSegmentDto,
   type EpisodeStoryboardDto,
   type GetEpisodeRequest,
   type InsertEpisodeSegmentRequest,
   type ListEpisodesRequest,
   type ReorderEpisodeRequest,
   type RestoreEpisodeSegmentRequest,
+  type ShowSegmentDto,
+  type UpdateEpisodeSegmentRequest,
   type CreateSegmentFieldRequest,
   type DeleteSegmentFieldRequest,
   type GetSegmentEditorRequest,
@@ -240,14 +243,61 @@ export const createMockDesktopApi = (
       message: "This Episode is no longer available. Return to Show Detail.",
     },
   });
+  const makeEpisodeItem = (
+    episodeSegment: EpisodeSegmentDto,
+    sourceSegment: ShowSegmentDto,
+  ): EpisodeStoryboardDto["items"][number] => {
+    const editor = segmentEditors.get(sourceSegment.id);
+    const dataFields =
+      editor?.dataFields.map(({ episodeValueUsageCount, ...field }) => {
+        void episodeValueUsageCount;
+        return field;
+      }) ?? [];
+    const validationIssues = dataFields.flatMap((field) => {
+      const value = episodeSegment.fieldValues[field.key];
+      const missing =
+        value === undefined ||
+        value === null ||
+        ((field.type === "shortText" || field.type === "longText") &&
+          (typeof value !== "string" || value.trim().length === 0));
+      return field.required && missing
+        ? [
+            {
+              code: "EPISODE_FIELD_REQUIRED" as const,
+              fieldKey: field.key,
+              message: `The ${sourceSegment.name} Segment needs ${field.label}. Add it before rehearsal.`,
+              severity: "blocking" as const,
+            },
+          ]
+        : [];
+    });
+    const summary = dataFields
+      .filter(({ type }) => type === "shortText")
+      .sort((left, right) => left.position - right.position)
+      .map(({ key }) => episodeSegment.fieldValues[key])
+      .find((value) => typeof value === "string" && value.trim().length > 0);
+    return {
+      dataFields,
+      episodeSegment,
+      expectedDurationMs:
+        episodeSegment.expectedDurationOverrideMs ??
+        sourceSegment.expectedDurationMs,
+      readiness: validationIssues.length === 0 ? "ready" : "needs-content",
+      sourceNotesTemplate: editor?.notesTemplate ?? "",
+      sourceSegment,
+      summary:
+        typeof summary === "string" ? summary.trim().slice(0, 160) : null,
+      validationIssueCount: validationIssues.length,
+      validationIssues,
+    };
+  };
   const withEpisodeItems = (
     storyboard: EpisodeStoryboardDto,
     items: EpisodeStoryboardDto["items"],
   ): EpisodeStoryboardDto => {
-    const positioned = items.map((item, position) => ({
-      ...item,
-      episodeSegment: { ...item.episodeSegment, position },
-    }));
+    const positioned = items.map((item, position) =>
+      makeEpisodeItem({ ...item.episodeSegment, position }, item.sourceSegment),
+    );
     return {
       ...storyboard,
       episode: { ...storyboard.episode, segmentCount: positioned.length },
@@ -257,8 +307,11 @@ export const createMockDesktopApi = (
           (total, item) => total + (item.expectedDurationMs ?? 0),
           0,
         ),
-        needsContentCount: positioned.length,
-        readyCount: 0,
+        needsContentCount: positioned.filter(
+          ({ readiness }) => readiness === "needs-content",
+        ).length,
+        readyCount: positioned.filter(({ readiness }) => readiness === "ready")
+          .length,
         segmentCount: positioned.length,
       },
     };
@@ -672,29 +725,32 @@ export const createMockDesktopApi = (
             ({ segment }) => segment.id === placement.showSegmentId,
           )?.segment;
           if (sourceSegment === undefined) return [];
+          const editor = segmentEditors.get(sourceSegment.id);
+          const fieldValues = Object.fromEntries(
+            (editor?.dataFields ?? []).flatMap((field) =>
+              field.defaultValue === null
+                ? []
+                : [[field.key, field.defaultValue] as const],
+            ),
+          );
           return [
-            {
-              episodeSegment: {
+            makeEpisodeItem(
+              {
                 createdAt: DEFAULT_TIMESTAMP,
                 defaultLayoutOverrideId: null,
                 episodeId,
                 expectedDurationOverrideMs: placement.defaultDurationMs,
-                fieldValues: placement.defaultData,
+                fieldValues: { ...fieldValues, ...placement.defaultData },
                 fixedResourceReplacements: [],
                 id: crypto.randomUUID(),
                 label: placement.label,
-                notes: "",
+                notes: editor?.notesTemplate ?? "",
                 position,
                 sourceShowSegmentId: sourceSegment.id,
                 updatedAt: DEFAULT_TIMESTAMP,
               },
-              expectedDurationMs:
-                placement.defaultDurationMs ?? sourceSegment.expectedDurationMs,
-              readiness: "needs-content" as const,
               sourceSegment,
-              summary: placement.label,
-              validationIssueCount: 0,
-            },
+            ),
           ];
         });
         const storyboard = withEpisodeItems(
@@ -758,8 +814,8 @@ export const createMockDesktopApi = (
             { blueprintUsageCount: 0, segment: sourceSegment },
           ],
         });
-        const item = {
-          episodeSegment: {
+        const item = makeEpisodeItem(
+          {
             createdAt: DEFAULT_TIMESTAMP,
             defaultLayoutOverrideId: null,
             episodeId: request.episodeId,
@@ -773,12 +829,8 @@ export const createMockDesktopApi = (
             sourceShowSegmentId: sourceSegment.id,
             updatedAt: DEFAULT_TIMESTAMP,
           },
-          expectedDurationMs: null,
-          readiness: "needs-content" as const,
           sourceSegment,
-          summary: null,
-          validationIssueCount: 0,
-        };
+        );
         const items = [...storyboard.items];
         items.splice(request.position ?? items.length, 0, item);
         const updated = withEpisodeItems(storyboard, items);
@@ -822,27 +874,30 @@ export const createMockDesktopApi = (
           )?.segment;
         if (storyboard === undefined || sourceSegment === undefined)
           return episodeNotFound();
-        const item = {
-          episodeSegment: {
+        const editor = segmentEditors.get(sourceSegment.id);
+        const item = makeEpisodeItem(
+          {
             createdAt: DEFAULT_TIMESTAMP,
             defaultLayoutOverrideId: null,
             episodeId: request.episodeId,
             expectedDurationOverrideMs: null,
-            fieldValues: {},
+            fieldValues: Object.fromEntries(
+              (editor?.dataFields ?? []).flatMap((field) =>
+                field.defaultValue === null
+                  ? []
+                  : [[field.key, field.defaultValue] as const],
+              ),
+            ),
             fixedResourceReplacements: [],
             id: crypto.randomUUID(),
             label: null,
-            notes: "",
+            notes: editor?.notesTemplate ?? "",
             position: request.position ?? storyboard.items.length,
             sourceShowSegmentId: sourceSegment.id,
             updatedAt: DEFAULT_TIMESTAMP,
           },
-          expectedDurationMs: sourceSegment.expectedDurationMs,
-          readiness: "needs-content" as const,
           sourceSegment,
-          summary: null,
-          validationIssueCount: 0,
-        };
+        );
         const items = [...storyboard.items];
         items.splice(request.position ?? items.length, 0, item);
         const updated = withEpisodeItems(storyboard, items);
@@ -901,17 +956,56 @@ export const createMockDesktopApi = (
         if (storyboard === undefined || sourceSegment === undefined)
           return episodeNotFound();
         const items = [...storyboard.items];
-        items.splice(request.segment.position, 0, {
-          episodeSegment: request.segment,
-          expectedDurationMs:
-            request.segment.expectedDurationOverrideMs ??
-            sourceSegment.expectedDurationMs,
-          readiness: "needs-content",
-          sourceSegment,
-          summary: request.segment.label,
-          validationIssueCount: 0,
-        });
+        items.splice(
+          request.segment.position,
+          0,
+          makeEpisodeItem(request.segment, sourceSegment),
+        );
         const updated = withEpisodeItems(storyboard, items);
+        episodes.set(request.episodeId, updated);
+        return { ok: true as const, data: updated };
+      },
+      updateSegment: async (request: UpdateEpisodeSegmentRequest) => {
+        const storyboard = getScopedEpisode(request);
+        if (storyboard === undefined) return episodeNotFound();
+        const item = storyboard.items.find(
+          ({ episodeSegment }) =>
+            episodeSegment.id === request.episodeSegmentId,
+        );
+        if (
+          item === undefined ||
+          item.episodeSegment.updatedAt !== request.expectedUpdatedAt
+        ) {
+          return {
+            ok: false as const,
+            error: {
+              code: "CONFLICT" as const,
+              message:
+                "This Episode Segment changed while you were editing. Review the saved version and try again.",
+            },
+          };
+        }
+        const updatedAt = new Date(
+          new Date(item.episodeSegment.updatedAt).getTime() + 1,
+        ).toISOString();
+        const updated = withEpisodeItems(
+          storyboard,
+          storyboard.items.map((candidate) =>
+            candidate.episodeSegment.id === request.episodeSegmentId
+              ? {
+                  ...candidate,
+                  episodeSegment: {
+                    ...candidate.episodeSegment,
+                    expectedDurationOverrideMs:
+                      request.expectedDurationOverrideMs,
+                    fieldValues: request.fieldValues,
+                    notes: request.notes,
+                    updatedAt,
+                  },
+                }
+              : candidate,
+          ),
+        );
         episodes.set(request.episodeId, updated);
         return { ok: true as const, data: updated };
       },
@@ -939,6 +1033,9 @@ export const installMockDesktopApi = async (
         "f4f47461-e2c8-44a8-a301-5465655aeb36",
       ];
       const timestamp = "2026-08-06T14:30:00.000Z";
+      let browserClock = Date.parse(timestamp);
+      const nextTimestamp = (): string =>
+        new Date((browserClock += 1)).toISOString();
       type BrowserPlacement = {
         createdAt: string;
         defaultData: Record<string, unknown>;
@@ -1041,12 +1138,21 @@ export const installMockDesktopApi = async (
         updatedAt: string;
       };
       type BrowserEpisodeItem = {
+        dataFields: BrowserSegmentField[];
         episodeSegment: BrowserEpisodeSegment;
         expectedDurationMs: number | null;
-        readiness: "needs-content";
+        readiness:
+          "ready" | "needs-content" | "has-warnings" | "blocking-issue";
+        sourceNotesTemplate: string;
         sourceSegment: BrowserSegment;
         summary: string | null;
         validationIssueCount: number;
+        validationIssues: Array<{
+          code: "EPISODE_FIELD_REQUIRED";
+          fieldKey: string;
+          message: string;
+          severity: "blocking";
+        }>;
       };
       type BrowserStoryboard = {
         episode: {
@@ -1197,14 +1303,62 @@ export const installMockDesktopApi = async (
         showSegmentId,
         updatedAt: timestamp,
       });
+      const makeEpisodeItem = (
+        episodeSegment: BrowserEpisodeSegment,
+        sourceSegment: BrowserSegment,
+      ): BrowserEpisodeItem => {
+        const editor = segmentEditors.get(sourceSegment.id);
+        const dataFields = editor?.dataFields ?? [];
+        const validationIssues = dataFields.flatMap((field) => {
+          const value = episodeSegment.fieldValues[field.key];
+          const missing =
+            value === undefined ||
+            value === null ||
+            ((field.type === "shortText" || field.type === "longText") &&
+              (typeof value !== "string" || value.trim().length === 0));
+          return field.required && missing
+            ? [
+                {
+                  code: "EPISODE_FIELD_REQUIRED" as const,
+                  fieldKey: field.key,
+                  message: `The ${sourceSegment.name} Segment needs ${field.label}. Add it before rehearsal.`,
+                  severity: "blocking" as const,
+                },
+              ]
+            : [];
+        });
+        const summary = dataFields
+          .filter(({ type }) => type === "shortText")
+          .sort((left, right) => left.position - right.position)
+          .map(({ key }) => episodeSegment.fieldValues[key])
+          .find(
+            (value) => typeof value === "string" && value.trim().length > 0,
+          );
+        return {
+          dataFields,
+          episodeSegment,
+          expectedDurationMs:
+            episodeSegment.expectedDurationOverrideMs ??
+            sourceSegment.expectedDurationMs,
+          readiness: validationIssues.length === 0 ? "ready" : "needs-content",
+          sourceNotesTemplate: editor?.notesTemplate ?? "",
+          sourceSegment,
+          summary:
+            typeof summary === "string" ? summary.trim().slice(0, 160) : null,
+          validationIssueCount: validationIssues.length,
+          validationIssues,
+        };
+      };
       const withEpisodeItems = (
         storyboard: BrowserStoryboard,
         items: BrowserEpisodeItem[],
       ): BrowserStoryboard => {
-        const positioned = items.map((item, position) => ({
-          ...item,
-          episodeSegment: { ...item.episodeSegment, position },
-        }));
+        const positioned = items.map((item, position) =>
+          makeEpisodeItem(
+            { ...item.episodeSegment, position },
+            item.sourceSegment,
+          ),
+        );
         return {
           ...storyboard,
           episode: { ...storyboard.episode, segmentCount: positioned.length },
@@ -1214,8 +1368,12 @@ export const installMockDesktopApi = async (
               (total, item) => total + (item.expectedDurationMs ?? 0),
               0,
             ),
-            needsContentCount: positioned.length,
-            readyCount: 0,
+            needsContentCount: positioned.filter(
+              ({ readiness }) => readiness === "needs-content",
+            ).length,
+            readyCount: positioned.filter(
+              ({ readiness }) => readiness === "ready",
+            ).length,
             segmentCount: positioned.length,
           },
         };
@@ -1759,30 +1917,32 @@ export const installMockDesktopApi = async (
                 (item) => item.segment.id === placement.showSegmentId,
               )?.segment;
               if (sourceSegment === undefined) return [];
+              const editor = segmentEditors.get(sourceSegment.id);
+              const fieldValues = Object.fromEntries(
+                (editor?.dataFields ?? []).flatMap((field) =>
+                  field.defaultValue === null
+                    ? []
+                    : [[field.key, field.defaultValue] as const],
+                ),
+              );
               return [
-                {
-                  episodeSegment: {
+                makeEpisodeItem(
+                  {
                     createdAt: timestamp,
                     defaultLayoutOverrideId: null,
                     episodeId,
                     expectedDurationOverrideMs: placement.defaultDurationMs,
-                    fieldValues: placement.defaultData,
+                    fieldValues: { ...fieldValues, ...placement.defaultData },
                     fixedResourceReplacements: [],
                     id: crypto.randomUUID(),
                     label: placement.label,
-                    notes: "",
+                    notes: editor?.notesTemplate ?? "",
                     position,
                     sourceShowSegmentId: sourceSegment.id,
                     updatedAt: timestamp,
                   },
-                  expectedDurationMs:
-                    placement.defaultDurationMs ??
-                    sourceSegment.expectedDurationMs,
-                  readiness: "needs-content" as const,
                   sourceSegment,
-                  summary: placement.label,
-                  validationIssueCount: 0,
-                },
+                ),
               ];
             });
             const storyboard = withEpisodeItems(
@@ -1850,8 +2010,8 @@ export const installMockDesktopApi = async (
                 { blueprintUsageCount: 0, segment: sourceSegment },
               ],
             });
-            const item: BrowserEpisodeItem = {
-              episodeSegment: {
+            const item = makeEpisodeItem(
+              {
                 createdAt: timestamp,
                 defaultLayoutOverrideId: null,
                 episodeId: request.episodeId,
@@ -1865,12 +2025,8 @@ export const installMockDesktopApi = async (
                 sourceShowSegmentId: sourceSegment.id,
                 updatedAt: timestamp,
               },
-              expectedDurationMs: null,
-              readiness: "needs-content",
               sourceSegment,
-              summary: null,
-              validationIssueCount: 0,
-            };
+            );
             const items = [...storyboard.items];
             items.splice(request.position ?? items.length, 0, item);
             const updated = withEpisodeItems(storyboard, items);
@@ -1927,27 +2083,30 @@ export const installMockDesktopApi = async (
               )?.segment;
             if (storyboard === undefined || sourceSegment === undefined)
               return episodeNotFound();
-            const item: BrowserEpisodeItem = {
-              episodeSegment: {
+            const editor = segmentEditors.get(sourceSegment.id);
+            const item = makeEpisodeItem(
+              {
                 createdAt: timestamp,
                 defaultLayoutOverrideId: null,
                 episodeId: request.episodeId,
                 expectedDurationOverrideMs: null,
-                fieldValues: {},
+                fieldValues: Object.fromEntries(
+                  (editor?.dataFields ?? []).flatMap((field) =>
+                    field.defaultValue === null
+                      ? []
+                      : [[field.key, field.defaultValue] as const],
+                  ),
+                ),
                 fixedResourceReplacements: [],
                 id: crypto.randomUUID(),
                 label: null,
-                notes: "",
+                notes: editor?.notesTemplate ?? "",
                 position: request.position ?? storyboard.items.length,
                 sourceShowSegmentId: sourceSegment.id,
                 updatedAt: timestamp,
               },
-              expectedDurationMs: sourceSegment.expectedDurationMs,
-              readiness: "needs-content",
               sourceSegment,
-              summary: null,
-              validationIssueCount: 0,
-            };
+            );
             const items = [...storyboard.items];
             items.splice(request.position ?? items.length, 0, item);
             const updated = withEpisodeItems(storyboard, items);
@@ -2022,16 +2181,59 @@ export const installMockDesktopApi = async (
               return episodeNotFound();
             const items = [...storyboard.items];
             items.splice(request.segment.position, 0, {
-              episodeSegment: request.segment,
-              expectedDurationMs:
-                request.segment.expectedDurationOverrideMs ??
-                sourceSegment.expectedDurationMs,
-              readiness: "needs-content",
-              sourceSegment,
-              summary: request.segment.label,
-              validationIssueCount: 0,
+              ...makeEpisodeItem(request.segment, sourceSegment),
             });
             const updated = withEpisodeItems(storyboard, items);
+            episodes.set(request.episodeId, updated);
+            return { ok: true, data: updated };
+          },
+          updateSegment: async (request: {
+            episodeId: string;
+            episodeSegmentId: string;
+            expectedDurationOverrideMs: number | null;
+            expectedUpdatedAt: string;
+            fieldValues: Record<string, unknown>;
+            notes: string;
+            showId: string;
+            studioId: string;
+          }) => {
+            const storyboard = scopedEpisode(request);
+            if (storyboard === undefined) return episodeNotFound();
+            const item = storyboard.items.find(
+              (candidate) =>
+                candidate.episodeSegment.id === request.episodeSegmentId,
+            );
+            if (
+              item === undefined ||
+              item.episodeSegment.updatedAt !== request.expectedUpdatedAt
+            ) {
+              return {
+                ok: false,
+                error: {
+                  code: "CONFLICT",
+                  message:
+                    "This Episode Segment changed while you were editing. Review the saved version and try again.",
+                },
+              };
+            }
+            const updated = withEpisodeItems(
+              storyboard,
+              storyboard.items.map((candidate) =>
+                candidate.episodeSegment.id === request.episodeSegmentId
+                  ? {
+                      ...candidate,
+                      episodeSegment: {
+                        ...candidate.episodeSegment,
+                        expectedDurationOverrideMs:
+                          request.expectedDurationOverrideMs,
+                        fieldValues: request.fieldValues,
+                        notes: request.notes,
+                        updatedAt: nextTimestamp(),
+                      },
+                    }
+                  : candidate,
+              ),
+            );
             episodes.set(request.episodeId, updated);
             return { ok: true, data: updated };
           },

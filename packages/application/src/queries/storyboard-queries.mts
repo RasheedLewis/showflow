@@ -1,12 +1,17 @@
 import {
   assertBlueprintPlacementOwnership,
   assertEpisodeSegmentOwnership,
+  calculateEpisodeSegmentReadiness,
+  deriveEpisodeSegmentSummary,
+  validateEpisodeSegmentContent,
 } from "@showflow/domain";
 import type {
   BlueprintSegmentPlacement,
   Episode,
   EpisodeId,
   EpisodeSegment,
+  EpisodeSegmentContentIssue,
+  EpisodeSegmentReadiness,
   Show,
   ShowBlueprint,
   ShowId,
@@ -70,7 +75,10 @@ export class GetBlueprintQuery {
 
 export interface EpisodeStoryboardItem {
   readonly episodeSegment: EpisodeSegment;
+  readonly readiness: EpisodeSegmentReadiness;
   readonly sourceSegment: ShowSegment;
+  readonly summary?: string;
+  readonly validationIssues: readonly EpisodeSegmentContentIssue[];
 }
 
 export interface EpisodeStoryboard {
@@ -88,19 +96,26 @@ export interface EpisodeProgress {
 
 export const calculateEpisodeProgress = (
   items: readonly EpisodeStoryboardItem[],
-): EpisodeProgress => ({
-  estimatedRuntimeMs: items.reduce(
-    (total, { episodeSegment, sourceSegment }) =>
-      total +
-      (episodeSegment.expectedDurationOverrideMs ??
-        sourceSegment.expectedDurationMs ??
-        0),
-    0,
-  ),
-  needsContentCount: items.length,
-  readyCount: 0,
-  segmentCount: items.length,
-});
+): EpisodeProgress => {
+  const readyCount = items.filter(
+    ({ readiness }) => readiness === "ready",
+  ).length;
+  return {
+    estimatedRuntimeMs: items.reduce(
+      (total, { episodeSegment, sourceSegment }) =>
+        total +
+        (episodeSegment.expectedDurationOverrideMs ??
+          sourceSegment.expectedDurationMs ??
+          0),
+      0,
+    ),
+    needsContentCount: items.filter(
+      ({ readiness }) => readiness === "needs-content",
+    ).length,
+    readyCount,
+    segmentCount: items.length,
+  };
+};
 
 type EpisodeStoryboardRepositories = {
   readonly episodes: EpisodeRepository;
@@ -140,7 +155,23 @@ export class GetEpisodeStoryboardQuery {
         episodeSegment,
         sourceSegment,
       });
-      return { episodeSegment, sourceSegment };
+      const summary = deriveEpisodeSegmentSummary(
+        episodeSegment,
+        sourceSegment,
+      );
+      return {
+        episodeSegment,
+        readiness: calculateEpisodeSegmentReadiness(
+          episodeSegment,
+          sourceSegment,
+        ),
+        sourceSegment,
+        ...(summary === undefined ? {} : { summary }),
+        validationIssues: validateEpisodeSegmentContent(
+          episodeSegment,
+          sourceSegment,
+        ),
+      };
     });
 
     return { episode, show, items };

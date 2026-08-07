@@ -13,6 +13,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import {
   getProduceEpisodeRoute,
+  getEpisodeSegmentRoute,
   getShowDetailRoute,
 } from "../../app-routes.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
@@ -221,6 +222,16 @@ export const ProduceEpisodeDestination = () => {
               items={storyboard.items}
               onAddFirst={() => setPickerOpen(true)}
               onDuplicate={(id) => run(mutations.duplicate(id))}
+              onOpen={(id) =>
+                navigate(
+                  getEpisodeSegmentRoute(
+                    storyboard.show.studioId,
+                    storyboard.show.id,
+                    storyboard.episode.id,
+                    id,
+                  ),
+                )
+              }
               onRemove={(id) => run(mutations.remove(id))}
               onReorder={mutations.reorder}
             />

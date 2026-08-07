@@ -208,6 +208,9 @@ test("edits a reusable Segment definition and preserves it when reopened", async
   const storyboardItem = page
     .getByRole("list", { name: "Show Blueprint Storyboard" })
     .getByRole("listitem");
+  await expect(
+    storyboardItem.getByText("150 sec", { exact: true }),
+  ).toBeVisible();
   await storyboardItem.locator("article").dblclick();
   await expect(
     page.getByRole("heading", { level: 1, name: "Opening interview" }),

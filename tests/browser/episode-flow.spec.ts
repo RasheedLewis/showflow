@@ -92,3 +92,88 @@ test("6.T13 creates Studio → Show → Blueprint → Episode and reorders it", 
   await page.getByRole("button", { name: "Back to Shows" }).click();
   await expect(page.getByText("1 Episode", { exact: true })).toBeVisible();
 });
+
+test("8.T12 completes Episode Segment content and returns a safe summary to the Storyboard", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1_600 });
+  await createShowWithBlueprint(page);
+
+  const blueprint = page.getByRole("list", {
+    name: "Show Blueprint Storyboard",
+  });
+  await blueprint
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Interview" }) })
+    .locator("article")
+    .dblclick();
+  const inspector = page.getByRole("complementary", {
+    name: "Segment inspector",
+  });
+  await inspector
+    .getByRole("textbox", { name: "New field label" })
+    .fill("Guest name");
+  await inspector.getByRole("button", { name: "Add field" }).click();
+  await inspector
+    .getByRole("checkbox", { name: "Required for every Episode" })
+    .check();
+  await page
+    .getByRole("textbox", { name: "Notes template" })
+    .fill("Confirm pronunciation.");
+
+  await page.getByRole("button", { name: "Return to Blueprint" }).click();
+  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await page
+    .getByRole("button", { name: "Create New Episode" })
+    .first()
+    .click();
+  await page.getByRole("textbox", { name: "Episode title" }).fill("Episode 25");
+  await page.getByRole("button", { name: "Create Episode" }).click();
+
+  const interview = page
+    .getByRole("list", { name: "Episode Storyboard" })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Interview" }) });
+  await expect(interview.getByText("Needs content")).toBeVisible();
+  await interview.getByRole("button", { name: "Open Interview" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Interview" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Episode notes" }),
+  ).toHaveValue("Confirm pronunciation.");
+
+  const guest = page.getByRole("textbox", { name: /Guest name/u });
+  await guest.fill("<script>Ada Lovelace</script>");
+  await expect(page.getByText("Saving…", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ready", { exact: true }).first()).toBeVisible();
+
+  const accessibility = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "/private/tmp/showflow-sprint-8-episode-content.png",
+  });
+
+  await page
+    .getByRole("button", { name: "Return to Storyboard" })
+    .last()
+    .click();
+  const savedInterview = page
+    .getByRole("list", { name: "Episode Storyboard" })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Interview" }) });
+  await expect(
+    savedInterview.getByText("Ready", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    savedInterview.getByText("<script>Ada Lovelace</script>", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("script", { hasText: "Ada Lovelace" })).toHaveCount(
+    0,
+  );
+});

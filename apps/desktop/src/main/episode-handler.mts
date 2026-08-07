@@ -11,6 +11,7 @@ import {
   type RemoveEpisodeSegmentCommand,
   type ReorderEpisodeSegmentsCommand,
   type RestoreEpisodeSegmentCommand,
+  type UpdateEpisodeSegmentContentCommand,
 } from "@showflow/application";
 import {
   CreateEpisodeRequestSchema,
@@ -23,6 +24,7 @@ import {
   ListEpisodesRequestSchema,
   ReorderEpisodeRequestSchema,
   RestoreEpisodeSegmentRequestSchema,
+  UpdateEpisodeSegmentRequestSchema,
   type ApiErrorCode,
   type EpisodeListResult,
   type EpisodeSegmentDto,
@@ -47,6 +49,7 @@ export interface EpisodeOperations {
   readonly removeSegment: Pick<RemoveEpisodeSegmentCommand, "execute">;
   readonly reorder: Pick<ReorderEpisodeSegmentsCommand, "execute">;
   readonly restoreSegment: Pick<RestoreEpisodeSegmentCommand, "execute">;
+  readonly updateSegment: Pick<UpdateEpisodeSegmentContentCommand, "execute">;
 }
 
 const applicationErrorCode = (error: unknown): ApiErrorCode =>
@@ -99,30 +102,57 @@ const storyboardSuccess = (
   storyboard: Awaited<ReturnType<GetEpisodeStoryboardQuery["execute"]>>,
 ): EpisodeStoryboardResult => {
   const progress = calculateEpisodeProgress(storyboard.items);
+  const computedStatus =
+    progress.segmentCount > 0 && progress.readyCount === progress.segmentCount
+      ? "ready"
+      : "draft";
   const parsed = EpisodeStoryboardResultSchema.safeParse({
     ok: true,
     data: {
-      episode: episodeDto(storyboard.episode),
-      items: storyboard.items.map(({ episodeSegment, sourceSegment }) => ({
-        episodeSegment: segmentDto(episodeSegment),
-        expectedDurationMs:
-          episodeSegment.expectedDurationOverrideMs ??
-          sourceSegment.expectedDurationMs ??
-          null,
-        readiness: "needs-content",
-        sourceSegment: {
-          archivedAt: sourceSegment.archivedAt ?? null,
-          createdAt: sourceSegment.createdAt,
-          description: sourceSegment.description ?? null,
-          expectedDurationMs: sourceSegment.expectedDurationMs ?? null,
-          id: sourceSegment.id,
-          name: sourceSegment.name,
-          showId: sourceSegment.showId,
-          updatedAt: sourceSegment.updatedAt,
-        },
-        summary: episodeSegment.label ?? null,
-        validationIssueCount: 0,
-      })),
+      episode: { ...episodeDto(storyboard.episode), status: computedStatus },
+      items: storyboard.items.map(
+        ({
+          episodeSegment,
+          readiness,
+          sourceSegment,
+          summary,
+          validationIssues,
+        }) => ({
+          dataFields: sourceSegment.dataFields.map((field) => ({
+            createdAt: field.createdAt,
+            defaultValue: field.defaultValue ?? null,
+            helpText: field.helpText ?? null,
+            id: field.id,
+            key: field.key,
+            label: field.label,
+            position: field.position,
+            required: field.required,
+            showSegmentId: field.showSegmentId,
+            type: field.type,
+            updatedAt: field.updatedAt,
+          })),
+          episodeSegment: segmentDto(episodeSegment),
+          expectedDurationMs:
+            episodeSegment.expectedDurationOverrideMs ??
+            sourceSegment.expectedDurationMs ??
+            null,
+          readiness,
+          sourceSegment: {
+            archivedAt: sourceSegment.archivedAt ?? null,
+            createdAt: sourceSegment.createdAt,
+            description: sourceSegment.description ?? null,
+            expectedDurationMs: sourceSegment.expectedDurationMs ?? null,
+            id: sourceSegment.id,
+            name: sourceSegment.name,
+            showId: sourceSegment.showId,
+            updatedAt: sourceSegment.updatedAt,
+          },
+          sourceNotesTemplate: sourceSegment.notesTemplate,
+          summary: summary ?? null,
+          validationIssueCount: validationIssues.length,
+          validationIssues,
+        }),
+      ),
       progress,
       show: {
         archivedAt: storyboard.show.archivedAt ?? null,
@@ -310,7 +340,13 @@ export const handleListEpisodesRequest = async (
 };
 
 type MutationKind =
-  "reorder" | "duplicate" | "remove" | "insert" | "create" | "restore";
+  | "reorder"
+  | "duplicate"
+  | "remove"
+  | "insert"
+  | "create"
+  | "restore"
+  | "update";
 
 export const handleEpisodeMutationRequest = async (
   request: unknown,
@@ -333,7 +369,9 @@ export const handleEpisodeMutationRequest = async (
           ? CreateEpisodeSegmentRequestSchema
           : kind === "restore"
             ? RestoreEpisodeSegmentRequestSchema
-            : EpisodeSegmentMutationRequestSchema;
+            : kind === "update"
+              ? UpdateEpisodeSegmentRequestSchema
+              : EpisodeSegmentMutationRequestSchema;
   const validRequest = schema.safeParse(request);
   if (!validRequest.success) {
     return storyboardError(
@@ -425,6 +463,27 @@ export const handleEpisodeMutationRequest = async (
           updatedAt: parseUtcTimestamp(scope.segment.updatedAt),
         },
       });
+    } else if (
+      kind === "update" &&
+      "fieldValues" in scope &&
+      "expectedUpdatedAt" in scope
+    ) {
+      const updateRequest = UpdateEpisodeSegmentRequestSchema.parse(scope);
+      await operations.updateSegment.execute({
+        episodeId: parseEntityId<"episode">(updateRequest.episodeId),
+        episodeSegmentId: parseEntityId<"episodeSegment">(
+          updateRequest.episodeSegmentId,
+        ),
+        expectedUpdatedAt: parseUtcTimestamp(updateRequest.expectedUpdatedAt),
+        fieldValues: updateRequest.fieldValues as JsonObject,
+        notes: updateRequest.notes,
+        ...(updateRequest.expectedDurationOverrideMs === null
+          ? {}
+          : {
+              expectedDurationOverrideMs:
+                updateRequest.expectedDurationOverrideMs,
+            }),
+      });
     }
     return storyboardSuccess(
       await loadScopedStoryboard(
@@ -437,7 +496,9 @@ export const handleEpisodeMutationRequest = async (
   } catch (error) {
     return storyboardError(
       applicationErrorCode(error),
-      "Showflow could not save the Episode change. Your saved Storyboard was not changed. Try again.",
+      kind === "update" && error instanceof ApplicationError
+        ? error.message
+        : "Showflow could not save the Episode change. Your saved Storyboard was not changed. Try again.",
     );
   }
 };

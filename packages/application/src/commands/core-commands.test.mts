@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   createEpisode,
   createFixedClock,
+  createSegmentDataField,
   createShowSegment,
   parseEntityId,
   parseUtcTimestamp,
@@ -119,10 +120,24 @@ const createTestData = (): TestData => {
     styleDefaults: {},
     ...metadata,
   } satisfies Show;
-  const firstSegment = createShowSegment(
+  const firstSegmentBase = createShowSegment(
     { showId: show.id, name: "Opening" },
     factoryDependencies(10),
   );
+  const firstSegment = {
+    ...firstSegmentBase,
+    dataFields: [
+      createSegmentDataField(
+        {
+          label: "Lower third title",
+          position: 0,
+          showSegmentId: firstSegmentBase.id,
+          type: "shortText",
+        },
+        factoryDependencies(12),
+      ),
+    ],
+  };
   const secondSegment = createShowSegment(
     { showId: show.id, name: "Interview" },
     factoryDependencies(11),

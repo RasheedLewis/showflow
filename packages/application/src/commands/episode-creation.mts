@@ -2,6 +2,7 @@ import {
   assertBlueprintPlacementOwnership,
   createEpisode,
   createEpisodeSegment,
+  resolveInitialEpisodeSegmentFieldValues,
 } from "@showflow/domain";
 import type {
   DomainFactoryDependencies,
@@ -68,7 +69,10 @@ export const mapEpisodeFromBlueprint = (
         sourceSegment,
         position: placement.position,
         ...(placement.label === undefined ? {} : { label: placement.label }),
-        fieldValues: cloneJsonObject(placement.defaultData),
+        fieldValues: resolveInitialEpisodeSegmentFieldValues(
+          sourceSegment,
+          cloneJsonObject(placement.defaultData),
+        ),
         notes: sourceSegment.notesTemplate,
         ...(placement.defaultDurationMs === undefined
           ? {}

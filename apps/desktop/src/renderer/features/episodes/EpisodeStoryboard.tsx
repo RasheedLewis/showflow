@@ -42,6 +42,7 @@ interface SortableItemProps {
   readonly item: EpisodeStoryboardDto["items"][number];
   readonly onDuplicate: () => void;
   readonly onMove: (destination: number) => void;
+  readonly onOpen: () => void;
   readonly onRemove: () => void;
   readonly onSelect: () => void;
   readonly selected: boolean;
@@ -53,6 +54,7 @@ const SortableItem = ({
   item,
   onDuplicate,
   onMove,
+  onOpen,
   onRemove,
   onSelect,
   selected,
@@ -80,6 +82,14 @@ const SortableItem = ({
       <StoryboardCard
         actions={
           <div className={styles.cardActions}>
+            <Button
+              aria-label={`Open ${item.sourceSegment.name}`}
+              onClick={onOpen}
+              size="small"
+              variant="ghost"
+            >
+              Open
+            </Button>
             <Button
               aria-label={`Reorder ${item.sourceSegment.name}`}
               className={styles.dragHandle}
@@ -120,6 +130,7 @@ const SortableItem = ({
             </Menu>
           </div>
         }
+        actionsVisible
         className={styles.sortableCard}
         dragging={isDragging}
         duration={formatDuration(item.expectedDurationMs)}
@@ -136,7 +147,7 @@ const SortableItem = ({
         readiness={item.readiness}
         selected={selected}
         sequenceNumber={index + 1}
-        summary={item.summary ?? "Episode content will be added in Sprint 8."}
+        {...(item.summary === null ? {} : { summary: item.summary })}
         title={item.sourceSegment.name}
       />
     </li>
@@ -147,6 +158,7 @@ export interface EpisodeStoryboardProps {
   readonly items: EpisodeStoryboardDto["items"];
   readonly onAddFirst: () => void;
   readonly onDuplicate: (episodeSegmentId: string) => void;
+  readonly onOpen: (episodeSegmentId: string) => void;
   readonly onRemove: (episodeSegmentId: string) => void;
   readonly onReorder: (
     orderedEpisodeSegmentIds: readonly string[],
@@ -157,6 +169,7 @@ export const EpisodeStoryboard = ({
   items,
   onAddFirst,
   onDuplicate,
+  onOpen,
   onRemove,
   onReorder,
 }: EpisodeStoryboardProps) => {
@@ -245,6 +258,7 @@ export const EpisodeStoryboard = ({
               key={item.episodeSegment.id}
               onDuplicate={() => onDuplicate(item.episodeSegment.id)}
               onMove={(destination) => move(index, destination)}
+              onOpen={() => onOpen(item.episodeSegment.id)}
               onRemove={() => onRemove(item.episodeSegment.id)}
               onSelect={() => setSelectedId(item.episodeSegment.id)}
               selected={selectedId === item.episodeSegment.id}

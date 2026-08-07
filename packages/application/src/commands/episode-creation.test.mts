@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   createFixedClock,
+  createSegmentDataField,
   createShowSegment,
   parseEntityId,
   parseUtcTimestamp,
@@ -62,7 +63,7 @@ const show = {
   ...metadata,
 } satisfies Show;
 
-const interview = createShowSegment(
+const interviewBase = createShowSegment(
   {
     showId: show.id,
     name: "Interview",
@@ -70,6 +71,20 @@ const interview = createShowSegment(
   },
   fixedDependencies(10),
 );
+const guestNameField = createSegmentDataField(
+  {
+    defaultValue: "Show guest",
+    label: "Guest name",
+    position: 0,
+    showSegmentId: interviewBase.id,
+    type: "shortText",
+  },
+  fixedDependencies(11),
+);
+const interview = {
+  ...interviewBase,
+  dataFields: [guestNameField],
+};
 
 const createPlacement = (
   suffix: number,
@@ -116,10 +131,8 @@ describe("Episode creation mapping", () => {
   });
 
   test("2.T10 and 2.T11 copy ordered defaults into independent duplicate-source Segments", () => {
-    const firstDefaults = {
-      lowerThird: { title: "Ada Lovelace", tags: ["guest", "live"] },
-    } as const;
-    const secondDefaults = { lowerThird: { title: "Grace Hopper" } } as const;
+    const firstDefaults = { guestName: "Ada Lovelace" } as const;
+    const secondDefaults = { guestName: "Grace Hopper" } as const;
     const blueprint = blueprintWith([
       createPlacement(21, 0, firstDefaults),
       createPlacement(22, 1, secondDefaults),
@@ -156,9 +169,7 @@ describe("Episode creation mapping", () => {
     ]);
     expect(episode.segments[0]?.id).not.toBe(episode.segments[1]?.id);
     expect(episode.segments[0]?.fieldValues).not.toBe(firstDefaults);
-    expect(episode.segments[0]?.fieldValues["lowerThird"]).not.toBe(
-      firstDefaults.lowerThird,
-    );
+    expect(episode.segments[0]?.fieldValues).not.toBe(firstDefaults);
   });
 
   test("2.T12 does not save a partial Episode when Segment mapping fails", async () => {
@@ -215,8 +226,8 @@ describe("Episode creation mapping", () => {
 
   test("loads a duplicate source Segment once and saves the complete aggregate once", async () => {
     const blueprint = blueprintWith([
-      createPlacement(21, 0, { title: "First" }),
-      createPlacement(22, 1, { title: "Second" }),
+      createPlacement(21, 0, { guestName: "First" }),
+      createPlacement(22, 1, { guestName: "Second" }),
     ]);
     const savedEpisodes: Episode[] = [];
     let sourceReadCount = 0;

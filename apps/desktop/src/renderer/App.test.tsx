@@ -67,6 +67,119 @@ const createSegmentEditorFixture = async () => {
   };
 };
 
+const createEpisodeSegmentEditorFixture = async () => {
+  const api = createMockDesktopApi();
+  await api.studios.create({ name: "Public Sphere" });
+  await api.shows.create({
+    name: "Artist Interviews",
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  const created = await api.segments.create({
+    blueprintId: DEFAULT_BLUEPRINT_ID,
+    name: "Interview",
+    position: 0,
+    showId: DEFAULT_SHOW_ID,
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  if (!created.ok) throw new Error(created.error.message);
+  const segment = created.data.segments.at(-1)?.segment;
+  const placement = created.data.blueprint.placements[0];
+  if (segment === undefined || placement === undefined) {
+    throw new Error("Expected a Segment and Blueprint placement.");
+  }
+  let editorResult = await api.segments.getEditor({
+    showId: DEFAULT_SHOW_ID,
+    showSegmentId: segment.id,
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  if (!editorResult.ok) throw new Error(editorResult.error.message);
+  let editor = editorResult.data;
+  editorResult = await api.segments.updateDetails({
+    expectedDurationMs: 60_000,
+    expectedUpdatedAt: editorResult.data.updatedAt,
+    name: "Interview",
+    notesTemplate: "Introduce the guest.",
+    showId: DEFAULT_SHOW_ID,
+    showSegmentId: segment.id,
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  if (!editorResult.ok) throw new Error(editorResult.error.message);
+
+  const addField = async (
+    label: string,
+    type:
+      | "shortText"
+      | "longText"
+      | "number"
+      | "boolean"
+      | "imageResource"
+      | "videoResource"
+      | "audioResource",
+    required: boolean,
+    defaultValue: string | number | boolean | null,
+  ): Promise<void> => {
+    const added = await api.segments.createField({
+      expectedUpdatedAt: editor.updatedAt,
+      label,
+      showId: DEFAULT_SHOW_ID,
+      showSegmentId: segment.id,
+      studioId: DEFAULT_STUDIO_ID,
+      type,
+    });
+    if (!added.ok) throw new Error(added.error.message);
+    const field = added.data.dataFields.at(-1);
+    if (field === undefined) throw new Error("Expected a Segment field.");
+    const updated = await api.segments.updateField({
+      defaultValue,
+      expectedUpdatedAt: added.data.updatedAt,
+      fieldId: field.id,
+      helpText: null,
+      label,
+      required,
+      showId: DEFAULT_SHOW_ID,
+      showSegmentId: segment.id,
+      studioId: DEFAULT_STUDIO_ID,
+      type,
+    });
+    if (!updated.ok) throw new Error(updated.error.message);
+    editor = updated.data;
+  };
+
+  await addField("Guest name", "shortText", true, null);
+  await addField("Talking points", "longText", false, null);
+  await addField("Rank", "number", true, 1);
+  await addField("Approved", "boolean", true, false);
+  await addField("Artwork", "imageResource", false, null);
+  await addField("Clip", "videoResource", false, null);
+  await addField("Theme music", "audioResource", false, null);
+  const duplicated = await api.blueprints.duplicatePlacement({
+    blueprintId: DEFAULT_BLUEPRINT_ID,
+    placementId: placement.id,
+    showId: DEFAULT_SHOW_ID,
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  if (!duplicated.ok) throw new Error(duplicated.error.message);
+  const episodeResult = await api.episodes.create({
+    showId: DEFAULT_SHOW_ID,
+    source: "blueprint",
+    studioId: DEFAULT_STUDIO_ID,
+    title: "Episode 24",
+  });
+  if (!episodeResult.ok) throw new Error(episodeResult.error.message);
+  const first = episodeResult.data.items[0];
+  const second = episodeResult.data.items[1];
+  if (first === undefined || second === undefined) {
+    throw new Error("Expected two Episode Segment occurrences.");
+  }
+  return {
+    api,
+    firstId: first.episodeSegment.id,
+    route: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/episodes/${episodeResult.data.episode.id}/segments/${first.episodeSegment.id}`,
+    secondId: second.episodeSegment.id,
+    segmentId: segment.id,
+  };
+};
+
 describe("App", () => {
   it("renders the Showflow application shell accessibly", () => {
     renderApp();
@@ -1523,6 +1636,31 @@ describe("App", () => {
     await waitFor(() => expect(name).toHaveValue("Opening"));
   });
 
+  it("shows a saved Show Segment duration on its Blueprint card", async () => {
+    const fixture = await createSegmentEditorFixture();
+    renderApp(fixture.route, fixture.api);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Show Segment inspector" }),
+    );
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Minutes" }), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Seconds" }), {
+      target: { value: "30" },
+    });
+    await waitFor(
+      () => expect(screen.getByText("Saved", { exact: true })).toBeVisible(),
+      { timeout: 2_000 },
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to Blueprint" }),
+    );
+
+    expect(await screen.findByText("150 sec", { exact: true })).toBeVisible();
+  });
+
   it("7.T9 serializes autosaves so an older response cannot replace the newest edit", async () => {
     const fixture = await createSegmentEditorFixture();
     const baseUpdateDetails = fixture.api.segments.updateDetails;
@@ -1642,5 +1780,106 @@ describe("App", () => {
     await waitFor(() =>
       expect(screen.queryByText("pronouns")).not.toBeInTheDocument(),
     );
+  });
+
+  it("8.T3, 8.T4, 8.T5, 8.T6, and 8.T10 renders dynamic content, saves it, and focuses validation", async () => {
+    const fixture = await createEpisodeSegmentEditorFixture();
+    renderApp(fixture.route, fixture.api);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Interview" }),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText("Changes apply only to this Episode.").length,
+    ).toBeGreaterThan(0);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Episode Segment inspector" }),
+    );
+    const validationIssue = screen.getByRole("button", {
+      name: "The Interview Segment needs Guest name. Add it before rehearsal.",
+    });
+    fireEvent.click(validationIssue);
+    expect(
+      await screen.findByRole("textbox", { name: /Guest name/u }),
+    ).toHaveFocus();
+
+    fireEvent.change(screen.getByRole("textbox", { name: /Guest name/u }), {
+      target: { value: "<script>Ada</script>" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Talking points" }), {
+      target: { value: "Discuss the new record." },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Rank" }), {
+      target: { value: "3" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Approved" }), {
+      target: { value: "true" },
+    });
+    expect(screen.getByRole("textbox", { name: /Artwork/u })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: /Clip/u })).toBeDisabled();
+    expect(
+      screen.getByRole("textbox", { name: /Theme music/u }),
+    ).toBeDisabled();
+    const notes = screen.getByRole("textbox", { name: "Episode notes" });
+    expect(notes).toHaveValue("Introduce the guest.");
+    fireEvent.change(notes, { target: { value: "Ask about the tour." } });
+
+    await waitFor(
+      () => expect(screen.getByText("Saved", { exact: true })).toBeVisible(),
+      { timeout: 2_000 },
+    );
+    expect(screen.getAllByText("Ready").length).toBeGreaterThan(0);
+    const source = await fixture.api.segments.getEditor({
+      showId: DEFAULT_SHOW_ID,
+      showSegmentId: fixture.segmentId,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    expect(source).toMatchObject({
+      ok: true,
+      data: { notesTemplate: "Introduce the guest." },
+    });
+  });
+
+  it("8.T7, 8.T8, and 8.T9 resets overrides and flushes before Previous/Next navigation", async () => {
+    const fixture = await createEpisodeSegmentEditorFixture();
+    renderApp(fixture.route, fixture.api);
+    await screen.findByRole("heading", { level: 1, name: "Interview" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Episode content" }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Previous Segment" }),
+    ).toBeDisabled();
+    const guest = screen.getByRole("textbox", { name: /Guest name/u });
+    fireEvent.change(guest, { target: { value: "First guest" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Episode Segment inspector" }),
+    );
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Minutes" }), {
+      target: { value: "2" },
+    });
+    const resetDuration = screen
+      .getAllByRole("button", { name: "Reset to Show default" })
+      .at(-1);
+    if (resetDuration === undefined) {
+      throw new Error("Expected a duration reset action.");
+    }
+    fireEvent.click(resetDuration);
+    fireEvent.click(screen.getByRole("button", { name: "Next Segment" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Previous Segment" }),
+      ).toBeEnabled(),
+    );
+    expect(screen.getByRole("button", { name: "Next Segment" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Previous Segment" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Open Episode content" }),
+    );
+    expect(
+      await screen.findByRole("textbox", { name: /Guest name/u }),
+    ).toHaveValue("First guest");
   });
 });

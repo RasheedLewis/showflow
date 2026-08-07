@@ -39,6 +39,7 @@ import type {
   ListEpisodesRequest,
   ReorderEpisodeRequest,
   RestoreEpisodeSegmentRequest,
+  UpdateEpisodeSegmentRequest,
 } from "./episode.ts";
 import type {
   CreateSegmentFieldRequest,
@@ -131,6 +132,9 @@ export interface ShowflowDesktopApi {
     ) => Promise<EpisodeStoryboardResult>;
     restoreSegment: (
       request: RestoreEpisodeSegmentRequest,
+    ) => Promise<EpisodeStoryboardResult>;
+    updateSegment: (
+      request: UpdateEpisodeSegmentRequest,
     ) => Promise<EpisodeStoryboardResult>;
   }>;
 }

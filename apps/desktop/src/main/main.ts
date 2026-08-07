@@ -28,6 +28,7 @@ import {
   RemoveEpisodeSegmentCommand,
   ReorderEpisodeSegmentsCommand,
   RestoreEpisodeSegmentCommand,
+  UpdateEpisodeSegmentContentCommand,
   CreateSegmentDataFieldCommand,
   DeleteSegmentDataFieldCommand,
   GetShowSegmentEditorQuery,
@@ -217,6 +218,10 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       removeSegment: new RemoveEpisodeSegmentCommand(episodeRepository),
       reorder: new ReorderEpisodeSegmentsCommand(episodeRepository),
       restoreSegment: new RestoreEpisodeSegmentCommand({
+        episodes: episodeRepository,
+        segments: segmentRepository,
+      }),
+      updateSegment: new UpdateEpisodeSegmentContentCommand({
         episodes: episodeRepository,
         segments: segmentRepository,
       }),

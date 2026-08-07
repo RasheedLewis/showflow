@@ -16,6 +16,7 @@ import {
 
 import {
   handleCreateEpisodeRequest,
+  handleEpisodeMutationRequest,
   type EpisodeOperations,
 } from "./episode-handler.mjs";
 
@@ -57,6 +58,9 @@ const blueprint = {
 
 const createOperations = (
   onCreate: (input: CreateEpisodeInput) => void = () => undefined,
+  onUpdate: (
+    input: Parameters<EpisodeOperations["updateSegment"]["execute"]>[0],
+  ) => void = () => undefined,
 ): EpisodeOperations => ({
   create: {
     execute: async (input) => {
@@ -73,6 +77,12 @@ const createOperations = (
   removeSegment: { execute: async () => episode },
   reorder: { execute: async () => episode },
   restoreSegment: { execute: async () => episode },
+  updateSegment: {
+    execute: async (input) => {
+      onUpdate(input);
+      return episode;
+    },
+  },
 });
 
 describe("Episode IPC handlers", () => {
@@ -144,6 +154,38 @@ describe("Episode IPC handlers", () => {
     ).resolves.toMatchObject({
       ok: false,
       error: { code: "IPC_INVALID_REQUEST" },
+    });
+  });
+
+  test("8.1 validates and maps Episode Segment content updates across IPC", async () => {
+    let received:
+      Parameters<EpisodeOperations["updateSegment"]["execute"]>[0] | undefined;
+    const episodeSegmentId = "2be5de98-56da-4a8a-97d6-a7c56113d99d";
+    const result = await handleEpisodeMutationRequest(
+      {
+        episodeId: episode.id,
+        episodeSegmentId,
+        expectedDurationOverrideMs: null,
+        expectedUpdatedAt: timestamp,
+        fieldValues: { guestName: "Ada Lovelace" },
+        notes: "Confirm pronunciation.",
+        showId,
+        studioId,
+      },
+      true,
+      createOperations(undefined, (input) => {
+        received = input;
+      }),
+      "update",
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(received).toEqual({
+      episodeId: episode.id,
+      episodeSegmentId,
+      expectedUpdatedAt: timestamp,
+      fieldValues: { guestName: "Ada Lovelace" },
+      notes: "Confirm pronunciation.",
     });
   });
 });

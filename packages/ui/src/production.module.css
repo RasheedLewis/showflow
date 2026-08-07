@@ -134,7 +134,8 @@
 
 .objectCard:hover .objectActions,
 .objectCard:focus-within .objectActions,
-.objectCard[data-selected="true"] .objectActions {
+.objectCard[data-selected="true"] .objectActions,
+.objectCard[data-actions-visible="true"] .objectActions {
   opacity: 1;
   pointer-events: auto;
 }

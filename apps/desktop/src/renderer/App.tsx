@@ -20,6 +20,7 @@ import {
   DESIGN_SHOW_SEGMENT_ROUTE,
   EPISODE_CREATION_ROUTE,
   PRODUCE_EPISODE_ROUTE,
+  EPISODE_SEGMENT_ROUTE,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
@@ -31,6 +32,7 @@ import { ShowDetailDestination } from "./features/shows/ShowDetailDestination";
 import { StartupDestination } from "./features/startup/StartupDestination";
 import { EpisodeCreationPage } from "./features/episodes/EpisodeCreationPage";
 import { ProduceEpisodeDestination } from "./features/episodes/ProduceEpisodeDestination";
+import { EpisodeSegmentEditorDestination } from "./features/episodes/EpisodeSegmentEditorDestination";
 import { ShowSegmentEditorDestination } from "./features/segments/ShowSegmentEditorDestination";
 
 export const ApplicationFoundation = () => (
@@ -119,6 +121,10 @@ const AppRoutes = () => (
     <Route
       element={<ProduceEpisodeDestination />}
       path={PRODUCE_EPISODE_ROUTE}
+    />
+    <Route
+      element={<EpisodeSegmentEditorDestination />}
+      path={EPISODE_SEGMENT_ROUTE}
     />
     <Route element={<Navigate replace to="/" />} path="*" />
   </Routes>

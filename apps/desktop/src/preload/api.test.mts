@@ -163,6 +163,7 @@ const createValidTransports = () => ({
   removeEpisodeSegment: async () => validEpisodeResult,
   reorderEpisode: async () => validEpisodeResult,
   restoreEpisodeSegment: async () => validEpisodeResult,
+  updateEpisodeSegment: async () => validEpisodeResult,
   updateSegmentDetails: async () => validSegmentEditorResult,
   updateSegmentField: async () => validSegmentEditorResult,
 });

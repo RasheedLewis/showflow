@@ -49,7 +49,7 @@ const dependencies = (firstSuffix: number): DomainFactoryDependencies => {
 };
 
 describe("SQLite Episode persistence", () => {
-  test("6.T1 persists Episode metadata and ordered Segments atomically", async () => {
+  test("6.T1 and 8.1 persist Episode metadata, ordered Segments, and content atomically", async () => {
     const temporaryDirectory = await fs.mkdtemp(
       path.join(os.tmpdir(), "showflow-episode-test-"),
     );
@@ -110,6 +110,7 @@ describe("SQLite Episode persistence", () => {
         const segment = createEpisodeSegment(
           {
             episode: baseEpisode,
+            expectedDurationOverrideMs: 90_000,
             sourceSegment,
             position: 0,
             fieldValues: { title: "This week" },

@@ -1,0 +1,24 @@
+declare const styles: {
+  readonly audienceFrame: string;
+  readonly canvasStage: string;
+  readonly contentPanel: string;
+  readonly durationControls: string;
+  readonly editorHeader: string;
+  readonly emptyCopy: string;
+  readonly error: string;
+  readonly eyebrow: string;
+  readonly fieldGroup: string;
+  readonly fields: string;
+  readonly frameLabel: string;
+  readonly inspector: string;
+  readonly issueList: string;
+  readonly navigation: string;
+  readonly panelHeader: string;
+  readonly readyCopy: string;
+  readonly sourceCopy: string;
+  readonly sourceRow: string;
+  readonly statusRow: string;
+  readonly unavailable: string;
+  readonly workspace: string;
+};
+export default styles;

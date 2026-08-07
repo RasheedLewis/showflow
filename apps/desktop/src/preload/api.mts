@@ -31,6 +31,7 @@ import {
   ListEpisodesRequestSchema,
   ReorderEpisodeRequestSchema,
   RestoreEpisodeSegmentRequestSchema,
+  UpdateEpisodeSegmentRequestSchema,
   type ShowflowDesktopApi,
   CreateSegmentFieldRequestSchema,
   DeleteSegmentFieldRequestSchema,
@@ -77,6 +78,7 @@ export interface DesktopApiTransports {
   readonly removeEpisodeSegment: (request: unknown) => Promise<unknown>;
   readonly reorderEpisode: (request: unknown) => Promise<unknown>;
   readonly restoreEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly updateEpisodeSegment: (request: unknown) => Promise<unknown>;
 }
 
 export const createShowflowDesktopApi = (
@@ -281,6 +283,12 @@ export const createShowflowDesktopApi = (
       const validRequest = RestoreEpisodeSegmentRequestSchema.parse(request);
       return EpisodeStoryboardResultSchema.parse(
         await transports.restoreEpisodeSegment(validRequest),
+      );
+    },
+    updateSegment: async (request: unknown) => {
+      const validRequest = UpdateEpisodeSegmentRequestSchema.parse(request);
+      return EpisodeStoryboardResultSchema.parse(
+        await transports.updateEpisodeSegment(validRequest),
       );
     },
   });

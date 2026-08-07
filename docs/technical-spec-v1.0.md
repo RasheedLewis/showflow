@@ -822,6 +822,11 @@ This must be enforced below the UI layer.
 
 A failure must not leave a partially created Episode.
 
+Episode Segment field initialization uses this precedence for each source field:
+the Blueprint placement default first, then the Show Segment field default, then
+an absent value when neither default exists. Episode values are independent
+copies; editing them must not mutate either source default.
+
 ## 10.6 Pure Domain Logic
 
 Keep the following as pure functions where possible:
