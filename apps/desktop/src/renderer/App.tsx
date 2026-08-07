@@ -31,6 +31,7 @@ import { ShowDetailDestination } from "./features/shows/ShowDetailDestination";
 import { StartupDestination } from "./features/startup/StartupDestination";
 import { EpisodeCreationPage } from "./features/episodes/EpisodeCreationPage";
 import { ProduceEpisodeDestination } from "./features/episodes/ProduceEpisodeDestination";
+import { ShowSegmentEditorDestination } from "./features/segments/ShowSegmentEditorDestination";
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
@@ -111,7 +112,7 @@ const AppRoutes = () => (
     <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
     <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
     <Route
-      element={<DesignShowDestination />}
+      element={<ShowSegmentEditorDestination />}
       path={DESIGN_SHOW_SEGMENT_ROUTE}
     />
     <Route element={<EpisodeCreationPage />} path={EPISODE_CREATION_ROUTE} />

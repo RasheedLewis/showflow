@@ -76,6 +76,26 @@
   margin: 0;
 }
 
+.showContext {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sf-space-2);
+  margin: 0;
+}
+
+.showContext span {
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-md);
+  line-height: var(--sf-line-height-label-md);
+}
+
+.showContext strong {
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-md);
+  line-height: var(--sf-line-height-body-md);
+}
+
 .error {
   color: var(--sf-error);
 }

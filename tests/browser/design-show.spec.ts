@@ -54,7 +54,7 @@ test("builds the first reusable Segment from an empty Blueprint accessibly", asy
   await picker.getByRole("button", { name: "Create and Add" }).click();
 
   await expect(
-    page.getByRole("heading", { level: 2, name: "Opening" }),
+    page.getByRole("heading", { level: 1, name: "Opening" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Return to Blueprint" }).click();
   const storyboard = page.getByRole("list", {
@@ -71,6 +71,11 @@ test("builds the first reusable Segment from an empty Blueprint accessibly", asy
     .disableRules(["color-contrast"])
     .analyze();
   expect(accessibility.violations).toEqual([]);
+
+  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Create New Episode" }),
+  ).toBeVisible();
 });
 
 test("reorders the Storyboard with keyboard and pointer input", async ({
@@ -88,7 +93,7 @@ test("reorders the Storyboard with keyboard and pointer input", async ({
     const picker = page.getByRole("dialog", { name: "Add Segment" });
     await picker.getByRole("textbox", { name: /Segment name/u }).fill(name);
     await picker.getByRole("button", { name: "Create and Add" }).click();
-    await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await page.getByRole("button", { name: "Return to Blueprint" }).click();
   }
   await expect
@@ -129,6 +134,92 @@ test("reorders the Storyboard with keyboard and pointer input", async ({
   await expect
     .poll(() => storyboardNames(page))
     .toEqual(["Opening", "Interview"]);
+});
+
+test("edits a reusable Segment definition and preserves it when reopened", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1_600 });
+  await createShow(page);
+  await page.getByRole("button", { name: "Add First Segment" }).click();
+  const picker = page.getByRole("dialog", { name: "Add Segment" });
+  await picker.getByRole("textbox", { name: /Segment name/u }).fill("Opening");
+  await picker.getByRole("button", { name: "Create and Add" }).click();
+
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Opening" }),
+  ).toBeVisible();
+  await page.setViewportSize({ height: 900, width: 800 });
+  const definitionStatus = page.getByText("Definition ready", {
+    exact: true,
+  });
+  await expect(definitionStatus).toHaveCSS("white-space", "nowrap");
+  await expect(definitionStatus).toHaveCSS("justify-content", "center");
+  await page.setViewportSize({ height: 900, width: 1_600 });
+  await expect(page.getByRole("tab", { name: "Active" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.getByRole("tab", { name: "Prepare" }).click();
+  await expect(page.getByText("Inferred preparation")).toBeVisible();
+  await page.getByRole("tab", { name: "Active" }).click();
+
+  const inspector = page.getByRole("complementary", {
+    name: "Segment inspector",
+  });
+  if (!(await inspector.isVisible())) {
+    await page.getByRole("button", { name: "Show Segment inspector" }).click();
+  }
+  await inspector
+    .getByRole("textbox", { name: "Segment name" })
+    .fill("Opening interview");
+  await inspector.getByRole("spinbutton", { name: "Minutes" }).fill("2");
+  await inspector.getByRole("spinbutton", { name: "Seconds" }).fill("30");
+  await inspector
+    .getByRole("textbox", { name: "New field label" })
+    .fill("Guest name");
+  await inspector.getByRole("button", { name: "Add field" }).click();
+  await expect(inspector.getByText("guestName")).toBeVisible();
+  await inspector
+    .getByRole("textbox", { exact: true, name: "Field label" })
+    .fill("Featured guest");
+  await inspector
+    .getByRole("checkbox", { name: "Required for every Episode" })
+    .check();
+  const notes = page.getByRole("textbox", { name: "Notes template" });
+  await notes.fill("Welcome");
+  await page.waitForTimeout(500);
+  await expect(notes).toBeFocused();
+  await notes.pressSequentially(" the guest.\nConfirm pronunciation.");
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.waitForTimeout(500);
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "test-results/sprint-7-segment-editor.png",
+  });
+
+  await page.getByRole("button", { name: "Return to Blueprint" }).click();
+  await expect(
+    page
+      .getByRole("list", { name: "Show Blueprint Storyboard" })
+      .getByText("Opening interview"),
+  ).toBeVisible();
+  const storyboardItem = page
+    .getByRole("list", { name: "Show Blueprint Storyboard" })
+    .getByRole("listitem");
+  await storyboardItem.locator("article").dblclick();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Opening interview" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Notes template" }),
+  ).toHaveValue("Welcome the guest.\nConfirm pronunciation.");
+
+  const accessibility = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
 });
 
 test("auto-scrolls the Storyboard workspace during a pointer drag", async ({

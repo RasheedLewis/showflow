@@ -173,6 +173,10 @@ export const ProduceEpisodeDestination = () => {
               <div className={styles.intro}>
                 <p className={styles.eyebrow}>Produce Episode</p>
                 <h2 className={styles.heading}>{storyboard.episode.title}</h2>
+                <p className={styles.showContext}>
+                  <span>Show</span>
+                  <strong>{storyboard.show.name}</strong>
+                </p>
                 <p className={styles.description}>
                   Changes apply only to this Episode.
                 </p>

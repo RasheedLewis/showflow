@@ -32,6 +32,15 @@ import {
   type ListEpisodesRequest,
   type ReorderEpisodeRequest,
   type RestoreEpisodeSegmentRequest,
+  type CreateSegmentFieldRequest,
+  type DeleteSegmentFieldRequest,
+  type GetSegmentEditorRequest,
+  type ReorderSegmentFieldsRequest,
+  type RestoreSegmentFieldRequest,
+  type SegmentDataFieldDto,
+  type ShowSegmentEditorDto,
+  type UpdateSegmentDetailsRequest,
+  type UpdateSegmentFieldRequest,
 } from "@showflow/contracts";
 import type { Page } from "@playwright/test";
 
@@ -69,6 +78,95 @@ export const createMockDesktopApi = (
   const studioIds = [DEFAULT_STUDIO_ID, SECOND_STUDIO_ID] as const;
   const shows = new Map<string, ShowDesignDto>();
   const episodes = new Map<string, EpisodeStoryboardDto>();
+  const segmentEditors = new Map<string, ShowSegmentEditorDto>();
+  const createSegmentEditor = (
+    segment: ShowDesignDto["segments"][number]["segment"],
+  ): ShowSegmentEditorDto => ({
+    ...segment,
+    dataFields: [],
+    lifecycle: {
+      active: {
+        availableLayoutIds: [],
+        defaultLayoutId: null,
+        hostCueIds: [],
+      },
+      cleanup: [],
+      enter: [],
+      exit: [],
+      prepare: [],
+    },
+    notesTemplate: "",
+    validationIssues: [],
+  });
+  const segmentEditorNotFound = () => ({
+    ok: false as const,
+    error: {
+      code: "NOT_FOUND" as const,
+      message: "This Segment is no longer available. Return to Design Show.",
+    },
+  });
+  const getScopedSegmentEditor = (
+    request: GetSegmentEditorRequest,
+  ): ShowSegmentEditorDto | undefined => {
+    const editor = segmentEditors.get(request.showSegmentId);
+    const design = shows.get(request.showId);
+    return editor?.showId === request.showId &&
+      design?.show.studioId === request.studioId
+      ? editor
+      : undefined;
+  };
+  const updateSegmentEditor = (
+    editor: ShowSegmentEditorDto,
+  ): ShowSegmentEditorDto => {
+    segmentEditors.set(editor.id, editor);
+    const design = shows.get(editor.showId);
+    if (design !== undefined) {
+      shows.set(editor.showId, {
+        ...design,
+        segments: design.segments.map((item) =>
+          item.segment.id === editor.id
+            ? {
+                ...item,
+                segment: {
+                  ...item.segment,
+                  expectedDurationMs: editor.expectedDurationMs,
+                  name: editor.name,
+                  updatedAt: editor.updatedAt,
+                },
+              }
+            : item,
+        ),
+      });
+    }
+    return editor;
+  };
+  const segmentEditorSuccess = (editor: ShowSegmentEditorDto) => ({
+    ok: true as const,
+    data: editor,
+  });
+  const fieldKey = (
+    label: string,
+    existing: readonly SegmentDataFieldDto[],
+  ): string => {
+    const base =
+      label
+        .trim()
+        .split(/[^A-Za-z0-9]+/u)
+        .filter(Boolean)
+        .map((part, index) =>
+          index === 0
+            ? part.toLowerCase()
+            : `${part.slice(0, 1).toUpperCase()}${part.slice(1).toLowerCase()}`,
+        )
+        .join("") || "field";
+    let candidate = /^[a-z]/u.test(base) ? base : `field${base}`;
+    let suffix = 2;
+    while (existing.some(({ key }) => key === candidate)) {
+      candidate = `${base}${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
+  };
   const createPlacement = (
     design: ShowDesignDto,
     showSegmentId: string,
@@ -346,6 +444,7 @@ export const createMockDesktopApi = (
           showId: request.showId,
           updatedAt: DEFAULT_TIMESTAMP,
         };
+        segmentEditors.set(segment.id, createSegmentEditor(segment));
         let updated = {
           ...design,
           segments: [...design.segments, { blueprintUsageCount: 0, segment }],
@@ -361,6 +460,136 @@ export const createMockDesktopApi = (
         }
         shows.set(request.showId, updated);
         return { ok: true, data: updated } as const;
+      },
+      createField: async (request: CreateSegmentFieldRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        const field = {
+          createdAt: DEFAULT_TIMESTAMP,
+          defaultValue: null,
+          episodeValueUsageCount: 0,
+          helpText: null,
+          id: crypto.randomUUID(),
+          key: fieldKey(request.label, editor.dataFields),
+          label: request.label.trim(),
+          position: editor.dataFields.length,
+          required: false,
+          showSegmentId: editor.id,
+          type: request.type,
+          updatedAt: DEFAULT_TIMESTAMP,
+        } satisfies SegmentDataFieldDto;
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            dataFields: [...editor.dataFields, field],
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
+      deleteField: async (request: DeleteSegmentFieldRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        const field = editor.dataFields.find(
+          ({ id }) => id === request.fieldId,
+        );
+        if (field === undefined) return segmentEditorNotFound();
+        if (field.episodeValueUsageCount > 0) {
+          return {
+            ok: false as const,
+            error: {
+              code: "CONFLICT" as const,
+              message: `The ${field.label} field has Episode content. Remove those values before deleting this field.`,
+            },
+          };
+        }
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            dataFields: editor.dataFields
+              .filter(({ id }) => id !== request.fieldId)
+              .map((candidate, position) => ({ ...candidate, position })),
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
+      getEditor: async (request: GetSegmentEditorRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        return editor === undefined
+          ? segmentEditorNotFound()
+          : segmentEditorSuccess(editor);
+      },
+      reorderFields: async (request: ReorderSegmentFieldsRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        const byId = new Map(
+          editor.dataFields.map((field) => [field.id, field]),
+        );
+        const fields = request.orderedFieldIds.flatMap((id, position) => {
+          const field = byId.get(id);
+          return field === undefined ? [] : [{ ...field, position }];
+        });
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            dataFields: fields,
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
+      restoreField: async (request: RestoreSegmentFieldRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        const fields = [...editor.dataFields];
+        fields.splice(request.field.position, 0, {
+          ...request.field,
+          episodeValueUsageCount: 0,
+        });
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            dataFields: fields.map((field, position) => ({
+              ...field,
+              position,
+            })),
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
+      updateDetails: async (request: UpdateSegmentDetailsRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            expectedDurationMs: request.expectedDurationMs,
+            name: request.name.trim(),
+            notesTemplate: request.notesTemplate,
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
+      updateField: async (request: UpdateSegmentFieldRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            dataFields: editor.dataFields.map((field) =>
+              field.id === request.fieldId
+                ? {
+                    ...field,
+                    defaultValue: request.defaultValue,
+                    helpText: request.helpText,
+                    label: request.label.trim(),
+                    required: request.required,
+                    type: request.type,
+                    updatedAt: DEFAULT_TIMESTAMP,
+                  }
+                : field,
+            ),
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
       },
     }),
     blueprints: Object.freeze({
@@ -518,6 +747,10 @@ export const createMockDesktopApi = (
           showId: request.showId,
           updatedAt: DEFAULT_TIMESTAMP,
         };
+        segmentEditors.set(
+          sourceSegment.id,
+          createSegmentEditor(sourceSegment),
+        );
         shows.set(request.showId, {
           ...design,
           segments: [
@@ -752,6 +985,43 @@ export const installMockDesktopApi = async (
           updatedAt: string;
         };
       };
+      type BrowserSegmentField = {
+        createdAt: string;
+        defaultValue: unknown;
+        episodeValueUsageCount: number;
+        helpText: string | null;
+        id: string;
+        key: string;
+        label: string;
+        position: number;
+        required: boolean;
+        showSegmentId: string;
+        type:
+          | "shortText"
+          | "longText"
+          | "number"
+          | "imageResource"
+          | "videoResource"
+          | "audioResource"
+          | "boolean";
+        updatedAt: string;
+      };
+      type BrowserSegmentEditor = BrowserSegment & {
+        dataFields: BrowserSegmentField[];
+        lifecycle: {
+          active: {
+            availableLayoutIds: string[];
+            defaultLayoutId: string | null;
+            hostCueIds: string[];
+          };
+          cleanup: unknown[];
+          enter: unknown[];
+          exit: unknown[];
+          prepare: unknown[];
+        };
+        notesTemplate: string;
+        validationIssues: unknown[];
+      };
       type BrowserEpisodeSegment = {
         createdAt: string;
         defaultLayoutOverrideId: string | null;
@@ -806,6 +1076,91 @@ export const installMockDesktopApi = async (
       };
       const shows = new Map<string, BrowserDesign>();
       const episodes = new Map<string, BrowserStoryboard>();
+      const segmentEditors = new Map<string, BrowserSegmentEditor>();
+      const createEditor = (segment: BrowserSegment): BrowserSegmentEditor => ({
+        ...segment,
+        dataFields: [],
+        lifecycle: {
+          active: {
+            availableLayoutIds: [],
+            defaultLayoutId: null,
+            hostCueIds: [],
+          },
+          cleanup: [],
+          enter: [],
+          exit: [],
+          prepare: [],
+        },
+        notesTemplate: "",
+        validationIssues: [],
+      });
+      const scopedEditor = (request: {
+        showId: string;
+        showSegmentId: string;
+        studioId: string;
+      }): BrowserSegmentEditor | undefined => {
+        const editor = segmentEditors.get(request.showSegmentId);
+        const design = shows.get(request.showId);
+        return editor?.showId === request.showId &&
+          design?.show.studioId === request.studioId
+          ? editor
+          : undefined;
+      };
+      const editorNotFound = () => ({
+        ok: false,
+        error: {
+          code: "NOT_FOUND",
+          message:
+            "This Segment is no longer available. Return to Design Show.",
+        },
+      });
+      const setEditor = (editor: BrowserSegmentEditor) => {
+        segmentEditors.set(editor.id, editor);
+        const design = shows.get(editor.showId);
+        if (design !== undefined) {
+          shows.set(editor.showId, {
+            ...design,
+            segments: design.segments.map((item) =>
+              item.segment.id === editor.id
+                ? {
+                    ...item,
+                    segment: {
+                      ...item.segment,
+                      expectedDurationMs: editor.expectedDurationMs,
+                      name: editor.name,
+                      updatedAt: editor.updatedAt,
+                    },
+                  }
+                : item,
+            ),
+          });
+        }
+        return { ok: true, data: editor };
+      };
+      const browserFieldKey = (
+        label: string,
+        fields: BrowserSegmentField[],
+      ): string => {
+        const parts = label
+          .trim()
+          .split(/[^A-Za-z0-9]+/u)
+          .filter(Boolean);
+        const raw = parts
+          .map((part, index) =>
+            index === 0
+              ? part.toLowerCase()
+              : `${part.slice(0, 1).toUpperCase()}${part.slice(1).toLowerCase()}`,
+          )
+          .join("");
+        const base = /^[a-z]/u.test(raw) ? raw : `field${raw || "Value"}`;
+        let candidate = base;
+        let suffix = 2;
+        while (fields.some(({ key }) => key === candidate)) {
+          candidate = `${base}${suffix}`;
+          suffix += 1;
+        }
+        return candidate;
+      };
       const withPlacements = (
         design: BrowserDesign,
         placements: BrowserPlacement[],
@@ -1117,6 +1472,7 @@ export const installMockDesktopApi = async (
               showId: request.showId,
               updatedAt: timestamp,
             };
+            segmentEditors.set(segment.id, createEditor(segment));
             let updated = {
               ...design,
               segments: [
@@ -1135,6 +1491,152 @@ export const installMockDesktopApi = async (
             }
             shows.set(request.showId, updated);
             return { ok: true, data: updated };
+          },
+          createField: async (request: {
+            label: string;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+            type: BrowserSegmentField["type"];
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            const field: BrowserSegmentField = {
+              createdAt: timestamp,
+              defaultValue: null,
+              episodeValueUsageCount: 0,
+              helpText: null,
+              id: crypto.randomUUID(),
+              key: browserFieldKey(request.label, editor.dataFields),
+              label: request.label.trim(),
+              position: editor.dataFields.length,
+              required: false,
+              showSegmentId: editor.id,
+              type: request.type,
+              updatedAt: timestamp,
+            };
+            return setEditor({
+              ...editor,
+              dataFields: [...editor.dataFields, field],
+              updatedAt: timestamp,
+            });
+          },
+          deleteField: async (request: {
+            fieldId: string;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            return setEditor({
+              ...editor,
+              dataFields: editor.dataFields
+                .filter(({ id }) => id !== request.fieldId)
+                .map((field, position) => ({ ...field, position })),
+              updatedAt: timestamp,
+            });
+          },
+          getEditor: async (request: {
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            return editor === undefined
+              ? editorNotFound()
+              : { ok: true, data: editor };
+          },
+          reorderFields: async (request: {
+            orderedFieldIds: string[];
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            const byId = new Map(
+              editor.dataFields.map((field) => [field.id, field]),
+            );
+            return setEditor({
+              ...editor,
+              dataFields: request.orderedFieldIds.flatMap((id, position) => {
+                const field = byId.get(id);
+                return field === undefined ? [] : [{ ...field, position }];
+              }),
+              updatedAt: timestamp,
+            });
+          },
+          restoreField: async (request: {
+            field: Omit<BrowserSegmentField, "episodeValueUsageCount">;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            const fields = [...editor.dataFields];
+            fields.splice(request.field.position, 0, {
+              ...request.field,
+              episodeValueUsageCount: 0,
+            });
+            return setEditor({
+              ...editor,
+              dataFields: fields.map((field, position) => ({
+                ...field,
+                position,
+              })),
+              updatedAt: timestamp,
+            });
+          },
+          updateDetails: async (request: {
+            expectedDurationMs: number | null;
+            name: string;
+            notesTemplate: string;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            return setEditor({
+              ...editor,
+              expectedDurationMs: request.expectedDurationMs,
+              name: request.name.trim(),
+              notesTemplate: request.notesTemplate,
+              updatedAt: timestamp,
+            });
+          },
+          updateField: async (request: {
+            defaultValue: unknown;
+            fieldId: string;
+            helpText: string | null;
+            label: string;
+            required: boolean;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+            type: BrowserSegmentField["type"];
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            return setEditor({
+              ...editor,
+              dataFields: editor.dataFields.map((field) =>
+                field.id === request.fieldId
+                  ? {
+                      ...field,
+                      defaultValue: request.defaultValue,
+                      helpText: request.helpText,
+                      label: request.label.trim(),
+                      required: request.required,
+                      type: request.type,
+                      updatedAt: timestamp,
+                    }
+                  : field,
+              ),
+              updatedAt: timestamp,
+            });
           },
         }),
         blueprints: Object.freeze({
@@ -1340,6 +1842,7 @@ export const installMockDesktopApi = async (
               showId: request.showId,
               updatedAt: timestamp,
             };
+            segmentEditors.set(sourceSegment.id, createEditor(sourceSegment));
             shows.set(request.showId, {
               ...design,
               segments: [

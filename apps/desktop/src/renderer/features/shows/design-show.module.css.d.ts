@@ -2,6 +2,7 @@ declare const styles: Readonly<{
   workspace: string;
   header: string;
   intro: string;
+  backAction: string;
   eyebrow: string;
   metadata: string;
   heading: string;

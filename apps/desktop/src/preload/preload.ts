@@ -26,6 +26,13 @@ import {
   EPISODES_REMOVE_SEGMENT_CHANNEL,
   EPISODES_REORDER_CHANNEL,
   EPISODES_RESTORE_SEGMENT_CHANNEL,
+  SEGMENTS_CREATE_FIELD_CHANNEL,
+  SEGMENTS_DELETE_FIELD_CHANNEL,
+  SEGMENTS_GET_EDITOR_CHANNEL,
+  SEGMENTS_REORDER_FIELDS_CHANNEL,
+  SEGMENTS_RESTORE_FIELD_CHANNEL,
+  SEGMENTS_UPDATE_DETAILS_CHANNEL,
+  SEGMENTS_UPDATE_FIELD_CHANNEL,
 } from "@showflow/contracts";
 import { contextBridge, ipcRenderer } from "electron";
 
@@ -40,6 +47,20 @@ const showflowDesktopApi = createShowflowDesktopApi({
   createShow: (request) => ipcRenderer.invoke(SHOWS_CREATE_CHANNEL, request),
   createSegment: (request) =>
     ipcRenderer.invoke(SEGMENTS_CREATE_CHANNEL, request),
+  createSegmentField: (request) =>
+    ipcRenderer.invoke(SEGMENTS_CREATE_FIELD_CHANNEL, request),
+  deleteSegmentField: (request) =>
+    ipcRenderer.invoke(SEGMENTS_DELETE_FIELD_CHANNEL, request),
+  getSegmentEditor: (request) =>
+    ipcRenderer.invoke(SEGMENTS_GET_EDITOR_CHANNEL, request),
+  reorderSegmentFields: (request) =>
+    ipcRenderer.invoke(SEGMENTS_REORDER_FIELDS_CHANNEL, request),
+  restoreSegmentField: (request) =>
+    ipcRenderer.invoke(SEGMENTS_RESTORE_FIELD_CHANNEL, request),
+  updateSegmentDetails: (request) =>
+    ipcRenderer.invoke(SEGMENTS_UPDATE_DETAILS_CHANNEL, request),
+  updateSegmentField: (request) =>
+    ipcRenderer.invoke(SEGMENTS_UPDATE_FIELD_CHANNEL, request),
   duplicateBlueprintPlacement: (request) =>
     ipcRenderer.invoke(BLUEPRINTS_DUPLICATE_CHANNEL, request),
   deleteShow: (request) => ipcRenderer.invoke(SHOWS_DELETE_CHANNEL, request),

@@ -1,0 +1,33 @@
+declare const styles: Readonly<{
+  audienceFrame: string;
+  canvasStage: string;
+  dependencyCopy: string;
+  dependencyList: string;
+  durationControls: string;
+  durationFieldset: string;
+  durationInput: string;
+  editorHeader: string;
+  emptyFields: string;
+  error: string;
+  eyebrow: string;
+  fieldActions: string;
+  fieldCard: string;
+  fieldCreateForm: string;
+  fieldHeader: string;
+  fieldHint: string;
+  fieldKey: string;
+  fieldList: string;
+  fieldPosition: string;
+  frameLabel: string;
+  framePlaceholder: string;
+  inspector: string;
+  notesPanel: string;
+  phaseHeader: string;
+  phaseHeading: string;
+  scopeDetail: string;
+  unavailable: string;
+  usageWarning: string;
+  workspace: string;
+}>;
+
+export default styles;

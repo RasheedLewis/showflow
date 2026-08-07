@@ -18,6 +18,11 @@
   max-width: 48rem;
 }
 
+.backAction {
+  justify-self: start;
+  margin-bottom: var(--sf-space-2);
+}
+
 .eyebrow,
 .metadata {
   color: var(--sf-text-tertiary);

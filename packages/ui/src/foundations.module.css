@@ -304,15 +304,19 @@
 }
 
 .badge {
+  flex-shrink: 0;
   display: inline-flex;
   min-height: var(--sf-status-height);
   align-items: center;
   gap: var(--sf-space-1);
+  justify-content: center;
   padding: 0 var(--sf-space-2);
   border-radius: var(--sf-radius-round);
   font-size: var(--sf-font-size-label-sm);
   font-weight: var(--sf-font-weight-label-md);
   line-height: var(--sf-line-height-label-sm);
+  text-align: center;
+  white-space: nowrap;
 }
 
 .badge-neutral {

@@ -55,6 +55,13 @@ export interface ShowSegmentRepository extends EntityRepository<
   listByShowId(showId: ShowId): Promise<readonly ShowSegment[]>;
 }
 
+export interface SegmentDataFieldUsageRepository {
+  countEpisodeFieldValues(
+    showSegmentId: ShowSegmentId,
+    fieldKey: string,
+  ): Promise<number>;
+}
+
 export interface SegmentBlueprintCreationRepository {
   create(segment: ShowSegment, blueprint: ShowBlueprint): Promise<void>;
 }

@@ -6,7 +6,9 @@ import { describe, expect, test } from "vitest";
 
 import {
   createFixedClock,
+  createSegmentDataField,
   createShowSegment,
+  defineSegmentLifecycle,
   parseEntityId,
   parseUtcTimestamp,
   type BlueprintSegmentPlacement,
@@ -97,7 +99,29 @@ describe("SQLite Segment and Blueprint persistence", () => {
           { showId: show.id, name: "Interview" },
           dependencies(11),
         );
-        await segments.save(opening);
+        const titleField = createSegmentDataField(
+          {
+            defaultValue: "Welcome",
+            helpText: "Title shown at the start of the Show.",
+            label: "Opening title",
+            position: 0,
+            required: true,
+            showSegmentId: opening.id,
+            type: "shortText",
+          },
+          dependencies(12),
+        );
+        const detailedOpening = {
+          ...opening,
+          dataFields: [titleField],
+          expectedDurationMs: 60_000,
+          lifecycle: defineSegmentLifecycle({
+            ...opening.lifecycle,
+            enter: [{ kind: "waitForAnimationCompletion" }],
+          }),
+          notesTemplate: "Welcome the audience.\nIntroduce the Show.",
+        } satisfies typeof opening;
+        await segments.save(detailedOpening);
         await segments.save(interview);
         const placement = (
           idSuffix: number,
@@ -123,11 +147,11 @@ describe("SQLite Segment and Blueprint persistence", () => {
         await blueprints.save(ordered);
         await expect(blueprints.getByShowId(show.id)).resolves.toEqual(ordered);
         await expect(segments.listByShowId(show.id)).resolves.toEqual([
-          opening,
+          detailedOpening,
           interview,
         ]);
 
-        const archived = { ...opening, archivedAt: timestamp };
+        const archived = { ...detailedOpening, archivedAt: timestamp };
         await segments.save(archived);
         await expect(segments.listByShowId(show.id)).resolves.toContainEqual(
           archived,

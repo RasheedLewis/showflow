@@ -28,6 +28,13 @@ import {
   RemoveEpisodeSegmentCommand,
   ReorderEpisodeSegmentsCommand,
   RestoreEpisodeSegmentCommand,
+  CreateSegmentDataFieldCommand,
+  DeleteSegmentDataFieldCommand,
+  GetShowSegmentEditorQuery,
+  ReorderSegmentDataFieldsCommand,
+  RestoreSegmentDataFieldCommand,
+  UpdateSegmentDataFieldCommand,
+  UpdateShowSegmentDetailsCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -58,6 +65,8 @@ import {
 } from "./security.mjs";
 import { runRequestedNodeSqliteSpike } from "./node-sqlite-spike-entry.mjs";
 import { registerRuntimeInfoIpc } from "./runtime-info-ipc.mjs";
+import { registerSegmentEditorIpc } from "./segment-editor-ipc.mjs";
+import type { SegmentEditorOperations } from "./segment-editor-handler.mjs";
 import { registerStudioIpc, type StudioIpcOperations } from "./studio-ipc.mjs";
 import { registerShowIpc, type ShowIpcOperations } from "./show-ipc.mjs";
 
@@ -73,6 +82,7 @@ interface DesktopServices {
   readonly shows: ShowIpcOperations;
   readonly designShow: DesignShowOperations;
   readonly episodes: EpisodeOperations;
+  readonly segmentEditor: SegmentEditorOperations;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -147,6 +157,10 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     segments: segmentRepository,
     shows: showRepository,
   });
+  const getSegmentEditor = new GetShowSegmentEditorQuery({
+    segments: segmentRepository,
+    shows: showRepository,
+  });
 
   return {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
@@ -206,6 +220,15 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
         episodes: episodeRepository,
         segments: segmentRepository,
       }),
+    },
+    segmentEditor: {
+      createField: new CreateSegmentDataFieldCommand(segmentRepository),
+      deleteField: new DeleteSegmentDataFieldCommand(segmentRepository),
+      get: getSegmentEditor,
+      reorderFields: new ReorderSegmentDataFieldsCommand(segmentRepository),
+      restoreField: new RestoreSegmentDataFieldCommand(segmentRepository),
+      updateDetails: new UpdateShowSegmentDetailsCommand(segmentRepository),
+      updateField: new UpdateSegmentDataFieldCommand(segmentRepository),
     },
     studios: {
       create: new CreateStudioCommand(studioRepository),
@@ -291,6 +314,7 @@ const createMainWindow = async (
   shows: ShowIpcOperations,
   designShow: DesignShowOperations,
   episodes: EpisodeOperations,
+  segmentEditor: SegmentEditorOperations,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -318,6 +342,7 @@ const createMainWindow = async (
   registerShowIpc(window, content.trustedUrl, shows);
   registerDesignShowIpc(window, content.trustedUrl, designShow);
   registerEpisodeIpc(window, content.trustedUrl, episodes);
+  registerSegmentEditorIpc(window, content.trustedUrl, segmentEditor);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -366,6 +391,7 @@ app
       services.shows,
       services.designShow,
       services.episodes,
+      services.segmentEditor,
     );
 
     app.on("activate", () => {
@@ -376,6 +402,7 @@ app
           services.shows,
           services.designShow,
           services.episodes,
+          services.segmentEditor,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
         });

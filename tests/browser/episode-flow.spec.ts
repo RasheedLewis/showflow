@@ -27,7 +27,7 @@ const createShowWithBlueprint = async (page: Page): Promise<void> => {
     const picker = page.getByRole("dialog", { name: "Add Segment" });
     await picker.getByRole("textbox", { name: /Segment name/u }).fill(name);
     await picker.getByRole("button", { name: "Create and Add" }).click();
-    await expect(page.getByRole("heading", { level: 2, name })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
     await page.getByRole("button", { name: "Return to Blueprint" }).click();
   }
 };
@@ -60,6 +60,9 @@ test("6.T13 creates Studio → Show → Blueprint → Episode and reorders it", 
 
   await expect(
     page.getByText("Changes apply only to this Episode.").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Artist Interviews", { exact: true }),
   ).toBeVisible();
   await expect
     .poll(() => storyboardNames(page))

@@ -14,6 +14,7 @@ export * from "./entities/lifecycle.mjs";
 export * from "./entities/ownership.mjs";
 export * from "./entities/resource.mjs";
 export * from "./entities/segment.mjs";
+export * from "./entities/segment-schema.mjs";
 export * from "./entities/studio.mjs";
 export * from "./entities/validation-issue.mjs";
 export * from "./identity/entity-id.mjs";

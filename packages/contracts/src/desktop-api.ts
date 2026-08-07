@@ -40,6 +40,16 @@ import type {
   ReorderEpisodeRequest,
   RestoreEpisodeSegmentRequest,
 } from "./episode.ts";
+import type {
+  CreateSegmentFieldRequest,
+  DeleteSegmentFieldRequest,
+  GetSegmentEditorRequest,
+  ReorderSegmentFieldsRequest,
+  RestoreSegmentFieldRequest,
+  ShowSegmentEditorResult,
+  UpdateSegmentDetailsRequest,
+  UpdateSegmentFieldRequest,
+} from "./segment-editor.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -66,6 +76,27 @@ export interface ShowflowDesktopApi {
   readonly segments: Readonly<{
     archive: (request: ArchiveSegmentRequest) => Promise<ShowDesignResult>;
     create: (request: CreateSegmentRequest) => Promise<ShowDesignResult>;
+    createField: (
+      request: CreateSegmentFieldRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    deleteField: (
+      request: DeleteSegmentFieldRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    getEditor: (
+      request: GetSegmentEditorRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    reorderFields: (
+      request: ReorderSegmentFieldsRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    restoreField: (
+      request: RestoreSegmentFieldRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    updateDetails: (
+      request: UpdateSegmentDetailsRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    updateField: (
+      request: UpdateSegmentFieldRequest,
+    ) => Promise<ShowSegmentEditorResult>;
   }>;
   readonly blueprints: Readonly<{
     addSegment: (

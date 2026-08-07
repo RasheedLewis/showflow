@@ -16,6 +16,7 @@ declare const styles: {
   readonly preview: string;
   readonly progress: string;
   readonly sortableCard: string;
+  readonly showContext: string;
   readonly storyboard: string;
   readonly storyboardItem: string;
   readonly toolbar: string;

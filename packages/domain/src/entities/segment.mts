@@ -19,6 +19,16 @@ export type SegmentDataFieldType =
   | "audioResource"
   | "boolean";
 
+export const SEGMENT_DATA_FIELD_TYPES = Object.freeze([
+  "shortText",
+  "longText",
+  "number",
+  "imageResource",
+  "videoResource",
+  "audioResource",
+  "boolean",
+] as const satisfies readonly SegmentDataFieldType[]);
+
 export interface SegmentDataField extends DomainEntity<SegmentDataFieldId> {
   readonly showSegmentId: ShowSegmentId;
   readonly key: string;

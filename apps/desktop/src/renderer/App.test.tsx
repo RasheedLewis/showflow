@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 import type { ShowDesignResult, ShowflowDesktopApi } from "@showflow/contracts";
@@ -41,6 +41,30 @@ const renderApp = (
       <App />
     </MemoryRouter>,
   );
+};
+
+const createSegmentEditorFixture = async () => {
+  const api = createMockDesktopApi();
+  await api.studios.create({ name: "Public Sphere" });
+  await api.shows.create({
+    name: "Artist Interviews",
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  const result = await api.segments.create({
+    blueprintId: DEFAULT_BLUEPRINT_ID,
+    name: "Opening",
+    position: 0,
+    showId: DEFAULT_SHOW_ID,
+    studioId: DEFAULT_STUDIO_ID,
+  });
+  if (!result.ok) throw new Error(result.error.message);
+  const segment = result.data.segments.at(-1)?.segment;
+  if (segment === undefined) throw new Error("Expected a created Segment.");
+  return {
+    api,
+    route: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/segments/${segment.id}`,
+    segmentId: segment.id,
+  };
 };
 
 describe("App", () => {
@@ -260,6 +284,15 @@ describe("App", () => {
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to Show Detail" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 2,
+        name: "Create New Episode",
+      }),
+    ).toBeVisible();
   });
 
   it("creates a reusable Segment from the empty Blueprint and keeps scope visible", async () => {
@@ -298,7 +331,7 @@ describe("App", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { level: 2, name: "Opening" }),
+      await screen.findByRole("heading", { level: 1, name: "Opening" }),
     ).toBeVisible();
     expect(screen.getByText("Welcome the audience.")).toBeVisible();
     fireEvent.click(
@@ -1226,6 +1259,9 @@ describe("App", () => {
       await screen.findByRole("heading", { level: 1, name: "Week 32" }),
     ).toBeVisible();
     expect(
+      screen.getByText("Artist Interviews", { selector: "strong" }),
+    ).toBeVisible();
+    expect(
       screen.getAllByText("Changes apply only to this Episode.").length,
     ).toBeGreaterThan(0);
     expect(
@@ -1391,5 +1427,220 @@ describe("App", () => {
     ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Back to Shows" }));
     expect(await screen.findByText("1 Episode")).toBeVisible();
+  });
+
+  it("7.T5 and 7.T6 opens the Show-scoped editor with exactly five phases and Active selected", async () => {
+    const fixture = await createSegmentEditorFixture();
+    renderApp(fixture.route, fixture.api);
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Opening" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Changes affect future uses of this Segment."),
+    ).toBeVisible();
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Prepare",
+      "Enter",
+      "Active",
+      "Exit",
+      "Cleanup",
+    ]);
+    expect(screen.getByRole("tab", { name: "Active" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      screen.getByText("Choose the default Layout in Sprint 10"),
+    ).toBeVisible();
+
+    expect(screen.getByRole("tab", { name: "Prepare" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("tab", { name: "Cleanup" })).not.toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("7.T6, 7.T7, and 7.T10 autosaves coalesced details and persistently undoes them", async () => {
+    const fixture = await createSegmentEditorFixture();
+    const updateDetails = vi.fn(fixture.api.segments.updateDetails);
+    const api: ShowflowDesktopApi = {
+      ...fixture.api,
+      segments: { ...fixture.api.segments, updateDetails },
+    };
+    renderApp(fixture.route, api);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Show Segment inspector" }),
+    );
+    const name = await screen.findByRole("textbox", { name: "Segment name" });
+    fireEvent.change(name, { target: { value: "Opening interview" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Minutes" }), {
+      target: { value: "2" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Seconds" }), {
+      target: { value: "30" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Notes template" }), {
+      target: { value: "Welcome the guest.\nConfirm pronunciation." },
+    });
+
+    await waitFor(() => expect(updateDetails).toHaveBeenCalledTimes(1), {
+      timeout: 2_000,
+    });
+    const saved = await api.segments.getEditor({
+      showId: DEFAULT_SHOW_ID,
+      showSegmentId: fixture.segmentId,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    expect(saved).toMatchObject({
+      ok: true,
+      data: {
+        expectedDurationMs: 150_000,
+        name: "Opening interview",
+        notesTemplate: "Welcome the guest.\nConfirm pronunciation.",
+      },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Undo Segment change" }),
+    );
+    await waitFor(async () => {
+      const undone = await api.segments.getEditor({
+        showId: DEFAULT_SHOW_ID,
+        showSegmentId: fixture.segmentId,
+        studioId: DEFAULT_STUDIO_ID,
+      });
+      expect(undone).toMatchObject({
+        ok: true,
+        data: { expectedDurationMs: null, name: "Opening", notesTemplate: "" },
+      });
+    });
+    await waitFor(() => expect(name).toHaveValue("Opening"));
+  });
+
+  it("7.T9 serializes autosaves so an older response cannot replace the newest edit", async () => {
+    const fixture = await createSegmentEditorFixture();
+    const baseUpdateDetails = fixture.api.segments.updateDetails;
+    let requestNumber = 0;
+    const updateDetails = vi.fn(
+      async (request: Parameters<typeof baseUpdateDetails>[0]) => {
+        requestNumber += 1;
+        if (requestNumber === 1) {
+          await new Promise<void>((resolve) => {
+            setTimeout(resolve, 700);
+          });
+        }
+        return baseUpdateDetails(request);
+      },
+    );
+    const api: ShowflowDesktopApi = {
+      ...fixture.api,
+      segments: { ...fixture.api.segments, updateDetails },
+    };
+    renderApp(fixture.route, api);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Show Segment inspector" }),
+    );
+    const name = await screen.findByRole("textbox", { name: "Segment name" });
+
+    fireEvent.change(name, { target: { value: "Older name" } });
+    await waitFor(() => expect(updateDetails).toHaveBeenCalledTimes(1), {
+      timeout: 1_500,
+    });
+    fireEvent.change(name, { target: { value: "Newest name" } });
+    await waitFor(() => expect(updateDetails).toHaveBeenCalledTimes(2), {
+      timeout: 2_500,
+    });
+    await waitFor(
+      async () => {
+        const saved = await api.segments.getEditor({
+          showId: DEFAULT_SHOW_ID,
+          showSegmentId: fixture.segmentId,
+          studioId: DEFAULT_STUDIO_ID,
+        });
+        expect(saved).toMatchObject({
+          ok: true,
+          data: { name: "Newest name" },
+        });
+      },
+      { timeout: 2_500 },
+    );
+  });
+
+  it("7.T1 through 7.T4 creates, edits, reorders, and deletes fields without changing their keys", async () => {
+    const fixture = await createSegmentEditorFixture();
+    renderApp(fixture.route, fixture.api);
+    await screen.findByRole("heading", { level: 1, name: "Opening" });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Show Segment inspector" }),
+    );
+
+    const newFieldLabel = screen.getByRole("textbox", {
+      name: "New field label",
+    });
+    fireEvent.change(newFieldLabel, { target: { value: "Guest name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add field" }));
+    expect(await screen.findByText("guestName")).toBeVisible();
+
+    const fieldLabel = screen.getByRole("textbox", { name: "Field label" });
+    fireEvent.change(fieldLabel, { target: { value: "Featured guest" } });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Required for every Episode" }),
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Help text" }), {
+      target: { value: "Use the guest's preferred on-air name." },
+    });
+    await waitFor(() => expect(fieldLabel).toHaveValue("Featured guest"));
+    await waitFor(
+      async () => {
+        const saved = await fixture.api.segments.getEditor({
+          showId: DEFAULT_SHOW_ID,
+          showSegmentId: fixture.segmentId,
+          studioId: DEFAULT_STUDIO_ID,
+        });
+        expect(saved).toMatchObject({
+          ok: true,
+          data: {
+            dataFields: [
+              {
+                helpText: "Use the guest's preferred on-air name.",
+                key: "guestName",
+                label: "Featured guest",
+                required: true,
+              },
+            ],
+          },
+        });
+      },
+      { timeout: 2_000 },
+    );
+
+    fireEvent.change(newFieldLabel, { target: { value: "Pronouns" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add field" }));
+    expect(await screen.findByText("pronouns")).toBeVisible();
+    const secondMoveUp = screen.getAllByRole("button", { name: "Move up" })[1];
+    if (secondMoveUp === undefined) throw new Error("Expected a second field.");
+    fireEvent.click(secondMoveUp);
+    await waitFor(() => {
+      const keys = screen.getAllByText(/guestName|pronouns/);
+      expect(keys.map((key) => key.textContent)).toEqual([
+        "pronouns",
+        "guestName",
+      ]);
+    });
+    const firstDelete = screen.getAllByRole("button", {
+      name: "Delete field",
+    })[0];
+    if (firstDelete === undefined)
+      throw new Error("Expected a field to delete.");
+    fireEvent.click(firstDelete);
+    await waitFor(() =>
+      expect(screen.queryByText("pronouns")).not.toBeInTheDocument(),
+    );
   });
 });

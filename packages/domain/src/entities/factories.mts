@@ -1,14 +1,24 @@
-import type { JsonObject, PixelDimensions } from "./core.mjs";
+import type { JsonObject, JsonValue, PixelDimensions } from "./core.mjs";
 import { createEntityMetadata } from "./entity-metadata.mjs";
 import type { Episode, EpisodeSegment } from "./episode.mjs";
 import type { CanvasAspectRatio } from "./composition.mjs";
 import type { Layout } from "./layout.mjs";
 import { defineSegmentLifecycle } from "./lifecycle.mjs";
 import {
+  assertValidSegmentDataFieldDefault,
+  generateSegmentDataFieldKey,
+  normalizeExpectedDurationMs,
+  normalizeSegmentDataFieldLabel,
+} from "./segment-schema.mjs";
+import {
   assertLayoutOwnedByShow,
   assertShowSegmentOwnedByShow,
 } from "./ownership.mjs";
-import type { ShowSegment } from "./segment.mjs";
+import type {
+  SegmentDataField,
+  SegmentDataFieldType,
+  ShowSegment,
+} from "./segment.mjs";
 import type { Show, Studio } from "./studio.mjs";
 import { createEntityId } from "../identity/entity-id.mjs";
 import type {
@@ -115,9 +125,48 @@ export const createShowSegment = (
     hostCues: [],
     ...(input.expectedDurationMs === undefined
       ? {}
-      : { expectedDurationMs: input.expectedDurationMs }),
+      : {
+          expectedDurationMs: normalizeExpectedDurationMs(
+            input.expectedDurationMs,
+          ),
+        }),
     notesTemplate: input.notesTemplate ?? "",
     ...metadata,
+  };
+};
+
+export interface CreateSegmentDataFieldInput {
+  readonly showSegmentId: ShowSegment["id"];
+  readonly label: string;
+  readonly type: SegmentDataFieldType;
+  readonly required?: boolean;
+  readonly defaultValue?: JsonValue;
+  readonly helpText?: string;
+  readonly position: number;
+  readonly existingKeys?: readonly string[];
+}
+
+export const createSegmentDataField = (
+  input: CreateSegmentDataFieldInput,
+  dependencies: DomainFactoryDependencies = DEFAULT_DOMAIN_FACTORY_DEPENDENCIES,
+): SegmentDataField => {
+  const label = normalizeSegmentDataFieldLabel(input.label);
+  assertValidSegmentDataFieldDefault(input.type, input.defaultValue);
+  const helpText = input.helpText?.trim();
+
+  return {
+    id: dependencies.createId("segmentDataField"),
+    showSegmentId: input.showSegmentId,
+    key: generateSegmentDataFieldKey(label, input.existingKeys ?? []),
+    label,
+    type: input.type,
+    required: input.required ?? false,
+    ...(input.defaultValue === undefined
+      ? {}
+      : { defaultValue: input.defaultValue }),
+    ...(helpText === undefined || helpText.length === 0 ? {} : { helpText }),
+    position: input.position,
+    ...createEntityMetadata(dependencies.clock),
   };
 };
 

@@ -32,6 +32,14 @@ import {
   ReorderEpisodeRequestSchema,
   RestoreEpisodeSegmentRequestSchema,
   type ShowflowDesktopApi,
+  CreateSegmentFieldRequestSchema,
+  DeleteSegmentFieldRequestSchema,
+  GetSegmentEditorRequestSchema,
+  ReorderSegmentFieldsRequestSchema,
+  RestoreSegmentFieldRequestSchema,
+  ShowSegmentEditorResultSchema,
+  UpdateSegmentDetailsRequestSchema,
+  UpdateSegmentFieldRequestSchema,
 } from "@showflow/contracts";
 
 export interface DesktopApiTransports {
@@ -49,6 +57,13 @@ export interface DesktopApiTransports {
   readonly updateNavigation: (request: unknown) => Promise<unknown>;
   readonly createSegment: (request: unknown) => Promise<unknown>;
   readonly archiveSegment: (request: unknown) => Promise<unknown>;
+  readonly createSegmentField: (request: unknown) => Promise<unknown>;
+  readonly deleteSegmentField: (request: unknown) => Promise<unknown>;
+  readonly getSegmentEditor: (request: unknown) => Promise<unknown>;
+  readonly reorderSegmentFields: (request: unknown) => Promise<unknown>;
+  readonly restoreSegmentField: (request: unknown) => Promise<unknown>;
+  readonly updateSegmentDetails: (request: unknown) => Promise<unknown>;
+  readonly updateSegmentField: (request: unknown) => Promise<unknown>;
   readonly addBlueprintSegment: (request: unknown) => Promise<unknown>;
   readonly duplicateBlueprintPlacement: (request: unknown) => Promise<unknown>;
   readonly removeBlueprintPlacement: (request: unknown) => Promise<unknown>;
@@ -140,6 +155,48 @@ export const createShowflowDesktopApi = (
       const validRequest = CreateSegmentRequestSchema.parse(request);
       return ShowDesignResultSchema.parse(
         await transports.createSegment(validRequest),
+      );
+    },
+    createField: async (request: unknown) => {
+      const validRequest = CreateSegmentFieldRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.createSegmentField(validRequest),
+      );
+    },
+    deleteField: async (request: unknown) => {
+      const validRequest = DeleteSegmentFieldRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.deleteSegmentField(validRequest),
+      );
+    },
+    getEditor: async (request: unknown) => {
+      const validRequest = GetSegmentEditorRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.getSegmentEditor(validRequest),
+      );
+    },
+    reorderFields: async (request: unknown) => {
+      const validRequest = ReorderSegmentFieldsRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.reorderSegmentFields(validRequest),
+      );
+    },
+    restoreField: async (request: unknown) => {
+      const validRequest = RestoreSegmentFieldRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.restoreSegmentField(validRequest),
+      );
+    },
+    updateDetails: async (request: unknown) => {
+      const validRequest = UpdateSegmentDetailsRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.updateSegmentDetails(validRequest),
+      );
+    },
+    updateField: async (request: unknown) => {
+      const validRequest = UpdateSegmentFieldRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.updateSegmentField(validRequest),
       );
     },
   });

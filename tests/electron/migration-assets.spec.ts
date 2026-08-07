@@ -39,6 +39,16 @@ test("packages the canonical migration directory", async () => {
       "utf8",
     ),
   ).resolves.toContain("CREATE TABLE episode_segments");
+  await expect(
+    fs.readFile(
+      path.join(
+        getPackagedResourcesPath(),
+        "migrations",
+        "006_segment_schema_and_lifecycle.sql",
+      ),
+      "utf8",
+    ),
+  ).resolves.toContain("CREATE TABLE segment_data_fields");
 });
 
 test("packages third-party license notices", async () => {

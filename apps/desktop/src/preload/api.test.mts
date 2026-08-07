@@ -88,6 +88,33 @@ const validEpisodeResult = {
     show: validShowResult.data.show,
   },
 } as const;
+const validSegmentEditorResult = {
+  ok: true,
+  data: {
+    archivedAt: null,
+    createdAt: "2026-08-06T14:30:00.000Z",
+    dataFields: [],
+    description: null,
+    expectedDurationMs: null,
+    id: "5ccbc04c-2890-46b5-b0f0-179ae15972d3",
+    lifecycle: {
+      active: {
+        availableLayoutIds: [],
+        defaultLayoutId: null,
+        hostCueIds: [],
+      },
+      cleanup: [],
+      enter: [],
+      exit: [],
+      prepare: [],
+    },
+    name: "Interview",
+    notesTemplate: "",
+    showId: validShowResult.data.show.id,
+    updatedAt: "2026-08-06T14:30:00.000Z",
+    validationIssues: [],
+  },
+} as const;
 
 const createValidTransports = () => ({
   addBlueprintSegment: async () => validShowResult,
@@ -95,13 +122,16 @@ const createValidTransports = () => ({
   archiveShow: async () => ({ ok: true, data: validShowResult.data.show }),
   createShow: async () => validShowResult,
   createSegment: async () => validShowResult,
+  createSegmentField: async () => validSegmentEditorResult,
   createStudio: async () => validStudioResult,
   deleteShow: async () => ({
     ok: true,
     data: { showId: validShowResult.data.show.id },
   }),
+  deleteSegmentField: async () => validSegmentEditorResult,
   getApplicationSettings: async () => validSettingsResult,
   getRuntimeInfo: async () => validResult,
+  getSegmentEditor: async () => validSegmentEditorResult,
   getShowDesign: async () => validShowResult,
   getStudio: async () => validStudioResult,
   listShows: async () => ({
@@ -113,6 +143,8 @@ const createValidTransports = () => ({
   duplicateBlueprintPlacement: async () => validShowResult,
   removeBlueprintPlacement: async () => validShowResult,
   reorderBlueprint: async () => validShowResult,
+  reorderSegmentFields: async () => validSegmentEditorResult,
+  restoreSegmentField: async () => validSegmentEditorResult,
   updateNavigation: async () => validSettingsResult,
   createEpisode: async () => validEpisodeResult,
   createEpisodeSegment: async () => validEpisodeResult,
@@ -131,6 +163,8 @@ const createValidTransports = () => ({
   removeEpisodeSegment: async () => validEpisodeResult,
   reorderEpisode: async () => validEpisodeResult,
   restoreEpisodeSegment: async () => validEpisodeResult,
+  updateSegmentDetails: async () => validSegmentEditorResult,
+  updateSegmentField: async () => validSegmentEditorResult,
 });
 
 test("the preload validates Show creation and Design Show responses", async () => {

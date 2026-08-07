@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   getDesignShowRoute,
   getDesignShowSegmentRoute,
+  getShowDetailRoute,
   getStudioHomeRoute,
 } from "../../app-routes.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
@@ -186,6 +187,18 @@ export const DesignShowDestination = () => {
           <>
             <header className={styles.header}>
               <div className={styles.intro}>
+                <Button
+                  className={styles.backAction}
+                  onClick={() =>
+                    navigate(
+                      getShowDetailRoute(design.show.studioId, design.show.id),
+                    )
+                  }
+                  size="small"
+                  variant="ghost"
+                >
+                  Back to Show Detail
+                </Button>
                 <p className={styles.eyebrow}>Design Show</p>
                 <h2 className={styles.heading}>Show Blueprint</h2>
                 <p className={styles.description}>
