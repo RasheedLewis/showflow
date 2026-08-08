@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import {
   getDesignShowSegmentRoute,
+  getDesignShowLayoutRoute,
   getEpisodeSegmentRoute,
   getProduceEpisodeRoute,
 } from "../../app-routes.mts";
@@ -31,6 +32,7 @@ import { EpisodeSegmentFieldControl } from "./EpisodeSegmentFieldControl";
 import { episodeQueryKey, loadEpisode } from "./episode-queries";
 import styles from "./episode-segment-editor.module.css";
 import { useEpisodeSegmentContent } from "./useEpisodeSegmentContent";
+import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
 
 const durationParts = (
   durationMs: number | null,
@@ -52,6 +54,7 @@ export const EpisodeSegmentEditorDestination = () => {
   }>();
   const [selectionError, setSelectionError] = useState<string>();
   const [navigationPending, setNavigationPending] = useState(false);
+  const [layoutDialogOpen, setLayoutDialogOpen] = useState(false);
   const routeIsComplete =
     studioId !== undefined &&
     showId !== undefined &&
@@ -414,9 +417,17 @@ export const EpisodeSegmentEditorDestination = () => {
                 <p className={styles.frameLabel}>Audience preview</p>
                 <strong>Episode content is ready for a Layout.</strong>
                 <span>
-                  The current Active Layout will render here when Layouts arrive
-                  in Sprint 10.
+                  Create a reusable Show Layout here, then return to this
+                  Episode Segment with it assigned.
                 </span>
+                <Button
+                  id={`navigation-origin-layout-${item.episodeSegment.id}`}
+                  leadingIcon="plus"
+                  onClick={() => setLayoutDialogOpen(true)}
+                  variant="primary"
+                >
+                  Create a Layout
+                </Button>
               </div>
             </section>
             <nav
@@ -474,6 +485,37 @@ export const EpisodeSegmentEditorDestination = () => {
           </>
         )}
       </div>
+      {storyboard === undefined ||
+      item === undefined ||
+      route === undefined ? null : (
+        <NewLayoutDialog
+          context={{
+            scope: "episode",
+            studioId: storyboard.show.studioId,
+            showId: storyboard.show.id,
+            episodeId: storyboard.episode.id,
+            episodeSegmentId: item.episodeSegment.id,
+          }}
+          onCreated={(layout) =>
+            navigate(
+              getDesignShowLayoutRoute(
+                storyboard.show.studioId,
+                storyboard.show.id,
+                layout.id,
+              ),
+              {
+                state: createNavigationOriginState({
+                  focusId: `navigation-origin-layout-${item.episodeSegment.id}`,
+                  label: "Episode Segment",
+                  returnTo: route,
+                }),
+              },
+            )
+          }
+          onOpenChange={setLayoutDialogOpen}
+          open={layoutDialogOpen}
+        />
+      )}
     </ApplicationShell>
   );
 };

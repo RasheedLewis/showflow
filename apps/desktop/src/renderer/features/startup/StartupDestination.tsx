@@ -10,6 +10,7 @@ import { GetShowDesignRequestSchema } from "@showflow/contracts";
 
 import {
   DESIGN_SHOW_ROUTE,
+  DESIGN_SHOW_LAYOUT_ROUTE,
   DESIGN_SHOW_ROOT_ROUTE,
   SHOW_DETAIL_ROUTE,
   getDesignShowRoute,
@@ -47,8 +48,13 @@ const resolveDurableRoute = async (
     { end: true, path: DESIGN_SHOW_ROOT_ROUTE },
     lastRoute,
   );
+  const layoutRouteMatch = matchPath(
+    { end: true, path: DESIGN_SHOW_LAYOUT_ROUTE },
+    lastRoute,
+  );
   const showRouteMatch =
     designRouteMatch ??
+    layoutRouteMatch ??
     legacyDesignRouteMatch ??
     matchPath({ end: true, path: SHOW_DETAIL_ROUTE }, lastRoute);
   const request = GetShowDesignRequestSchema.safeParse({
@@ -71,6 +77,14 @@ const resolveDurableRoute = async (
     throw new Error(result.error.message);
   }
   if (result.data.show.archivedAt !== null) return studioHomeRoute;
+  if (layoutRouteMatch !== null) {
+    const layoutResult = await window.showflow.layouts.get({
+      studioId: request.data.studioId,
+      showId: request.data.showId,
+      layoutId: layoutRouteMatch.params.layoutId ?? "",
+    });
+    if (!layoutResult.ok) return studioHomeRoute;
+  }
 
   queryClient.setQueryData(
     showDesignQueryKey(request.data.studioId, request.data.showId),

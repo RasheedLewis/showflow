@@ -47,6 +47,13 @@ import {
   type ResourceContext,
   type ResourceDto,
   type UpdateResourceMetadataRequest,
+  type CreateLayoutRequest,
+  type GetLayoutRequest,
+  type LayoutDto,
+  type LayoutMutationRequest,
+  type ListLayoutsRequest,
+  type RenameLayoutRequest,
+  type UpdateLayoutRequest,
 } from "@showflow/contracts";
 import type { Page } from "@playwright/test";
 
@@ -86,6 +93,7 @@ export const createMockDesktopApi = (
   const episodes = new Map<string, EpisodeStoryboardDto>();
   const segmentEditors = new Map<string, ShowSegmentEditorDto>();
   const resources = new Map<string, ResourceDto>();
+  const layouts = new Map<string, LayoutDto>();
   const visibleResources = (context: ResourceContext): ResourceDto[] =>
     [...resources.values()].filter((resource) => {
       if (resource.owner.scope === "studio") {
@@ -775,6 +783,123 @@ export const createMockDesktopApi = (
         return { ok: true, data: updated } as const;
       },
     }),
+    layouts: Object.freeze({
+      archive: async (request: LayoutMutationRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined || layout.showId !== request.showId) {
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        }
+        const updated = {
+          ...layout,
+          archivedAt: DEFAULT_TIMESTAMP,
+          updatedAt: DEFAULT_TIMESTAMP,
+        };
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+      create: async (request: CreateLayoutRequest) => {
+        const id = crypto.randomUUID();
+        const showId = request.context.showId;
+        const layout = {
+          id,
+          showId,
+          name: request.name.trim(),
+          aspectRatio: request.aspectRatio,
+          canvas:
+            request.aspectRatio === "16:9"
+              ? { width: 1920, height: 1080 }
+              : { width: 1080, height: 1920 },
+          slots: [],
+          archivedAt: null,
+          createdAt: DEFAULT_TIMESTAMP,
+          updatedAt: DEFAULT_TIMESTAMP,
+        } satisfies LayoutDto;
+        layouts.set(id, layout);
+        return { ok: true as const, data: layout };
+      },
+      duplicate: async (request: LayoutMutationRequest) => {
+        const source = layouts.get(request.layoutId);
+        if (source === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        const id = crypto.randomUUID();
+        const duplicate = {
+          ...source,
+          id,
+          name: `${source.name} copy`,
+          slots: source.slots.map((slot) => ({
+            ...slot,
+            id: crypto.randomUUID(),
+            layoutId: id,
+          })),
+        };
+        layouts.set(id, duplicate);
+        return { ok: true as const, data: duplicate };
+      },
+      get: async (request: GetLayoutRequest) => {
+        const layout = layouts.get(request.layoutId);
+        return layout === undefined || layout.showId !== request.showId
+          ? {
+              ok: false as const,
+              error: {
+                code: "NOT_FOUND" as const,
+                message: "Layout not found.",
+              },
+            }
+          : { ok: true as const, data: layout };
+      },
+      list: async (request: ListLayoutsRequest) => ({
+        ok: true as const,
+        data: [...layouts.values()]
+          .filter(
+            (layout) =>
+              layout.showId === request.showId && layout.archivedAt === null,
+          )
+          .map((layout) => ({ layout, usageCount: 0 })),
+      }),
+      rename: async (request: RenameLayoutRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        const updated = {
+          ...layout,
+          name: request.name.trim(),
+          updatedAt: DEFAULT_TIMESTAMP,
+        };
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+      update: async (request: UpdateLayoutRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        const updated = {
+          ...layout,
+          name: request.name,
+          slots: request.slots.map((slot) => ({
+            ...slot,
+            id: slot.id ?? crypto.randomUUID(),
+            layoutId: layout.id,
+            createdAt: DEFAULT_TIMESTAMP,
+            updatedAt: DEFAULT_TIMESTAMP,
+          })),
+          updatedAt: DEFAULT_TIMESTAMP,
+        } satisfies LayoutDto;
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+    }),
     episodes: Object.freeze({
       create: async (request: CreateEpisodeRequest) => {
         const design = shows.get(request.showId);
@@ -1333,9 +1458,40 @@ export const installMockDesktopApi = async (
         };
         show: BrowserDesign["show"];
       };
+      type BrowserSlot = {
+        id: string;
+        layoutId: string;
+        name: string;
+        role: string;
+        bounds: { x: number; y: number; width: number; height: number };
+        alignment: "start" | "center" | "end" | "stretch";
+        safeMargins: {
+          top: number;
+          right: number;
+          bottom: number;
+          left: number;
+        };
+        layerOrder: number;
+        clipContent: boolean;
+        allowedComponentTypes: string[];
+        createdAt: string;
+        updatedAt: string;
+      };
+      type BrowserLayout = {
+        id: string;
+        showId: string;
+        name: string;
+        aspectRatio: "16:9" | "9:16";
+        canvas: { width: number; height: number };
+        slots: BrowserSlot[];
+        archivedAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+      };
       const shows = new Map<string, BrowserDesign>();
       const episodes = new Map<string, BrowserStoryboard>();
       const segmentEditors = new Map<string, BrowserSegmentEditor>();
+      const layouts = new Map<string, BrowserLayout>();
       type BrowserResourceContext =
         | { scope: "studio"; studioId: string }
         | { scope: "show"; studioId: string; showId: string }
@@ -2139,6 +2295,222 @@ export const installMockDesktopApi = async (
               }),
             );
             shows.set(request.showId, updated);
+            return { ok: true, data: updated };
+          },
+        }),
+        layouts: Object.freeze({
+          archive: async (request: { layoutId: string }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const updated = {
+              ...layout,
+              archivedAt: nextTimestamp(),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
+            return { ok: true, data: updated };
+          },
+          create: async (request: {
+            aspectRatio: "16:9" | "9:16";
+            context: {
+              scope: "show" | "episode";
+              showId: string;
+              episodeId?: string;
+              episodeSegmentId?: string;
+            };
+            name: string;
+            presetId: "blank" | "host" | "hostVideo" | "fullscreenVideo";
+          }) => {
+            const id = crypto.randomUUID();
+            const definitions =
+              request.presetId === "fullscreenVideo"
+                ? [
+                    {
+                      name: "Main video",
+                      role: "mainVideo",
+                      bounds: { x: 0, y: 0, width: 1, height: 1 },
+                      allowedComponentTypes: ["video", "image"],
+                    },
+                  ]
+                : request.presetId === "hostVideo"
+                  ? [
+                      {
+                        name: "Host camera",
+                        role: "hostCamera",
+                        bounds: { x: 0.05, y: 0.12, width: 0.3, height: 0.76 },
+                        allowedComponentTypes: ["camera"],
+                      },
+                      {
+                        name: "Main video",
+                        role: "mainVideo",
+                        bounds: { x: 0.39, y: 0.08, width: 0.56, height: 0.84 },
+                        allowedComponentTypes: ["video", "image"],
+                      },
+                    ]
+                  : request.presetId === "host"
+                    ? [
+                        {
+                          name: "Host camera",
+                          role: "hostCamera",
+                          bounds: {
+                            x: 0.08,
+                            y: 0.08,
+                            width: 0.84,
+                            height: 0.84,
+                          },
+                          allowedComponentTypes: ["camera"],
+                        },
+                        {
+                          name: "Lower third",
+                          role: "lowerThird",
+                          bounds: {
+                            x: 0.08,
+                            y: 0.72,
+                            width: 0.52,
+                            height: 0.18,
+                          },
+                          allowedComponentTypes: ["lowerThird"],
+                        },
+                      ]
+                    : [];
+            const slots = definitions.map(
+              (definition, layerOrder): BrowserSlot => ({
+                ...definition,
+                id: crypto.randomUUID(),
+                layoutId: id,
+                alignment: "stretch",
+                safeMargins: { top: 0, right: 0, bottom: 0, left: 0 },
+                layerOrder,
+                clipContent: true,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              }),
+            );
+            const layout: BrowserLayout = {
+              id,
+              showId: request.context.showId,
+              name: request.name.trim(),
+              aspectRatio: request.aspectRatio,
+              canvas:
+                request.aspectRatio === "16:9"
+                  ? { width: 1920, height: 1080 }
+                  : { width: 1080, height: 1920 },
+              slots,
+              archivedAt: null,
+              createdAt: timestamp,
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(id, layout);
+            if (
+              request.context.scope === "episode" &&
+              request.context.episodeId !== undefined &&
+              request.context.episodeSegmentId !== undefined
+            ) {
+              const storyboard = episodes.get(request.context.episodeId);
+              if (storyboard !== undefined)
+                episodes.set(request.context.episodeId, {
+                  ...storyboard,
+                  items: storyboard.items.map((item) =>
+                    item.episodeSegment.id === request.context.episodeSegmentId
+                      ? {
+                          ...item,
+                          episodeSegment: {
+                            ...item.episodeSegment,
+                            defaultLayoutOverrideId: id,
+                          },
+                        }
+                      : item,
+                  ),
+                });
+            }
+            return { ok: true, data: layout };
+          },
+          duplicate: async (request: { layoutId: string }) => {
+            const source = layouts.get(request.layoutId);
+            if (source === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const id = crypto.randomUUID();
+            const duplicate = {
+              ...source,
+              id,
+              name: `${source.name} copy`,
+              slots: source.slots.map((slot) => ({
+                ...slot,
+                id: crypto.randomUUID(),
+                layoutId: id,
+              })),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(id, duplicate);
+            return { ok: true, data: duplicate };
+          },
+          get: async (request: { layoutId: string }) => {
+            const layout = layouts.get(request.layoutId);
+            return layout === undefined
+              ? {
+                  ok: false,
+                  error: { code: "NOT_FOUND", message: "Layout not found." },
+                }
+              : { ok: true, data: layout };
+          },
+          list: async (request: { showId: string }) => ({
+            ok: true,
+            data: [...layouts.values()]
+              .filter(
+                (layout) =>
+                  layout.showId === request.showId &&
+                  layout.archivedAt === null,
+              )
+              .map((layout) => ({ layout, usageCount: 0 })),
+          }),
+          rename: async (request: { layoutId: string; name: string }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const updated = {
+              ...layout,
+              name: request.name.trim(),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
+            return { ok: true, data: updated };
+          },
+          update: async (request: {
+            layoutId: string;
+            name: string;
+            slots: Array<
+              Omit<BrowserSlot, "layoutId" | "createdAt" | "updatedAt">
+            >;
+          }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const updated = {
+              ...layout,
+              name: request.name,
+              slots: request.slots.map((slot) => ({
+                ...slot,
+                id: slot.id ?? crypto.randomUUID(),
+                layoutId: layout.id,
+                createdAt: timestamp,
+                updatedAt: nextTimestamp(),
+              })),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
             return { ok: true, data: updated };
           },
         }),

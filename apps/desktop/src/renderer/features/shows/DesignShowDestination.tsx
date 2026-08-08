@@ -2,7 +2,6 @@ import {
   ApplicationShell,
   Badge,
   Button,
-  EmptyState,
   IconButton,
   SaveStateIndicator,
   ScopeLabel,
@@ -17,6 +16,7 @@ import {
   getDesignShowRoute,
   getDesignShowSectionRoute,
   getDesignShowSegmentRoute,
+  getDesignShowLayoutRoute,
   getShowDetailRoute,
   getStudioHomeRoute,
   isDesignShowSection,
@@ -31,6 +31,9 @@ import { SegmentPicker } from "./SegmentPicker";
 import styles from "./design-show.module.css";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
 import { useDesignShowMutations } from "./useDesignShowMutations";
+import { LayoutCatalog } from "../layouts/LayoutCatalog";
+import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
+import { createNavigationOriginState } from "../navigation/navigation-origin.mts";
 
 export const DesignShowDestination = () => {
   const navigate = useNavigate();
@@ -47,6 +50,7 @@ export const DesignShowDestination = () => {
     "blueprint",
   );
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [layoutDialogOpen, setLayoutDialogOpen] = useState(false);
   const routeIsComplete = studioId !== undefined && showId !== undefined;
   const studioQuery = useQuery({
     enabled: studioId !== undefined,
@@ -145,7 +149,16 @@ export const DesignShowDestination = () => {
         </>
       }
       primaryAction={
-        activeTab === "layouts" ? undefined : (
+        activeTab === "layouts" ? (
+          <Button
+            disabled={design === undefined}
+            leadingIcon="plus"
+            onClick={() => setLayoutDialogOpen(true)}
+            variant="primary"
+          >
+            New Layout
+          </Button>
+        ) : (
           <Button
             disabled={design === undefined || mutations.isSaving}
             leadingIcon="plus"
@@ -276,13 +289,31 @@ export const DesignShowDestination = () => {
                 {
                   content: (
                     <div className={styles.tabContent}>
-                      <div className={styles.emptyWrap}>
-                        <EmptyState
-                          action={null}
-                          description="Reusable Layout composition arrives in Sprint 10."
-                          heading="Layout Catalog"
-                        />
-                      </div>
+                      <LayoutCatalog
+                        onNew={() => setLayoutDialogOpen(true)}
+                        onOpen={(layoutId) =>
+                          navigate(
+                            getDesignShowLayoutRoute(
+                              design.show.studioId,
+                              design.show.id,
+                              layoutId,
+                            ),
+                            {
+                              state: createNavigationOriginState({
+                                focusId: `navigation-origin-layout-${layoutId}`,
+                                label: "Layouts",
+                                returnTo: getDesignShowSectionRoute(
+                                  design.show.studioId,
+                                  design.show.id,
+                                  "layouts",
+                                ),
+                              }),
+                            },
+                          )
+                        }
+                        showId={design.show.id}
+                        studioId={design.show.studioId}
+                      />
                     </div>
                   ),
                   label: "Layouts",
@@ -307,23 +338,53 @@ export const DesignShowDestination = () => {
       </div>
 
       {design === undefined ? null : (
-        <SegmentPicker
-          isSaving={mutations.isSaving}
-          mode={pickerMode}
-          onAdd={async (targetSegmentId) => {
-            await mutations.addExisting(targetSegmentId);
-          }}
-          onCreate={async (input) => {
-            const createdId = await mutations.createSegment({
-              ...input,
-              placeInBlueprint: pickerMode === "blueprint",
-            });
-            if (createdId !== undefined) openSegment(createdId);
-          }}
-          onOpenChange={setPickerOpen}
-          open={pickerOpen}
-          segments={design.segments}
-        />
+        <>
+          <SegmentPicker
+            isSaving={mutations.isSaving}
+            mode={pickerMode}
+            onAdd={async (targetSegmentId) => {
+              await mutations.addExisting(targetSegmentId);
+            }}
+            onCreate={async (input) => {
+              const createdId = await mutations.createSegment({
+                ...input,
+                placeInBlueprint: pickerMode === "blueprint",
+              });
+              if (createdId !== undefined) openSegment(createdId);
+            }}
+            onOpenChange={setPickerOpen}
+            open={pickerOpen}
+            segments={design.segments}
+          />
+          <NewLayoutDialog
+            context={{
+              scope: "show",
+              studioId: design.show.studioId,
+              showId: design.show.id,
+            }}
+            onCreated={(layout) =>
+              navigate(
+                getDesignShowLayoutRoute(
+                  design.show.studioId,
+                  design.show.id,
+                  layout.id,
+                ),
+                {
+                  state: createNavigationOriginState({
+                    label: "Layouts",
+                    returnTo: getDesignShowSectionRoute(
+                      design.show.studioId,
+                      design.show.id,
+                      "layouts",
+                    ),
+                  }),
+                },
+              )
+            }
+            onOpenChange={setLayoutDialogOpen}
+            open={layoutDialogOpen}
+          />
+        </>
       )}
     </ApplicationShell>
   );

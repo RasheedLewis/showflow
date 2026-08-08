@@ -120,8 +120,29 @@ const validResourceUrlResult = {
   ok: true,
   data: "showflow-resource://resource/content/514ad6df-710d-4301-9bff-b096e9db3dd4?access=8d9df01f-2584-4b9a-ad13-a96d673918e9",
 } as const;
+const validLayoutResult = {
+  ok: true,
+  data: {
+    id: "49739c0a-a6f1-45d2-9198-a54e0ac45191",
+    showId: validShowResult.data.show.id,
+    name: "Host",
+    aspectRatio: "16:9",
+    canvas: { width: 1920, height: 1080 },
+    slots: [],
+    archivedAt: null,
+    createdAt: "2026-08-06T14:30:00.000Z",
+    updatedAt: "2026-08-06T14:30:00.000Z",
+  },
+} as const;
 
 const createValidTransports = () => ({
+  archiveLayout: async () => validLayoutResult,
+  createLayout: async () => validLayoutResult,
+  duplicateLayout: async () => validLayoutResult,
+  getLayout: async () => validLayoutResult,
+  listLayouts: async () => ({ ok: true as const, data: [] }),
+  renameLayout: async () => validLayoutResult,
+  updateLayout: async () => validLayoutResult,
   addBlueprintSegment: async () => validShowResult,
   archiveSegment: async () => validShowResult,
   archiveShow: async () => ({ ok: true, data: validShowResult.data.show }),
@@ -320,6 +341,7 @@ test("the preload exposes no generic invocation surface", () => {
     "segments",
     "blueprints",
     "episodes",
+    "layouts",
     "resources",
   ]);
   expect(Object.keys(api.app)).toEqual([

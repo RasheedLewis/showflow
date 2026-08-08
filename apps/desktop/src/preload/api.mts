@@ -51,6 +51,14 @@ import {
   ResourceUrlResultSchema,
   UpdateResourceMetadataRequestSchema,
   type DroppedResourceFile,
+  CreateLayoutRequestSchema,
+  GetLayoutRequestSchema,
+  LayoutCatalogResultSchema,
+  LayoutMutationRequestSchema,
+  LayoutResultSchema,
+  ListLayoutsRequestSchema,
+  RenameLayoutRequestSchema,
+  UpdateLayoutRequestSchema,
 } from "@showflow/contracts";
 
 export interface DesktopApiTransports {
@@ -101,6 +109,13 @@ export interface DesktopApiTransports {
   readonly renameResource: (request: unknown) => Promise<unknown>;
   readonly replaceResource: (request: unknown) => Promise<unknown>;
   readonly updateResourceMetadata: (request: unknown) => Promise<unknown>;
+  readonly archiveLayout: (request: unknown) => Promise<unknown>;
+  readonly createLayout: (request: unknown) => Promise<unknown>;
+  readonly duplicateLayout: (request: unknown) => Promise<unknown>;
+  readonly getLayout: (request: unknown) => Promise<unknown>;
+  readonly listLayouts: (request: unknown) => Promise<unknown>;
+  readonly renameLayout: (request: unknown) => Promise<unknown>;
+  readonly updateLayout: (request: unknown) => Promise<unknown>;
 }
 
 export const createShowflowDesktopApi = (
@@ -373,6 +388,48 @@ export const createShowflowDesktopApi = (
       );
     },
   });
+  const layoutsApi = Object.freeze({
+    archive: async (request: unknown) => {
+      const validRequest = LayoutMutationRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.archiveLayout(validRequest),
+      );
+    },
+    create: async (request: unknown) => {
+      const validRequest = CreateLayoutRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.createLayout(validRequest),
+      );
+    },
+    duplicate: async (request: unknown) => {
+      const validRequest = LayoutMutationRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.duplicateLayout(validRequest),
+      );
+    },
+    get: async (request: unknown) => {
+      const validRequest = GetLayoutRequestSchema.parse(request);
+      return LayoutResultSchema.parse(await transports.getLayout(validRequest));
+    },
+    list: async (request: unknown) => {
+      const validRequest = ListLayoutsRequestSchema.parse(request);
+      return LayoutCatalogResultSchema.parse(
+        await transports.listLayouts(validRequest),
+      );
+    },
+    rename: async (request: unknown) => {
+      const validRequest = RenameLayoutRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.renameLayout(validRequest),
+      );
+    },
+    update: async (request: unknown) => {
+      const validRequest = UpdateLayoutRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.updateLayout(validRequest),
+      );
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -382,6 +439,7 @@ export const createShowflowDesktopApi = (
     segments: segmentsApi,
     blueprints: blueprintsApi,
     episodes: episodesApi,
+    layouts: layoutsApi,
     resources: resourcesApi,
   });
 };

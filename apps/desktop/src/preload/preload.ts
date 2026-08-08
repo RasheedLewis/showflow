@@ -44,12 +44,31 @@ import {
   RESOURCES_REPLACE_CHANNEL,
   RESOURCES_UPDATE_METADATA_CHANNEL,
   ImportResourcePathsRequestSchema,
+  LAYOUTS_ARCHIVE_CHANNEL,
+  LAYOUTS_CREATE_CHANNEL,
+  LAYOUTS_DUPLICATE_CHANNEL,
+  LAYOUTS_GET_CHANNEL,
+  LAYOUTS_LIST_CHANNEL,
+  LAYOUTS_RENAME_CHANNEL,
+  LAYOUTS_UPDATE_CHANNEL,
 } from "@showflow/contracts";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 import { createShowflowDesktopApi } from "./api.mjs";
 
 const showflowDesktopApi = createShowflowDesktopApi({
+  archiveLayout: (request) =>
+    ipcRenderer.invoke(LAYOUTS_ARCHIVE_CHANNEL, request),
+  createLayout: (request) =>
+    ipcRenderer.invoke(LAYOUTS_CREATE_CHANNEL, request),
+  duplicateLayout: (request) =>
+    ipcRenderer.invoke(LAYOUTS_DUPLICATE_CHANNEL, request),
+  getLayout: (request) => ipcRenderer.invoke(LAYOUTS_GET_CHANNEL, request),
+  listLayouts: (request) => ipcRenderer.invoke(LAYOUTS_LIST_CHANNEL, request),
+  renameLayout: (request) =>
+    ipcRenderer.invoke(LAYOUTS_RENAME_CHANNEL, request),
+  updateLayout: (request) =>
+    ipcRenderer.invoke(LAYOUTS_UPDATE_CHANNEL, request),
   addBlueprintSegment: (request) =>
     ipcRenderer.invoke(BLUEPRINTS_ADD_SEGMENT_CHANNEL, request),
   archiveSegment: (request) =>

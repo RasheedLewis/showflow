@@ -497,8 +497,8 @@ describe("App", () => {
       ),
     );
     expect(
-      screen.queryByRole("button", { name: "New Layout" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "New Layout" }),
+    ).toBeInTheDocument();
     await waitFor(async () =>
       expect(await api.app.getApplicationSettings()).toMatchObject({
         ok: true,

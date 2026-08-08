@@ -16,9 +16,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+import { getDesignShowLayoutRoute } from "../../app-routes.mts";
+import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
+
 import { ParentNavigation } from "../navigation/ParentNavigation";
 import {
   createNavigationFocusState,
+  createNavigationOriginState,
   resolveShowSegmentOrigin,
 } from "../navigation/navigation-origin.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
@@ -256,6 +260,7 @@ export const ShowSegmentEditorDestination = () => {
   }>();
   const [phase, setPhase] = useState<LifecyclePhase>("active");
   const [selectionError, setSelectionError] = useState<string>();
+  const [layoutDialogOpen, setLayoutDialogOpen] = useState(false);
   const [navigationPending, setNavigationPending] = useState(false);
   const routeIsComplete =
     studioId !== undefined && showId !== undefined && segmentId !== undefined;
@@ -497,6 +502,18 @@ export const ShowSegmentEditorDestination = () => {
           />
         )
       }
+      primaryAction={
+        phase === "active" && editor !== undefined ? (
+          <Button
+            id={`navigation-origin-layout-${editor.id}`}
+            leadingIcon="plus"
+            onClick={() => setLayoutDialogOpen(true)}
+            variant="primary"
+          >
+            Create a Layout
+          </Button>
+        ) : undefined
+      }
       saveState={<SaveStateIndicator state={mutations.saveState} />}
       scope={<ScopeLabel scope="show-segment" />}
       studioSwitcher={
@@ -568,6 +585,25 @@ export const ShowSegmentEditorDestination = () => {
           </>
         )}
       </div>
+      {editor === undefined ||
+      studioId === undefined ||
+      showId === undefined ||
+      route === undefined ? null : (
+        <NewLayoutDialog
+          context={{ scope: "show", studioId, showId }}
+          onCreated={(layout) =>
+            navigate(getDesignShowLayoutRoute(studioId, showId, layout.id), {
+              state: createNavigationOriginState({
+                focusId: `navigation-origin-layout-${editor.id}`,
+                label: "Show Segment",
+                returnTo: route,
+              }),
+            })
+          }
+          onOpenChange={setLayoutDialogOpen}
+          open={layoutDialogOpen}
+        />
+      )}
     </ApplicationShell>
   );
 };

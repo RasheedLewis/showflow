@@ -25,6 +25,7 @@ import {
   DESIGN_SHOW_ROUTE,
   DESIGN_SHOW_ROOT_ROUTE,
   DESIGN_SHOW_SEGMENT_ROUTE,
+  DESIGN_SHOW_LAYOUT_ROUTE,
   EPISODE_CREATION_ROUTE,
   PRODUCE_EPISODE_ROUTE,
   EPISODE_SEGMENT_ROUTE,
@@ -42,6 +43,7 @@ import { EpisodeCreationPage } from "./features/episodes/EpisodeCreationPage";
 import { ProduceEpisodeDestination } from "./features/episodes/ProduceEpisodeDestination";
 import { EpisodeSegmentEditorDestination } from "./features/episodes/EpisodeSegmentEditorDestination";
 import { ShowSegmentEditorDestination } from "./features/segments/ShowSegmentEditorDestination";
+import { LayoutEditorDestination } from "./features/layouts/LayoutEditorDestination";
 import { resolveNavigationFocusId } from "./features/navigation/navigation-origin.mts";
 
 const RouteFocusManager = () => {
@@ -157,6 +159,10 @@ const AppRoutes = () => (
       <Route
         element={<ShowSegmentEditorDestination />}
         path={DESIGN_SHOW_SEGMENT_ROUTE}
+      />
+      <Route
+        element={<LayoutEditorDestination />}
+        path={DESIGN_SHOW_LAYOUT_ROUTE}
       />
       <Route element={<EpisodeCreationPage />} path={EPISODE_CREATION_ROUTE} />
       <Route

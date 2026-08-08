@@ -75,6 +75,10 @@ export interface LayoutRepository extends EntityRepository<Layout, LayoutId> {
   listByShowId(showId: ShowId): Promise<readonly Layout[]>;
 }
 
+export interface LayoutEpisodeCreationRepository {
+  create(layout: Layout, episode: Episode): Promise<void>;
+}
+
 export interface ComponentRepository extends EntityRepository<
   Component,
   ComponentId

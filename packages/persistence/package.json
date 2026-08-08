@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./backup": "./src/backup/index.mts",
     "./database": "./src/database/database-service.mts",
+    "./layouts": "./src/layouts/index.mts",
     "./migrations": "./src/migrations/index.mts",
     "./settings": "./src/settings/index.mts",
     "./shows": "./src/shows/index.mts",

@@ -63,6 +63,16 @@ import type {
   ResourceUrlResult,
   UpdateResourceMetadataRequest,
 } from "./resource.ts";
+import type {
+  CreateLayoutRequest,
+  GetLayoutRequest,
+  LayoutCatalogResult,
+  LayoutMutationRequest,
+  LayoutResult,
+  ListLayoutsRequest,
+  RenameLayoutRequest,
+  UpdateLayoutRequest,
+} from "./layout.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -122,6 +132,15 @@ export interface ShowflowDesktopApi {
       request: BlueprintPlacementMutationRequest,
     ) => Promise<ShowDesignResult>;
     reorder: (request: ReorderBlueprintRequest) => Promise<ShowDesignResult>;
+  }>;
+  readonly layouts: Readonly<{
+    archive: (request: LayoutMutationRequest) => Promise<LayoutResult>;
+    create: (request: CreateLayoutRequest) => Promise<LayoutResult>;
+    duplicate: (request: LayoutMutationRequest) => Promise<LayoutResult>;
+    get: (request: GetLayoutRequest) => Promise<LayoutResult>;
+    list: (request: ListLayoutsRequest) => Promise<LayoutCatalogResult>;
+    rename: (request: RenameLayoutRequest) => Promise<LayoutResult>;
+    update: (request: UpdateLayoutRequest) => Promise<LayoutResult>;
   }>;
   readonly episodes: Readonly<{
     create: (request: CreateEpisodeRequest) => Promise<EpisodeStoryboardResult>;

@@ -2,6 +2,7 @@ import { matchPath } from "react-router-dom";
 
 import {
   DESIGN_SHOW_ROUTE,
+  DESIGN_SHOW_SEGMENT_ROUTE,
   EPISODE_SEGMENT_ROUTE,
   getDesignShowSectionRoute,
   isDesignShowSection,
@@ -118,5 +119,66 @@ export const resolveShowSegmentOrigin = (
   return {
     label: "Segments",
     returnTo: getDesignShowSectionRoute(studioId, showId, "segments"),
+  };
+};
+
+export const resolveLayoutOrigin = (
+  state: unknown,
+  studioId: string,
+  showId: string,
+): NavigationOrigin => {
+  const returnTo = getRequestedReturnTo(state);
+  const focusId = getRequestedFocusId(state);
+  if (returnTo !== undefined) {
+    const designMatch = matchPath(
+      { end: true, path: DESIGN_SHOW_ROUTE },
+      returnTo,
+    );
+    if (
+      designMatch?.params.studioId === studioId &&
+      designMatch.params.showId === showId &&
+      isDesignShowSection(designMatch.params.designSection)
+    ) {
+      return {
+        ...(focusId === undefined ? {} : { focusId }),
+        label:
+          designMatch.params.designSection === "layouts"
+            ? "Layouts"
+            : designMatch.params.designSection === "segments"
+              ? "Segments"
+              : "Blueprint",
+        returnTo,
+      };
+    }
+    const segmentMatch = matchPath(
+      { end: true, path: DESIGN_SHOW_SEGMENT_ROUTE },
+      returnTo,
+    );
+    if (
+      segmentMatch?.params.studioId === studioId &&
+      segmentMatch.params.showId === showId
+    )
+      return {
+        ...(focusId === undefined ? {} : { focusId }),
+        label: "Show Segment",
+        returnTo,
+      };
+    const episodeMatch = matchPath(
+      { end: true, path: EPISODE_SEGMENT_ROUTE },
+      returnTo,
+    );
+    if (
+      episodeMatch?.params.studioId === studioId &&
+      episodeMatch.params.showId === showId
+    )
+      return {
+        ...(focusId === undefined ? {} : { focusId }),
+        label: "Episode Segment",
+        returnTo,
+      };
+  }
+  return {
+    label: "Layouts",
+    returnTo: getDesignShowSectionRoute(studioId, showId, "layouts"),
   };
 };

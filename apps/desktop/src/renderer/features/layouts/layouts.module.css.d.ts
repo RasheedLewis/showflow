@@ -1,0 +1,27 @@
+declare const styles: Readonly<{
+  catalog: string;
+  creationForm: string;
+  editorWorkspace: string;
+  sidePanel: string;
+  inspector: string;
+  catalogToolbar: string;
+  editorToolbar: string;
+  toolbarActions: string;
+  search: string;
+  catalogGrid: string;
+  layoutPreview: string;
+  presetFieldset: string;
+  typeList: string;
+  presetGrid: string;
+  presetCard: string;
+  error: string;
+  eyebrow: string;
+  canvasStage: string;
+  audienceFrame: string;
+  safeArea: string;
+  slot: string;
+  resizeHandle: string;
+  fitLabel: string;
+  geometryGrid: string;
+}>;
+export default styles;

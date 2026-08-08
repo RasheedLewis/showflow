@@ -43,6 +43,14 @@ import {
   ListResourcesQuery,
   RepairResourceCommand,
   UpdateResourceMetadataCommand,
+  ArchiveLayoutCommand,
+  CreateEpisodeLayoutCommand,
+  CreateLayoutFromPresetCommand,
+  DuplicateLayoutCommand,
+  GetLayoutEditorQuery,
+  ListLayoutCatalogQuery,
+  RenameLayoutCommand,
+  UpdateLayoutCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -56,6 +64,8 @@ import {
   SqliteEpisodeRepository,
   SqliteSegmentEpisodeCreationRepository,
   SqliteResourceRepository,
+  SqliteLayoutRepository,
+  SqliteLayoutEpisodeCreationRepository,
   type InitializedPersistence,
   type MigrationLogger,
 } from "@showflow/persistence";
@@ -83,6 +93,8 @@ import { RefreshingResourceRepository } from "./refreshing-resource-repository.m
 import { ResourceProtocolService } from "./resource-protocol.mjs";
 import { registerResourceIpc } from "./resource-ipc.mjs";
 import type { ResourceOperations } from "./resource-handler.mjs";
+import { registerLayoutIpc } from "./layout-ipc.mjs";
+import type { LayoutOperations } from "./layout-handler.mjs";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -111,6 +123,7 @@ interface DesktopServices {
   readonly episodes: EpisodeOperations;
   readonly segmentEditor: SegmentEditorOperations;
   readonly resources: ResourceOperations;
+  readonly layouts: LayoutOperations;
   readonly resourceProtocol: ResourceProtocolService;
 }
 
@@ -176,6 +189,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     persistence.database,
   );
   const episodeRepository = new SqliteEpisodeRepository(persistence.database);
+  const layoutRepository = new SqliteLayoutRepository(persistence.database);
   const resourceFiles = new DesktopResourceFileAdapter(
     path.join(userDataDirectory, "cache", "thumbnails"),
   );
@@ -213,6 +227,33 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
     persistence,
     resourceProtocol,
+    layouts: {
+      archive: new ArchiveLayoutCommand({ layouts: layoutRepository }),
+      createEpisode: new CreateEpisodeLayoutCommand({
+        episodes: episodeRepository,
+        creation: new SqliteLayoutEpisodeCreationRepository(
+          persistence.database,
+        ),
+      }),
+      create: new CreateLayoutFromPresetCommand({
+        episodes: episodeRepository,
+        layouts: layoutRepository,
+        shows: showRepository,
+      }),
+      duplicate: new DuplicateLayoutCommand({ layouts: layoutRepository }),
+      get: new GetLayoutEditorQuery({
+        layouts: layoutRepository,
+        shows: showRepository,
+      }),
+      list: new ListLayoutCatalogQuery({
+        episodes: episodeRepository,
+        layouts: layoutRepository,
+        segments: segmentRepository,
+        shows: showRepository,
+      }),
+      rename: new RenameLayoutCommand({ layouts: layoutRepository }),
+      update: new UpdateLayoutCommand({ layouts: layoutRepository }),
+    },
     resources: {
       accessUrls: resourceProtocol,
       delete: new DeleteResourceCommand(resourceScopeRepositories),
@@ -385,6 +426,7 @@ const createMainWindow = async (
   episodes: EpisodeOperations,
   segmentEditor: SegmentEditorOperations,
   resources: ResourceOperations,
+  layouts: LayoutOperations,
   resourceProtocol: ResourceProtocolService,
 ): Promise<void> => {
   const content = getMainWindowContent();
@@ -414,6 +456,7 @@ const createMainWindow = async (
   registerDesignShowIpc(window, content.trustedUrl, designShow);
   registerEpisodeIpc(window, content.trustedUrl, episodes);
   registerSegmentEditorIpc(window, content.trustedUrl, segmentEditor);
+  registerLayoutIpc(window, content.trustedUrl, layouts);
   await resourceProtocol.register(window.webContents.session.protocol);
   registerResourceIpc(window, content.trustedUrl, resources);
 
@@ -466,6 +509,7 @@ app
       services.episodes,
       services.segmentEditor,
       services.resources,
+      services.layouts,
       services.resourceProtocol,
     );
 
@@ -479,6 +523,7 @@ app
           services.episodes,
           services.segmentEditor,
           services.resources,
+          services.layouts,
           services.resourceProtocol,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
