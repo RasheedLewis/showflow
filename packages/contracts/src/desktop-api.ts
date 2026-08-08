@@ -51,6 +51,18 @@ import type {
   UpdateSegmentDetailsRequest,
   UpdateSegmentFieldRequest,
 } from "./segment-editor.ts";
+import type {
+  DroppedResourceFile,
+  GetResourceUrlRequest,
+  ImportResourcesRequest,
+  ListResourcesRequest,
+  RemoveResourceRequest,
+  RenameResourceRequest,
+  RepairResourceRequest,
+  ResourceListResult,
+  ResourceUrlResult,
+  UpdateResourceMetadataRequest,
+} from "./resource.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -136,5 +148,21 @@ export interface ShowflowDesktopApi {
     updateSegment: (
       request: UpdateEpisodeSegmentRequest,
     ) => Promise<EpisodeStoryboardResult>;
+  }>;
+  readonly resources: Readonly<{
+    getUrl: (request: GetResourceUrlRequest) => Promise<ResourceUrlResult>;
+    import: (request: ImportResourcesRequest) => Promise<ResourceListResult>;
+    importDropped: (
+      request: ImportResourcesRequest,
+      files: readonly DroppedResourceFile[],
+    ) => Promise<ResourceListResult>;
+    list: (request: ListResourcesRequest) => Promise<ResourceListResult>;
+    locate: (request: RepairResourceRequest) => Promise<ResourceListResult>;
+    remove: (request: RemoveResourceRequest) => Promise<ResourceListResult>;
+    rename: (request: RenameResourceRequest) => Promise<ResourceListResult>;
+    replace: (request: RepairResourceRequest) => Promise<ResourceListResult>;
+    updateMetadata: (
+      request: UpdateResourceMetadataRequest,
+    ) => Promise<ResourceListResult>;
   }>;
 }

@@ -177,3 +177,88 @@ test("8.T12 completes Episode Segment content and returns a safe summary to the 
     0,
   );
 });
+
+test("9.T12 imports an image Resource, assigns it to a required field, and updates readiness", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1_600 });
+  await createShowWithBlueprint(page);
+
+  const blueprint = page.getByRole("list", {
+    name: "Show Blueprint Storyboard",
+  });
+  await blueprint
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Interview" }) })
+    .locator("article")
+    .dblclick();
+  const inspector = page.getByRole("complementary", {
+    name: "Segment inspector",
+  });
+  await inspector
+    .getByRole("textbox", { name: "New field label" })
+    .fill("Guest artwork");
+  await inspector
+    .getByRole("combobox", { name: "New field type" })
+    .selectOption("imageResource");
+  await inspector.getByRole("button", { name: "Add field" }).click();
+  await inspector
+    .getByRole("checkbox", { name: "Required for every Episode" })
+    .check();
+
+  await page.getByRole("button", { name: "Return to Blueprint" }).click();
+  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await page
+    .getByRole("button", { name: "Create New Episode" })
+    .first()
+    .click();
+  await page.getByRole("textbox", { name: "Episode title" }).fill("Episode 26");
+  await page.getByRole("button", { name: "Create Episode" }).click();
+
+  const interview = page
+    .getByRole("list", { name: "Episode Storyboard" })
+    .getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: "Interview" }) });
+  await expect(interview.getByText("Needs content")).toBeVisible();
+  await interview.getByRole("button", { name: "Open Interview" }).click();
+  await page.getByRole("button", { name: "Choose image" }).click();
+
+  const browser = page.getByRole("dialog", { name: "Resource Browser" });
+  await expect(browser.getByText("No Resources found")).toBeVisible();
+  await browser.getByRole("button", { name: "Import image" }).click();
+  await expect(
+    browser.getByText("album-artwork", { exact: true }),
+  ).toBeVisible();
+  await browser.getByText("Rename", { exact: true }).click();
+  await browser
+    .getByRole("textbox", { name: "Resource name for album-artwork" })
+    .fill("Guest artwork");
+  await browser.getByRole("button", { name: "Save name" }).click();
+  await expect(
+    browser.getByText("Guest artwork", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "/private/tmp/showflow-sprint-9-resource-browser.png",
+  });
+  await browser.getByRole("button", { name: "Choose", exact: true }).click();
+
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ready", { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Guest artwork" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Guest artwork preview" }),
+  ).toBeVisible();
+  const accessibility = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "/private/tmp/showflow-sprint-9-resource-picker.png",
+  });
+});

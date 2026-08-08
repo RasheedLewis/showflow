@@ -28,6 +28,7 @@ export {
 } from "./application-settings.ts";
 export { type ShowflowDesktopApi } from "./desktop-api.ts";
 export * from "./episode.ts";
+export * from "./resource.ts";
 export * from "./segment-editor.ts";
 export {
   CreateStudioRequestSchema,

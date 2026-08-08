@@ -1,8 +1,17 @@
 import type { JsonObject, JsonValue, PixelDimensions } from "./core.mjs";
-import { createEntityMetadata } from "./entity-metadata.mjs";
+import {
+  createEntityMetadata,
+  updateEntityMetadata,
+} from "./entity-metadata.mjs";
 import type { Episode, EpisodeSegment } from "./episode.mjs";
 import type { CanvasAspectRatio } from "./composition.mjs";
 import type { Layout } from "./layout.mjs";
+import type {
+  Resource,
+  ResourceAvailability,
+  ResourceCategory,
+  ResourceOwner,
+} from "./resource.mjs";
 import { defineSegmentLifecycle } from "./lifecycle.mjs";
 import {
   assertValidSegmentDataFieldDefault,
@@ -272,3 +281,82 @@ export const createEpisodeSegment = (
     ...createEntityMetadata(dependencies.clock),
   };
 };
+
+export interface CreateResourceInput {
+  readonly owner: ResourceOwner;
+  readonly displayName: string;
+  readonly category: ResourceCategory;
+  readonly mimeType: string;
+  readonly availability?: ResourceAvailability;
+  readonly originalFilename?: string;
+  readonly localPath?: string;
+  readonly fileSizeBytes?: number;
+  readonly sourceModifiedAt?: UtcTimestamp;
+  readonly contentHash?: string;
+  readonly dimensions?: PixelDimensions;
+  readonly durationMs?: number;
+  readonly thumbnailCacheKey?: string;
+}
+
+export const normalizeResourceDisplayName = (value: string): string => {
+  const displayName = value.trim();
+  if (displayName.length === 0 || displayName.length > 255) {
+    throw new TypeError(
+      "Resource name must contain between 1 and 255 characters.",
+    );
+  }
+  return displayName;
+};
+
+export const createResource = (
+  input: CreateResourceInput,
+  dependencies: DomainFactoryDependencies = DEFAULT_DOMAIN_FACTORY_DEPENDENCIES,
+): Resource => {
+  const displayName = normalizeResourceDisplayName(input.displayName);
+  if (input.fileSizeBytes !== undefined && input.fileSizeBytes < 0) {
+    throw new RangeError("Resource file size cannot be negative.");
+  }
+  if (input.durationMs !== undefined && input.durationMs < 0) {
+    throw new RangeError("Resource duration cannot be negative.");
+  }
+
+  return {
+    id: dependencies.createId("resource"),
+    owner: input.owner,
+    displayName,
+    category: input.category,
+    mimeType: input.mimeType,
+    availability: input.availability ?? "available",
+    ...(input.originalFilename === undefined
+      ? {}
+      : { originalFilename: input.originalFilename }),
+    ...(input.localPath === undefined ? {} : { localPath: input.localPath }),
+    ...(input.fileSizeBytes === undefined
+      ? {}
+      : { fileSizeBytes: input.fileSizeBytes }),
+    ...(input.sourceModifiedAt === undefined
+      ? {}
+      : { sourceModifiedAt: input.sourceModifiedAt }),
+    ...(input.contentHash === undefined
+      ? {}
+      : { contentHash: input.contentHash }),
+    ...(input.dimensions === undefined
+      ? {}
+      : { dimensions: { ...input.dimensions } }),
+    ...(input.durationMs === undefined ? {} : { durationMs: input.durationMs }),
+    ...(input.thumbnailCacheKey === undefined
+      ? {}
+      : { thumbnailCacheKey: input.thumbnailCacheKey }),
+    ...createEntityMetadata(dependencies.clock),
+  };
+};
+
+export const renameResource = (
+  resource: Resource,
+  displayName: string,
+  clock: Clock = SYSTEM_CLOCK,
+): Resource => ({
+  ...resource,
+  displayName: normalizeResourceDisplayName(displayName),
+  ...updateEntityMetadata(resource, clock),
+});

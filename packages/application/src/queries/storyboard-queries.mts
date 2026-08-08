@@ -1,9 +1,10 @@
 import {
   assertBlueprintPlacementOwnership,
   assertEpisodeSegmentOwnership,
-  calculateEpisodeSegmentReadiness,
+  calculateEpisodeSegmentReadinessFromIssues,
   deriveEpisodeSegmentSummary,
   validateEpisodeSegmentContent,
+  parseEntityId,
 } from "@showflow/domain";
 import type {
   BlueprintSegmentPlacement,
@@ -17,6 +18,7 @@ import type {
   ShowId,
   ShowSegment,
   StudioId,
+  Resource,
 } from "@showflow/domain";
 
 import { loadEntitiesById, requireQueryEntity } from "./query-support.mjs";
@@ -25,6 +27,7 @@ import type {
   ShowBlueprintRepository,
   ShowRepository,
   ShowSegmentRepository,
+  ResourceRepository,
 } from "../repositories/repositories.mjs";
 import { ApplicationError } from "../errors/application-error.mjs";
 
@@ -119,8 +122,33 @@ export const calculateEpisodeProgress = (
 
 type EpisodeStoryboardRepositories = {
   readonly episodes: EpisodeRepository;
+  readonly resources?: ResourceRepository;
   readonly shows: ShowRepository;
   readonly segments: ShowSegmentRepository;
+};
+
+const expectedResourceCategory = (
+  type: string,
+): Resource["category"] | undefined => {
+  if (type === "imageResource") return "image";
+  if (type === "videoResource") return "video";
+  if (type === "audioResource") return "audio";
+  return undefined;
+};
+
+const resourceIsVisible = (
+  resource: Resource,
+  episode: Episode,
+  show: Show,
+): boolean => {
+  switch (resource.owner.scope) {
+    case "studio":
+      return resource.owner.studioId === show.studioId;
+    case "show":
+      return resource.owner.showId === show.id;
+    case "episode":
+      return resource.owner.episodeId === episode.id;
+  }
 };
 
 export class GetEpisodeStoryboardQuery {
@@ -145,34 +173,82 @@ export class GetEpisodeStoryboardQuery {
         "Show Segment",
       ),
     ]);
-    const items = episode.segments.map((episodeSegment) => {
-      const sourceSegment = requireQueryEntity(
-        sourceSegmentsById.get(episodeSegment.sourceShowSegmentId) ?? null,
-        "Show Segment",
-      );
-      assertEpisodeSegmentOwnership({
-        episode,
-        episodeSegment,
-        sourceSegment,
-      });
-      const summary = deriveEpisodeSegmentSummary(
-        episodeSegment,
-        sourceSegment,
-      );
-      return {
-        episodeSegment,
-        readiness: calculateEpisodeSegmentReadiness(
+    const items = await Promise.all(
+      episode.segments.map(async (episodeSegment) => {
+        const sourceSegment = requireQueryEntity(
+          sourceSegmentsById.get(episodeSegment.sourceShowSegmentId) ?? null,
+          "Show Segment",
+        );
+        assertEpisodeSegmentOwnership({
+          episode,
           episodeSegment,
           sourceSegment,
-        ),
-        sourceSegment,
-        ...(summary === undefined ? {} : { summary }),
-        validationIssues: validateEpisodeSegmentContent(
+        });
+        const summary = deriveEpisodeSegmentSummary(
           episodeSegment,
           sourceSegment,
-        ),
-      };
-    });
+        );
+        const validationIssues = [
+          ...validateEpisodeSegmentContent(episodeSegment, sourceSegment),
+        ];
+        for (const field of sourceSegment.dataFields) {
+          const expectedCategory = expectedResourceCategory(field.type);
+          const value = episodeSegment.fieldValues[field.key];
+          if (expectedCategory === undefined || typeof value !== "string")
+            continue;
+          if (this.#repositories.resources === undefined) continue;
+          let resource: Resource | null;
+          try {
+            resource = await this.#repositories.resources.getById(
+              parseEntityId<"resource">(value),
+            );
+          } catch {
+            continue;
+          }
+          if (
+            resource === null ||
+            resource.availability === "missing" ||
+            resource.availability === "unavailable"
+          ) {
+            validationIssues.push({
+              code: "EPISODE_RESOURCE_MISSING",
+              fieldKey: field.key,
+              message: `The ${sourceSegment.name} Segment cannot find ${field.label}. Locate it or choose a replacement.`,
+              severity: "blocking",
+            });
+          } else if (resource.availability === "unsupported") {
+            validationIssues.push({
+              code: "EPISODE_RESOURCE_UNSUPPORTED",
+              fieldKey: field.key,
+              message: `${field.label} in the ${sourceSegment.name} Segment cannot be played by Showflow. Replace it with a supported file.`,
+              severity: "blocking",
+            });
+          } else if (resource.category !== expectedCategory) {
+            validationIssues.push({
+              code: "EPISODE_RESOURCE_WRONG_TYPE",
+              fieldKey: field.key,
+              message: `${field.label} in the ${sourceSegment.name} Segment needs a ${expectedCategory} Resource. Choose a compatible file.`,
+              severity: "blocking",
+            });
+          } else if (!resourceIsVisible(resource, episode, show)) {
+            validationIssues.push({
+              code: "EPISODE_RESOURCE_OUT_OF_SCOPE",
+              fieldKey: field.key,
+              message: `${field.label} is not available to this Episode. Import it into this Episode or its Show.`,
+              severity: "blocking",
+            });
+          }
+        }
+        return {
+          episodeSegment,
+          readiness:
+            calculateEpisodeSegmentReadinessFromIssues(validationIssues),
+          sourceSegment,
+          ...(summary === undefined ? {} : { summary }),
+          validationIssues,
+        };
+      }),
+    );
 
     return { episode, show, items };
   }

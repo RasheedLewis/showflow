@@ -41,6 +41,16 @@ import {
   ShowSegmentEditorResultSchema,
   UpdateSegmentDetailsRequestSchema,
   UpdateSegmentFieldRequestSchema,
+  GetResourceUrlRequestSchema,
+  ImportResourcesRequestSchema,
+  ListResourcesRequestSchema,
+  RemoveResourceRequestSchema,
+  RenameResourceRequestSchema,
+  RepairResourceRequestSchema,
+  ResourceListResultSchema,
+  ResourceUrlResultSchema,
+  UpdateResourceMetadataRequestSchema,
+  type DroppedResourceFile,
 } from "@showflow/contracts";
 
 export interface DesktopApiTransports {
@@ -79,6 +89,18 @@ export interface DesktopApiTransports {
   readonly reorderEpisode: (request: unknown) => Promise<unknown>;
   readonly restoreEpisodeSegment: (request: unknown) => Promise<unknown>;
   readonly updateEpisodeSegment: (request: unknown) => Promise<unknown>;
+  readonly getResourceUrl: (request: unknown) => Promise<unknown>;
+  readonly importResources: (request: unknown) => Promise<unknown>;
+  readonly importDroppedResources: (
+    request: unknown,
+    files: readonly DroppedResourceFile[],
+  ) => Promise<unknown>;
+  readonly listResources: (request: unknown) => Promise<unknown>;
+  readonly locateResource: (request: unknown) => Promise<unknown>;
+  readonly removeResource: (request: unknown) => Promise<unknown>;
+  readonly renameResource: (request: unknown) => Promise<unknown>;
+  readonly replaceResource: (request: unknown) => Promise<unknown>;
+  readonly updateResourceMetadata: (request: unknown) => Promise<unknown>;
 }
 
 export const createShowflowDesktopApi = (
@@ -292,6 +314,65 @@ export const createShowflowDesktopApi = (
       );
     },
   });
+  const resourcesApi = Object.freeze({
+    getUrl: async (request: unknown) => {
+      const validRequest = GetResourceUrlRequestSchema.parse(request);
+      return ResourceUrlResultSchema.parse(
+        await transports.getResourceUrl(validRequest),
+      );
+    },
+    import: async (request: unknown) => {
+      const validRequest = ImportResourcesRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.importResources(validRequest),
+      );
+    },
+    importDropped: async (
+      request: unknown,
+      files: readonly DroppedResourceFile[],
+    ) => {
+      const validRequest = ImportResourcesRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.importDroppedResources(validRequest, files),
+      );
+    },
+    list: async (request: unknown) => {
+      const validRequest = ListResourcesRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.listResources(validRequest),
+      );
+    },
+    locate: async (request: unknown) => {
+      const validRequest = RepairResourceRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.locateResource(validRequest),
+      );
+    },
+    remove: async (request: unknown) => {
+      const validRequest = RemoveResourceRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.removeResource(validRequest),
+      );
+    },
+    rename: async (request: unknown) => {
+      const validRequest = RenameResourceRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.renameResource(validRequest),
+      );
+    },
+    replace: async (request: unknown) => {
+      const validRequest = RepairResourceRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.replaceResource(validRequest),
+      );
+    },
+    updateMetadata: async (request: unknown) => {
+      const validRequest = UpdateResourceMetadataRequestSchema.parse(request);
+      return ResourceListResultSchema.parse(
+        await transports.updateResourceMetadata(validRequest),
+      );
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -301,5 +382,6 @@ export const createShowflowDesktopApi = (
     segments: segmentsApi,
     blueprints: blueprintsApi,
     episodes: episodesApi,
+    resources: resourcesApi,
   });
 };

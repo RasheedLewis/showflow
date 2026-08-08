@@ -9,7 +9,11 @@ export type EpisodeSegmentReadiness =
 export type EpisodeSegmentContentIssueCode =
   | "EPISODE_FIELD_REQUIRED"
   | "EPISODE_FIELD_VALUE_INVALID"
-  | "EPISODE_FIELD_UNKNOWN";
+  | "EPISODE_FIELD_UNKNOWN"
+  | "EPISODE_RESOURCE_MISSING"
+  | "EPISODE_RESOURCE_UNSUPPORTED"
+  | "EPISODE_RESOURCE_WRONG_TYPE"
+  | "EPISODE_RESOURCE_OUT_OF_SCOPE";
 
 export interface EpisodeSegmentContentIssue {
   readonly code: EpisodeSegmentContentIssueCode;
@@ -161,6 +165,18 @@ export const calculateEpisodeSegmentReadiness = (
         severity === "blocking" && code !== "EPISODE_FIELD_REQUIRED",
     )
   ) {
+    return "blocking-issue";
+  }
+  return issues.length > 0 ? "has-warnings" : "ready";
+};
+
+export const calculateEpisodeSegmentReadinessFromIssues = (
+  issues: readonly EpisodeSegmentContentIssue[],
+): EpisodeSegmentReadiness => {
+  if (issues.some(({ code }) => code === "EPISODE_FIELD_REQUIRED")) {
+    return "needs-content";
+  }
+  if (issues.some(({ severity }) => severity === "blocking")) {
     return "blocking-issue";
   }
   return issues.length > 0 ? "has-warnings" : "ready";

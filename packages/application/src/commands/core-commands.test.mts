@@ -363,8 +363,12 @@ const createRepositories = (
       },
     },
     resources: {
+      delete: async (id: ResourceId) => {
+        resources.delete(id);
+      },
       getById: async (id: ResourceId) => resources.get(id) ?? null,
       listByOwner: async () => [...resources.values()],
+      listUsage: async () => [],
       save: async (resource: Resource) => {
         saved.resources.push(resource);
         resources.set(resource.id, resource);

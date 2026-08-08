@@ -8,9 +8,9 @@ const BASE_CONTENT_SECURITY_POLICY = [
   "font-src 'self'",
   "form-action 'none'",
   "frame-src 'none'",
-  "img-src 'self' data:",
+  "img-src 'self' data: showflow-resource:",
   "manifest-src 'none'",
-  "media-src 'self' blob:",
+  "media-src 'self' blob: showflow-resource:",
   "object-src 'none'",
 ];
 

@@ -3,6 +3,7 @@ import type {
   ComponentId,
   Episode,
   EpisodeId,
+  EpisodeSegmentId,
   Layout,
   LayoutId,
   Resource,
@@ -86,6 +87,17 @@ export interface ResourceRepository extends EntityRepository<
   ResourceId
 > {
   listByOwner(owner: ResourceOwner): Promise<readonly Resource[]>;
+  delete(id: ResourceId): Promise<void>;
+  listUsage(id: ResourceId): Promise<readonly ResourceUsageReference[]>;
+}
+
+export interface ResourceUsageReference {
+  readonly episodeId: EpisodeId;
+  readonly episodeSegmentId: EpisodeSegmentId;
+  readonly episodeTitle: string;
+  readonly fieldKey: string;
+  readonly segmentName: string;
+  readonly showId: ShowId;
 }
 
 export interface EpisodeRepository extends EntityRepository<

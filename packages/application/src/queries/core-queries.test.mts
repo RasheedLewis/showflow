@@ -4,6 +4,7 @@ import {
   createEpisode,
   createFixedClock,
   createLayout,
+  createResource,
   createSegmentDataField,
   createShowSegment,
   parseEntityId,
@@ -43,6 +44,7 @@ import {
 import type {
   EpisodeRepository,
   LayoutRepository,
+  ResourceRepository,
   ShowBlueprintRepository,
   ShowRepository,
   ShowSegmentRepository,
@@ -433,6 +435,68 @@ describe("Storyboard queries", () => {
       })),
     );
     expect(sourceLoadCount).toBe(1);
+  });
+
+  test("9.T8 marks an Episode Segment blocked when its Resource is missing", async () => {
+    const data = createQueryTestData();
+    const episodeSegment = data.firstEpisode.segments[0];
+    if (episodeSegment === undefined)
+      throw new Error("Expected an Episode Segment.");
+    const field = createSegmentDataField(
+      {
+        label: "Artwork",
+        position: 0,
+        required: true,
+        showSegmentId: data.firstSegment.id,
+        type: "imageResource",
+      },
+      factoryDependencies(210),
+    );
+    const sourceSegment = { ...data.firstSegment, dataFields: [field] };
+    const resource = createResource(
+      {
+        owner: { scope: "show", showId: data.firstShow.id },
+        availability: "missing",
+        category: "image",
+        displayName: "Artwork",
+        mimeType: "image/png",
+      },
+      factoryDependencies(211),
+    );
+    const episode = {
+      ...data.firstEpisode,
+      segments: [
+        {
+          ...episodeSegment,
+          fieldValues: { [field.key]: resource.id },
+        },
+      ],
+    } satisfies Episode;
+    const resources = {
+      delete: async () => undefined,
+      getById: async () => resource,
+      listByOwner: async () => [resource],
+      listUsage: async () => [],
+      save: async () => undefined,
+    } satisfies ResourceRepository;
+
+    const result = await new GetEpisodeStoryboardQuery({
+      episodes: episodeRepository([episode]),
+      resources,
+      shows: showRepository([data.firstShow]),
+      segments: segmentRepository([sourceSegment]),
+    }).execute(episode.id);
+
+    expect(result.items[0]).toMatchObject({
+      readiness: "blocking-issue",
+      validationIssues: [
+        {
+          code: "EPISODE_RESOURCE_MISSING",
+          fieldKey: field.key,
+          severity: "blocking",
+        },
+      ],
+    });
   });
 
   test("6.T10 sums resolved expected durations and tolerates missing values", () => {

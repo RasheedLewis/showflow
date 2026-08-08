@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.package.json",
   "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
     "rootDir": "src"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.mts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.mts"],
+  "exclude": ["src/**/*.test.*", "src/**/*.spec.*"]
 }

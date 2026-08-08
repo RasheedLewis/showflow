@@ -166,8 +166,10 @@ const transactionRepositories = {
     save,
   },
   resources: {
+    delete: async () => undefined,
     getById: notFound<Resource>,
     listByOwner: emptyList<Resource>,
+    listUsage: async () => [],
     save,
   },
   episodes: {

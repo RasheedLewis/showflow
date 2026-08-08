@@ -115,6 +115,11 @@ const validSegmentEditorResult = {
     validationIssues: [],
   },
 } as const;
+const validResourceListResult = { ok: true, data: [] } as const;
+const validResourceUrlResult = {
+  ok: true,
+  data: "showflow-resource://resource/content/514ad6df-710d-4301-9bff-b096e9db3dd4?access=8d9df01f-2584-4b9a-ad13-a96d673918e9",
+} as const;
 
 const createValidTransports = () => ({
   addBlueprintSegment: async () => validShowResult,
@@ -134,6 +139,11 @@ const createValidTransports = () => ({
   getSegmentEditor: async () => validSegmentEditorResult,
   getShowDesign: async () => validShowResult,
   getStudio: async () => validStudioResult,
+  getResourceUrl: async () => validResourceUrlResult,
+  importResources: async () => validResourceListResult,
+  importDroppedResources: async () => validResourceListResult,
+  listResources: async () => validResourceListResult,
+  locateResource: async () => validResourceListResult,
   listShows: async () => ({
     ok: true,
     data: [{ episodeCount: 0, show: validShowResult.data.show }],
@@ -161,9 +171,13 @@ const createValidTransports = () => ({
     ],
   }),
   removeEpisodeSegment: async () => validEpisodeResult,
+  removeResource: async () => validResourceListResult,
+  renameResource: async () => validResourceListResult,
   reorderEpisode: async () => validEpisodeResult,
   restoreEpisodeSegment: async () => validEpisodeResult,
+  replaceResource: async () => validResourceListResult,
   updateEpisodeSegment: async () => validEpisodeResult,
+  updateResourceMetadata: async () => validResourceListResult,
   updateSegmentDetails: async () => validSegmentEditorResult,
   updateSegmentField: async () => validSegmentEditorResult,
 });
@@ -271,6 +285,30 @@ test("the preload validates Studio requests and responses", async () => {
   ).rejects.toThrow();
 });
 
+test("the preload validates Resource requests and responses", async () => {
+  const api = createShowflowDesktopApi(createValidTransports());
+  const context = {
+    scope: "episode",
+    studioId: validStudioResult.data.id,
+    showId: validShowResult.data.show.id,
+    episodeId: validEpisodeResult.data.episode.id,
+  } as const;
+
+  await expect(api.resources.list({ context })).resolves.toEqual(
+    validResourceListResult,
+  );
+  await expect(
+    api.resources.getUrl({
+      resourceId: validShowResult.data.show.id,
+      studioId: validStudioResult.data.id,
+      variant: "content",
+    }),
+  ).resolves.toEqual(validResourceUrlResult);
+  await expect(
+    api.resources.list({ context: { ...context, studioId: "invalid" } }),
+  ).rejects.toThrow();
+});
+
 test("the preload exposes no generic invocation surface", () => {
   const api = createShowflowDesktopApi(createValidTransports());
 
@@ -282,6 +320,7 @@ test("the preload exposes no generic invocation surface", () => {
     "segments",
     "blueprints",
     "episodes",
+    "resources",
   ]);
   expect(Object.keys(api.app)).toEqual([
     "getApplicationSettings",
@@ -307,4 +346,5 @@ test("the preload exposes no generic invocation surface", () => {
   expect(Object.isFrozen(api.segments)).toBe(true);
   expect(Object.isFrozen(api.blueprints)).toBe(true);
   expect(Object.isFrozen(api.episodes)).toBe(true);
+  expect(Object.isFrozen(api.resources)).toBe(true);
 });

@@ -34,8 +34,18 @@ import {
   SEGMENTS_RESTORE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_DETAILS_CHANNEL,
   SEGMENTS_UPDATE_FIELD_CHANNEL,
+  RESOURCES_GET_URL_CHANNEL,
+  RESOURCES_IMPORT_CHANNEL,
+  RESOURCES_IMPORT_PATHS_CHANNEL,
+  RESOURCES_LIST_CHANNEL,
+  RESOURCES_LOCATE_CHANNEL,
+  RESOURCES_REMOVE_CHANNEL,
+  RESOURCES_RENAME_CHANNEL,
+  RESOURCES_REPLACE_CHANNEL,
+  RESOURCES_UPDATE_METADATA_CHANNEL,
+  ImportResourcePathsRequestSchema,
 } from "@showflow/contracts";
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 import { createShowflowDesktopApi } from "./api.mjs";
 
@@ -101,6 +111,30 @@ const showflowDesktopApi = createShowflowDesktopApi({
     ipcRenderer.invoke(EPISODES_RESTORE_SEGMENT_CHANNEL, request),
   updateEpisodeSegment: (request) =>
     ipcRenderer.invoke(EPISODES_UPDATE_SEGMENT_CHANNEL, request),
+  getResourceUrl: (request) =>
+    ipcRenderer.invoke(RESOURCES_GET_URL_CHANNEL, request),
+  importResources: (request) =>
+    ipcRenderer.invoke(RESOURCES_IMPORT_CHANNEL, request),
+  importDroppedResources: (request, files) =>
+    ipcRenderer.invoke(
+      RESOURCES_IMPORT_PATHS_CHANNEL,
+      ImportResourcePathsRequestSchema.parse({
+        ...(request as object),
+        filePaths: files.map((file) => webUtils.getPathForFile(file as File)),
+      }),
+    ),
+  listResources: (request) =>
+    ipcRenderer.invoke(RESOURCES_LIST_CHANNEL, request),
+  locateResource: (request) =>
+    ipcRenderer.invoke(RESOURCES_LOCATE_CHANNEL, request),
+  removeResource: (request) =>
+    ipcRenderer.invoke(RESOURCES_REMOVE_CHANNEL, request),
+  renameResource: (request) =>
+    ipcRenderer.invoke(RESOURCES_RENAME_CHANNEL, request),
+  replaceResource: (request) =>
+    ipcRenderer.invoke(RESOURCES_REPLACE_CHANNEL, request),
+  updateResourceMetadata: (request) =>
+    ipcRenderer.invoke(RESOURCES_UPDATE_METADATA_CHANNEL, request),
 });
 
 contextBridge.exposeInMainWorld("showflow", showflowDesktopApi);

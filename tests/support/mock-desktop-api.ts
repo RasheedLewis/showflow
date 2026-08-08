@@ -44,6 +44,9 @@ import {
   type ShowSegmentEditorDto,
   type UpdateSegmentDetailsRequest,
   type UpdateSegmentFieldRequest,
+  type ResourceContext,
+  type ResourceDto,
+  type UpdateResourceMetadataRequest,
 } from "@showflow/contracts";
 import type { Page } from "@playwright/test";
 
@@ -82,6 +85,66 @@ export const createMockDesktopApi = (
   const shows = new Map<string, ShowDesignDto>();
   const episodes = new Map<string, EpisodeStoryboardDto>();
   const segmentEditors = new Map<string, ShowSegmentEditorDto>();
+  const resources = new Map<string, ResourceDto>();
+  const visibleResources = (context: ResourceContext): ResourceDto[] =>
+    [...resources.values()].filter((resource) => {
+      if (resource.owner.scope === "studio") {
+        return resource.owner.studioId === context.studioId;
+      }
+      if (resource.owner.scope === "show") {
+        return (
+          context.scope !== "studio" && resource.owner.showId === context.showId
+        );
+      }
+      return (
+        context.scope === "episode" &&
+        resource.owner.episodeId === context.episodeId
+      );
+    });
+  const mockResource = (
+    context: ResourceContext,
+    fileName = "album-artwork.png",
+  ): ResourceDto => {
+    const extension = fileName.split(".").pop()?.toLowerCase();
+    const category =
+      extension === "mp4" || extension === "webm"
+        ? "video"
+        : extension === "mp3" ||
+            extension === "wav" ||
+            extension === "ogg" ||
+            extension === "m4a"
+          ? "audio"
+          : "image";
+    const owner =
+      context.scope === "studio"
+        ? { scope: "studio" as const, studioId: context.studioId }
+        : context.scope === "show"
+          ? { scope: "show" as const, showId: context.showId }
+          : { scope: "episode" as const, episodeId: context.episodeId };
+    return {
+      availability: "available",
+      category,
+      contentHash: null,
+      createdAt: DEFAULT_TIMESTAMP,
+      dimensions: category === "image" ? { height: 1080, width: 1920 } : null,
+      displayName: fileName.replace(/\.[^.]+$/u, ""),
+      durationMs: category === "image" ? null : 30_000,
+      fileSizeBytes: 1_024,
+      id: crypto.randomUUID(),
+      mimeType:
+        category === "image"
+          ? "image/png"
+          : category === "video"
+            ? "video/mp4"
+            : "audio/mpeg",
+      originalFilename: fileName,
+      owner,
+      sourceModifiedAt: DEFAULT_TIMESTAMP,
+      thumbnailCacheKey: category === "image" ? "mock-thumbnail" : null,
+      updatedAt: DEFAULT_TIMESTAMP,
+      usage: [],
+    };
+  };
   const createSegmentEditor = (
     segment: ShowDesignDto["segments"][number]["segment"],
   ): ShowSegmentEditorDto => ({
@@ -1010,6 +1073,96 @@ export const createMockDesktopApi = (
         return { ok: true as const, data: updated };
       },
     }),
+    resources: Object.freeze({
+      getUrl: async () => ({
+        ok: true as const,
+        data: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+      }),
+      import: async (request: { context: ResourceContext }) => {
+        const resource = mockResource(request.context);
+        resources.set(resource.id, resource);
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      importDropped: async (
+        request: { context: ResourceContext },
+        files: readonly { name: string }[],
+      ) => {
+        for (const file of files) {
+          const resource = mockResource(request.context, file.name);
+          resources.set(resource.id, resource);
+        }
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      list: async (request: { context: ResourceContext }) => ({
+        ok: true as const,
+        data: visibleResources(request.context),
+      }),
+      locate: async (request: {
+        context: ResourceContext;
+        resourceId: string;
+      }) => {
+        const resource = resources.get(request.resourceId);
+        if (resource !== undefined) {
+          resources.set(resource.id, {
+            ...resource,
+            availability: "available",
+          });
+        }
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      remove: async (request: {
+        context: ResourceContext;
+        resourceId: string;
+      }) => {
+        resources.delete(request.resourceId);
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      rename: async (request: {
+        context: ResourceContext;
+        displayName: string;
+        resourceId: string;
+      }) => {
+        const resource = resources.get(request.resourceId);
+        if (resource !== undefined) {
+          resources.set(resource.id, {
+            ...resource,
+            displayName: request.displayName.trim(),
+          });
+        }
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      replace: async (request: {
+        context: ResourceContext;
+        resourceId: string;
+      }) => {
+        const resource = resources.get(request.resourceId);
+        if (resource !== undefined) {
+          resources.set(resource.id, {
+            ...resource,
+            availability: "available",
+          });
+        }
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+      updateMetadata: async (request: UpdateResourceMetadataRequest) => {
+        const resource = resources.get(request.resourceId);
+        if (resource !== undefined) {
+          resources.set(resource.id, {
+            ...resource,
+            ...(request.dimensions === undefined
+              ? {}
+              : { dimensions: request.dimensions }),
+            ...(request.durationMs === undefined
+              ? {}
+              : { durationMs: request.durationMs }),
+            ...(request.unsupported === true
+              ? { availability: "unsupported" as const }
+              : {}),
+          });
+        }
+        return { ok: true as const, data: visibleResources(request.context) };
+      },
+    }),
   });
 };
 
@@ -1183,6 +1336,97 @@ export const installMockDesktopApi = async (
       const shows = new Map<string, BrowserDesign>();
       const episodes = new Map<string, BrowserStoryboard>();
       const segmentEditors = new Map<string, BrowserSegmentEditor>();
+      type BrowserResourceContext =
+        | { scope: "studio"; studioId: string }
+        | { scope: "show"; studioId: string; showId: string }
+        | {
+            scope: "episode";
+            studioId: string;
+            showId: string;
+            episodeId: string;
+          };
+      type BrowserResource = {
+        availability: "available" | "missing" | "unavailable" | "unsupported";
+        category: "image" | "video" | "audio";
+        contentHash: string | null;
+        createdAt: string;
+        dimensions: { height: number; width: number } | null;
+        displayName: string;
+        durationMs: number | null;
+        fileSizeBytes: number | null;
+        id: string;
+        mimeType: string;
+        originalFilename: string | null;
+        owner:
+          | { scope: "studio"; studioId: string }
+          | { scope: "show"; showId: string }
+          | { scope: "episode"; episodeId: string };
+        sourceModifiedAt: string | null;
+        thumbnailCacheKey: string | null;
+        updatedAt: string;
+        usage: never[];
+      };
+      const resources = new Map<string, BrowserResource>();
+      const visibleResources = (context: BrowserResourceContext) =>
+        [...resources.values()].filter((resource) => {
+          if (resource.owner.scope === "studio") {
+            return resource.owner.studioId === context.studioId;
+          }
+          if (resource.owner.scope === "show") {
+            return (
+              context.scope !== "studio" &&
+              resource.owner.showId === context.showId
+            );
+          }
+          return (
+            context.scope === "episode" &&
+            resource.owner.episodeId === context.episodeId
+          );
+        });
+      const createResource = (
+        context: BrowserResourceContext,
+        name = "album-artwork.png",
+      ): BrowserResource => {
+        const extension = name.split(".").pop()?.toLowerCase();
+        const category =
+          extension === "mp4" || extension === "webm"
+            ? "video"
+            : extension === "mp3" ||
+                extension === "wav" ||
+                extension === "ogg" ||
+                extension === "m4a"
+              ? "audio"
+              : "image";
+        return {
+          availability: "available",
+          category,
+          contentHash: null,
+          createdAt: timestamp,
+          dimensions:
+            category === "image" ? { height: 1080, width: 1920 } : null,
+          displayName: name.replace(/\.[^.]+$/u, ""),
+          durationMs: category === "image" ? null : 30_000,
+          fileSizeBytes: 1024,
+          id: crypto.randomUUID(),
+          mimeType:
+            category === "image"
+              ? "image/png"
+              : category === "video"
+                ? "video/mp4"
+                : "audio/mpeg",
+          originalFilename: name,
+          owner:
+            context.scope === "studio"
+              ? { scope: "studio", studioId: context.studioId }
+              : context.scope === "show"
+                ? { scope: "show", showId: context.showId }
+                : { scope: "episode", episodeId: context.episodeId },
+          sourceModifiedAt: timestamp,
+          thumbnailCacheKey: category === "image" ? "mock-thumbnail" : null,
+          updatedAt: timestamp,
+          usage: [],
+        };
+      };
       const createEditor = (segment: BrowserSegment): BrowserSegmentEditor => ({
         ...segment,
         dataFields: [],
@@ -2236,6 +2480,99 @@ export const installMockDesktopApi = async (
             );
             episodes.set(request.episodeId, updated);
             return { ok: true, data: updated };
+          },
+        }),
+        resources: Object.freeze({
+          getUrl: async () => ({
+            ok: true,
+            data: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+          }),
+          import: async (request: { context: BrowserResourceContext }) => {
+            const resource = createResource(request.context);
+            resources.set(resource.id, resource);
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          importDropped: async (
+            request: { context: BrowserResourceContext },
+            files: Array<{ name: string }>,
+          ) => {
+            for (const file of files) {
+              const resource = createResource(request.context, file.name);
+              resources.set(resource.id, resource);
+            }
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          list: async (request: { context: BrowserResourceContext }) => ({
+            ok: true,
+            data: visibleResources(request.context),
+          }),
+          locate: async (request: {
+            context: BrowserResourceContext;
+            resourceId: string;
+          }) => {
+            const resource = resources.get(request.resourceId);
+            if (resource !== undefined)
+              resources.set(resource.id, {
+                ...resource,
+                availability: "available",
+              });
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          remove: async (request: {
+            context: BrowserResourceContext;
+            resourceId: string;
+          }) => {
+            resources.delete(request.resourceId);
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          rename: async (request: {
+            context: BrowserResourceContext;
+            displayName: string;
+            resourceId: string;
+          }) => {
+            const resource = resources.get(request.resourceId);
+            if (resource !== undefined)
+              resources.set(resource.id, {
+                ...resource,
+                displayName: request.displayName.trim(),
+              });
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          replace: async (request: {
+            context: BrowserResourceContext;
+            resourceId: string;
+          }) => {
+            const resource = resources.get(request.resourceId);
+            if (resource !== undefined)
+              resources.set(resource.id, {
+                ...resource,
+                availability: "available",
+              });
+            return { ok: true, data: visibleResources(request.context) };
+          },
+          updateMetadata: async (request: {
+            context: BrowserResourceContext;
+            dimensions?: { height: number; width: number };
+            durationMs?: number;
+            resourceId: string;
+            unsupported?: boolean;
+          }) => {
+            const resource = resources.get(request.resourceId);
+            if (resource !== undefined) {
+              resources.set(resource.id, {
+                ...resource,
+                ...(request.dimensions === undefined
+                  ? {}
+                  : { dimensions: request.dimensions }),
+                ...(request.durationMs === undefined
+                  ? {}
+                  : { durationMs: request.durationMs }),
+                ...(request.unsupported === true
+                  ? { availability: "unsupported" }
+                  : {}),
+              });
+            }
+            return { ok: true, data: visibleResources(request.context) };
           },
         }),
       });

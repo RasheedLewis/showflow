@@ -26,6 +26,7 @@ import {
   InsertSegmentIntoEpisodeCommand,
   ListEpisodesQuery,
   RemoveEpisodeSegmentCommand,
+  RenameResourceCommand,
   ReorderEpisodeSegmentsCommand,
   RestoreEpisodeSegmentCommand,
   UpdateEpisodeSegmentContentCommand,
@@ -36,6 +37,12 @@ import {
   RestoreSegmentDataFieldCommand,
   UpdateSegmentDataFieldCommand,
   UpdateShowSegmentDetailsCommand,
+  DeleteResourceCommand,
+  GetResourceAccessQuery,
+  ImportResourcesCommand,
+  ListResourcesQuery,
+  RepairResourceCommand,
+  UpdateResourceMetadataCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -48,10 +55,11 @@ import {
   SqliteStudioRepository,
   SqliteEpisodeRepository,
   SqliteSegmentEpisodeCreationRepository,
+  SqliteResourceRepository,
   type InitializedPersistence,
   type MigrationLogger,
 } from "@showflow/persistence";
-import { app, BrowserWindow, shell, type Session } from "electron";
+import { app, BrowserWindow, protocol, shell, type Session } from "electron";
 
 import { registerApplicationSettingsIpc } from "./application-settings-ipc.mjs";
 import { registerDesignShowIpc } from "./design-show-ipc.mjs";
@@ -70,6 +78,24 @@ import { registerSegmentEditorIpc } from "./segment-editor-ipc.mjs";
 import type { SegmentEditorOperations } from "./segment-editor-handler.mjs";
 import { registerStudioIpc, type StudioIpcOperations } from "./studio-ipc.mjs";
 import { registerShowIpc, type ShowIpcOperations } from "./show-ipc.mjs";
+import { DesktopResourceFileAdapter } from "./resource-file-adapter.mjs";
+import { RefreshingResourceRepository } from "./refreshing-resource-repository.mjs";
+import { ResourceProtocolService } from "./resource-protocol.mjs";
+import { registerResourceIpc } from "./resource-ipc.mjs";
+import type { ResourceOperations } from "./resource-handler.mjs";
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "showflow-resource",
+    privileges: {
+      bypassCSP: false,
+      secure: true,
+      standard: true,
+      stream: true,
+      supportFetchAPI: true,
+    },
+  },
+]);
 
 let mainWindow: BrowserWindow | null = null;
 let initializedPersistence: InitializedPersistence | null = null;
@@ -84,6 +110,8 @@ interface DesktopServices {
   readonly designShow: DesignShowOperations;
   readonly episodes: EpisodeOperations;
   readonly segmentEditor: SegmentEditorOperations;
+  readonly resources: ResourceOperations;
+  readonly resourceProtocol: ResourceProtocolService;
 }
 
 const migrationLogger: MigrationLogger = {
@@ -148,6 +176,23 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     persistence.database,
   );
   const episodeRepository = new SqliteEpisodeRepository(persistence.database);
+  const resourceFiles = new DesktopResourceFileAdapter(
+    path.join(userDataDirectory, "cache", "thumbnails"),
+  );
+  const resourceRepository = new RefreshingResourceRepository(
+    new SqliteResourceRepository(persistence.database),
+    resourceFiles,
+  );
+  const resourceScopeRepositories = {
+    episodes: episodeRepository,
+    resources: resourceRepository,
+    shows: showRepository,
+    studios: studioRepository,
+  } as const;
+  const resourceProtocol = new ResourceProtocolService(
+    new GetResourceAccessQuery(resourceScopeRepositories),
+    resourceFiles,
+  );
   const getDesign = new GetShowDesignQuery({
     shows: showRepository,
     blueprints: blueprintRepository,
@@ -155,6 +200,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
   });
   const getEpisode = new GetEpisodeStoryboardQuery({
     episodes: episodeRepository,
+    resources: resourceRepository,
     segments: segmentRepository,
     shows: showRepository,
   });
@@ -166,6 +212,24 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
   return {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
     persistence,
+    resourceProtocol,
+    resources: {
+      accessUrls: resourceProtocol,
+      delete: new DeleteResourceCommand(resourceScopeRepositories),
+      import: new ImportResourcesCommand(
+        resourceScopeRepositories,
+        resourceFiles,
+      ),
+      list: new ListResourcesQuery(resourceScopeRepositories),
+      repair: new RepairResourceCommand(
+        resourceScopeRepositories,
+        resourceFiles,
+      ),
+      rename: new RenameResourceCommand(resourceScopeRepositories),
+      updateMetadata: new UpdateResourceMetadataCommand(
+        resourceScopeRepositories,
+      ),
+    },
     designShow: {
       addSegment: new AddSegmentToBlueprintCommand({
         blueprints: blueprintRepository,
@@ -320,6 +384,8 @@ const createMainWindow = async (
   designShow: DesignShowOperations,
   episodes: EpisodeOperations,
   segmentEditor: SegmentEditorOperations,
+  resources: ResourceOperations,
+  resourceProtocol: ResourceProtocolService,
 ): Promise<void> => {
   const content = getMainWindowContent();
   const settings = await applicationSettings.get();
@@ -348,6 +414,8 @@ const createMainWindow = async (
   registerDesignShowIpc(window, content.trustedUrl, designShow);
   registerEpisodeIpc(window, content.trustedUrl, episodes);
   registerSegmentEditorIpc(window, content.trustedUrl, segmentEditor);
+  await resourceProtocol.register(window.webContents.session.protocol);
+  registerResourceIpc(window, content.trustedUrl, resources);
 
   window.on("close", () => {
     const bounds = window.getNormalBounds();
@@ -397,6 +465,8 @@ app
       services.designShow,
       services.episodes,
       services.segmentEditor,
+      services.resources,
+      services.resourceProtocol,
     );
 
     app.on("activate", () => {
@@ -408,6 +478,8 @@ app
           services.designShow,
           services.episodes,
           services.segmentEditor,
+          services.resources,
+          services.resourceProtocol,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);
         });

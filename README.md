@@ -7,7 +7,7 @@
 Showflow is a local-first desktop production workspace for creators who design,
 prepare, preview, and rehearse recurring shows.
 
-![Project status](https://img.shields.io/badge/status-sprint%207%20complete-2F855A?style=flat-square)
+![Project status](https://img.shields.io/badge/status-sprint%209%20complete-2F855A?style=flat-square)
 ![MVP](https://img.shields.io/badge/MVP-producing%20workflow-2F855A?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A5568?style=flat-square)
 ![License](https://img.shields.io/badge/license-not%20yet%20selected-718096?style=flat-square)
@@ -18,11 +18,11 @@ prepare, preview, and rehearse recurring shows.
 </div>
 
 > [!IMPORTANT]
-> **Sprints 0–7 are complete.** Showflow now carries a creator from launch
+> **Sprints 0–9 are complete.** Showflow now carries a creator from launch
 > through persisted Studios and Shows, reusable Show Blueprint design, and
 > transactional Episode creation into an independently editable Episode
-> Storyboard, with reusable content requirements and production behavior defined
-> in the Show Segment editor.
+> Storyboard, with reusable content requirements, Episode-specific content, and
+> secure linked media Resources.
 
 ## The product
 
@@ -53,7 +53,12 @@ The desktop application currently supports:
   validation, and fixed lifecycle behavior with autosave and undo/redo;
 - creating Episodes transactionally from that Blueprint, then reordering,
   duplicating, removing, restoring, and inserting Episode Segments with
-  autosave and undo/redo; and
+  autosave and undo/redo;
+- completing Episode Segment content fields, notes, and duration overrides with
+  validation, readiness, autosave, and safe content summaries;
+- importing, renaming, searching, filtering, previewing, assigning, locating,
+  replacing, and removing scoped image, video, and audio Resources through a
+  secure Resource Browser; and
 - restoring the last safe Studio, Show Detail, or Design Show route after
   restart, with recovery to Studio Home when a saved Show is unavailable.
 
@@ -276,9 +281,10 @@ pnpm install --frozen-lockfile
 ```
 
 The workspace includes the secure Electron desktop shell, shared design system,
-completed Episode Storyboard workflow, and Show Segment definition editor. Start
-it with `pnpm dev`; package it locally with `pnpm package`; or create the
-installer format for the current platform with `pnpm make`.
+completed Episode Storyboard and content workflows, Show Segment definition
+editor, and secure linked-media Resource system. Start it with `pnpm dev`;
+package it locally with `pnpm package`; or create the installer format for the
+current platform with `pnpm make`.
 
 During development, the internal component acceptance gallery is available at
 `/#/_development/components`. It renders every shared design-system component and
@@ -332,8 +338,8 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
-**Current milestone:** Sprints 0–7 are complete. Sprint 8—Episode Segment content
-editor—is next.
+**Current milestone:** Sprints 0–9 are complete. Sprint 10—Layout Catalog and
+constrained Layout editor—is next.
 
 | Phase              | Sprints | Outcome                                                                     |
 | ------------------ | ------: | --------------------------------------------------------------------------- |
@@ -354,8 +360,8 @@ editor—is next.
 - [x] **Sprint 5:** Segment Catalog and Show Blueprint
 - [x] **Sprint 6:** Episodes and Episode Storyboard
 - [x] **Sprint 7:** Show Segment schema and behavior editor
-- [ ] **Sprint 8:** Episode Segment content editor
-- [ ] **Sprint 9:** Resource system
+- [x] **Sprint 8:** Episode Segment content editor
+- [x] **Sprint 9:** Resource system
 - [ ] **Sprint 10:** Layout Catalog and constrained Layout editor
 - [ ] **Sprint 11:** Components, Placements, and bindings
 - [ ] **Sprint 12:** Preview runtime and Segment lifecycle

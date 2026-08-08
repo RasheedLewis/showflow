@@ -1815,11 +1815,9 @@ describe("App", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Approved" }), {
       target: { value: "true" },
     });
-    expect(screen.getByRole("textbox", { name: /Artwork/u })).toBeDisabled();
-    expect(screen.getByRole("textbox", { name: /Clip/u })).toBeDisabled();
-    expect(
-      screen.getByRole("textbox", { name: /Theme music/u }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Choose image" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Choose video" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Choose audio" })).toBeEnabled();
     const notes = screen.getByRole("textbox", { name: "Episode notes" });
     expect(notes).toHaveValue("Introduce the guest.");
     fireEvent.change(notes, { target: { value: "Ask about the tour." } });

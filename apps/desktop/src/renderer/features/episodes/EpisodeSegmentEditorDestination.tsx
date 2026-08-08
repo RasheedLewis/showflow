@@ -153,9 +153,19 @@ export const EpisodeSegmentEditorDestination = () => {
     (episodeQuery.error instanceof Error
       ? episodeQuery.error.message
       : undefined);
+  const resourceContext = routeIsComplete
+    ? {
+        scope: "episode" as const,
+        studioId,
+        showId,
+        episodeId,
+      }
+    : undefined;
 
   const catalog =
-    item === undefined || draft === undefined ? null : (
+    item === undefined ||
+    draft === undefined ||
+    resourceContext === undefined ? null : (
       <div className={styles.contentPanel}>
         <header className={styles.panelHeader}>
           <p className={styles.eyebrow}>Episode content</p>
@@ -177,6 +187,7 @@ export const EpisodeSegmentEditorDestination = () => {
                   : { issue: fieldIssue(field.key) })}
                 key={field.id}
                 onUpdate={content.update}
+                resourceContext={resourceContext}
               />
             ))}
           </div>

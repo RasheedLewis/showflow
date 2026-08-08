@@ -1,8 +1,12 @@
-import type { EpisodeStoryboardDto } from "@showflow/contracts";
+import type {
+  EpisodeStoryboardDto,
+  ResourceContext,
+} from "@showflow/contracts";
 import { Badge, Button, Select, TextArea, TextInput } from "@showflow/ui";
 
 import styles from "./episode-segment-editor.module.css";
 import type { EpisodeSegmentContentDraft } from "./useEpisodeSegmentContent";
+import { ResourcePicker } from "../resources/ResourcePicker";
 
 type EpisodeField = EpisodeStoryboardDto["items"][number]["dataFields"][number];
 type FieldValue = EpisodeSegmentContentDraft["fieldValues"][string];
@@ -33,11 +37,13 @@ export const EpisodeSegmentFieldControl = ({
   field,
   issue,
   onUpdate,
+  resourceContext,
 }: {
   readonly draft: EpisodeSegmentContentDraft;
   readonly field: EpisodeField;
   readonly issue?: string | undefined;
   readonly onUpdate: (next: EpisodeSegmentContentDraft) => void;
+  readonly resourceContext: ResourceContext;
 }) => {
   const value = draft.fieldValues[field.key];
   const inputId = `episode-field-${field.key}`;
@@ -139,16 +145,24 @@ export const EpisodeSegmentFieldControl = ({
     field.type === "videoResource" ||
     field.type === "audioResource"
   ) {
+    const category =
+      field.type === "imageResource"
+        ? "image"
+        : field.type === "videoResource"
+          ? "video"
+          : "audio";
     control = (
-      <TextInput
-        {...(issue === undefined ? {} : { error: issue })}
-        disabled
-        helpText="Resource selection arrives with the secure Resource Browser in Sprint 9."
-        id={inputId}
+      <ResourcePicker
+        category={category}
+        context={resourceContext}
+        inputId={inputId}
+        {...(issue === undefined ? {} : { issue })}
         label={field.label}
-        placeholder="Choose a Resource in Sprint 9"
+        onSelect={(resourceId) =>
+          onUpdate(updateFieldValue(draft, field.key, resourceId))
+        }
         required={field.required}
-        value={typeof value === "string" ? "Resource selected" : ""}
+        {...(typeof value === "string" ? { selectedResourceId: value } : {})}
       />
     );
   } else {
