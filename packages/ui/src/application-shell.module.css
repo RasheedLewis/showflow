@@ -78,17 +78,13 @@
   gap: var(--sf-space-3);
 }
 
-.breadcrumb {
-  flex: none;
-  color: var(--sf-text-tertiary);
-  font-size: var(--sf-font-size-label-md);
-  line-height: var(--sf-line-height-label-md);
+.contextAreaWithParent {
+  padding-left: var(--sf-space-6);
+  border-left: var(--sf-border-width-default) solid var(--sf-divider);
 }
 
-.breadcrumb::after {
-  margin-left: var(--sf-space-3);
-  color: var(--sf-text-disabled);
-  content: "/";
+.parentNavigation {
+  flex: none;
 }
 
 .pageTitle {
@@ -277,7 +273,6 @@
     padding: var(--sf-space-6);
   }
 
-  .breadcrumb,
   .historyActions {
     display: none;
   }

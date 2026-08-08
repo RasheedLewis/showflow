@@ -6,7 +6,6 @@ import { IconButton } from "./controls.js";
 import styles from "./application-shell.module.css";
 
 export interface ApplicationShellProps {
-  readonly breadcrumb?: ReactNode;
   readonly catalog?: ReactNode;
   readonly catalogLabel?: string;
   readonly children: ReactNode;
@@ -19,7 +18,8 @@ export interface ApplicationShellProps {
   readonly menu?: ReactNode;
   readonly notes?: ReactNode;
   readonly notesLabel?: string;
-  readonly primaryAction: ReactNode;
+  readonly parentNavigation?: ReactNode;
+  readonly primaryAction?: ReactNode;
   readonly saveState?: ReactNode;
   readonly scope?: ReactNode;
   readonly studioSwitcher: ReactNode;
@@ -28,7 +28,6 @@ export interface ApplicationShellProps {
 }
 
 export const ApplicationShell = ({
-  breadcrumb,
   catalog,
   catalogLabel = "Catalog",
   children,
@@ -41,6 +40,7 @@ export const ApplicationShell = ({
   menu,
   notes,
   notesLabel = "Notes",
+  parentNavigation,
   primaryAction,
   saveState,
   scope,
@@ -143,11 +143,25 @@ export const ApplicationShell = ({
           <div className={styles.studioSwitcher}>{studioSwitcher}</div>
         </div>
 
-        <div className={styles.contextArea}>
-          {breadcrumb ? (
-            <div className={styles.breadcrumb}>{breadcrumb}</div>
+        <div
+          className={classNames(
+            styles.contextArea,
+            parentNavigation !== null &&
+              parentNavigation !== undefined &&
+              styles.contextAreaWithParent,
+          )}
+        >
+          {parentNavigation ? (
+            <nav
+              aria-label="Parent navigation"
+              className={styles.parentNavigation}
+            >
+              {parentNavigation}
+            </nav>
           ) : null}
-          <h1 className={styles.pageTitle}>{title}</h1>
+          <h1 className={styles.pageTitle} data-route-heading tabIndex={-1}>
+            {title}
+          </h1>
         </div>
 
         <div className={styles.actionArea}>
@@ -189,7 +203,9 @@ export const ApplicationShell = ({
               }
             />
           ) : null}
-          <div className={styles.primaryAction}>{primaryAction}</div>
+          {primaryAction ? (
+            <div className={styles.primaryAction}>{primaryAction}</div>
+          ) : null}
           {menu}
         </div>
       </header>

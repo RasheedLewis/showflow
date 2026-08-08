@@ -17,6 +17,7 @@ import {
   getShowDetailRoute,
 } from "../../app-routes.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { SegmentPicker } from "../shows/SegmentPicker";
 import { loadShowDesign, showDesignQueryKey } from "../shows/show-queries";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
@@ -89,17 +90,13 @@ export const ProduceEpisodeDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={
-        studioId === undefined || showId === undefined ? (
-          <span>Show Detail</span>
-        ) : (
-          <Button
-            onClick={() => navigate(getShowDetailRoute(studioId, showId))}
-            size="small"
-            variant="ghost"
-          >
-            Back to Show Detail
-          </Button>
+      parentNavigation={
+        studioId === undefined || showId === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to Show overview"
+            label="Show overview"
+            to={getShowDetailRoute(studioId, showId)}
+          />
         )
       }
       historyActions={
@@ -119,16 +116,6 @@ export const ProduceEpisodeDestination = () => {
             tooltip="Redo"
           />
         </>
-      }
-      primaryAction={
-        <Button
-          disabled={storyboard === undefined || mutations.isSaving}
-          leadingIcon="plus"
-          onClick={() => setPickerOpen(true)}
-          variant="primary"
-        >
-          Add Segment
-        </Button>
       }
       saveState={<SaveStateIndicator state={mutations.saveState} />}
       scope={<ScopeLabel scope="episode" />}
@@ -220,7 +207,6 @@ export const ProduceEpisodeDestination = () => {
             </div>
             <EpisodeStoryboard
               items={storyboard.items}
-              onAddFirst={() => setPickerOpen(true)}
               onDuplicate={(id) => run(mutations.duplicate(id))}
               onOpen={(id) =>
                 navigate(

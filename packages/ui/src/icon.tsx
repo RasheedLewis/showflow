@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  ArrowLeft,
   Check,
   ChevronDown,
   Circle,
@@ -20,6 +21,7 @@ import type { LucideIcon, LucideProps } from "lucide-react";
 
 const icons = {
   "alert-circle": AlertCircle,
+  "arrow-left": ArrowLeft,
   check: Check,
   "chevron-down": ChevronDown,
   circle: Circle,

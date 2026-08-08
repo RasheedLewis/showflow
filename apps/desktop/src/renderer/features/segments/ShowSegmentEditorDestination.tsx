@@ -14,9 +14,13 @@ import {
 } from "@showflow/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
+import {
+  createNavigationFocusState,
+  resolveShowSegmentOrigin,
+} from "../navigation/navigation-origin.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { loadShowDesign, showDesignQueryKey } from "../shows/show-queries";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
@@ -152,7 +156,17 @@ const useSegmentDetailsDraft = (
     });
   };
 
-  return { draft, duration, update, updateDuration };
+  const flush = async (): Promise<void> => {
+    if (timeout.current !== undefined) {
+      clearTimeout(timeout.current);
+      timeout.current = undefined;
+    }
+    if (draftRef.current?.name.trim().length) {
+      await onSaveRef.current(draftRef.current);
+    }
+  };
+
+  return { draft, duration, flush, update, updateDuration };
 };
 
 const PhaseCanvas = ({
@@ -234,6 +248,7 @@ const PhaseCanvas = ({
 
 export const ShowSegmentEditorDestination = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { studioId, showId, segmentId } = useParams<{
     studioId: string;
     showId: string;
@@ -241,6 +256,7 @@ export const ShowSegmentEditorDestination = () => {
   }>();
   const [phase, setPhase] = useState<LifecyclePhase>("active");
   const [selectionError, setSelectionError] = useState<string>();
+  const [navigationPending, setNavigationPending] = useState(false);
   const routeIsComplete =
     studioId !== undefined && showId !== undefined && segmentId !== undefined;
   const studioQuery = useQuery({
@@ -285,9 +301,22 @@ export const ShowSegmentEditorDestination = () => {
   const run = (operation: Promise<unknown>): void => {
     void operation.catch(() => undefined);
   };
-  const returnToBlueprint = (): void => {
-    if (studioId !== undefined && showId !== undefined) {
-      navigate(getDesignShowRoute(studioId, showId));
+  const navigationOrigin =
+    studioId === undefined || showId === undefined
+      ? undefined
+      : resolveShowSegmentOrigin(location.state, studioId, showId);
+  const returnToOrigin = async (): Promise<void> => {
+    if (navigationOrigin === undefined) return;
+    setNavigationPending(true);
+    try {
+      await details.flush();
+      navigate(navigationOrigin.returnTo, {
+        ...(navigationOrigin.focusId === undefined
+          ? {}
+          : { state: createNavigationFocusState(navigationOrigin.focusId) }),
+      });
+    } finally {
+      setNavigationPending(false);
     }
   };
   const loading =
@@ -418,11 +447,6 @@ export const ShowSegmentEditorDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={
-        <span>
-          {designQuery.data?.show.name ?? "Show"} / {editor?.name ?? "Segment"}
-        </span>
-      }
       historyActions={
         <>
           <IconButton
@@ -459,10 +483,19 @@ export const ShowSegmentEditorDestination = () => {
         )
       }
       notesLabel="Notes template"
-      primaryAction={
-        <Button onClick={returnToBlueprint} variant="primary">
-          Return to Blueprint
-        </Button>
+      parentNavigation={
+        navigationOrigin === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel={`Back to ${navigationOrigin.label}`}
+            disabled={navigationPending}
+            label={navigationOrigin.label}
+            onClick={(event) => {
+              event.preventDefault();
+              run(returnToOrigin());
+            }}
+            to={navigationOrigin.returnTo}
+          />
+        )
       }
       saveState={<SaveStateIndicator state={mutations.saveState} />}
       scope={<ScopeLabel scope="show-segment" />}
@@ -495,17 +528,6 @@ export const ShowSegmentEditorDestination = () => {
             <p className={styles.eyebrow}>Show Segment unavailable</p>
             <h2>Showflow could not open this Segment</h2>
             <p>Return to Design Show and choose an available Segment.</p>
-            <Button
-              onClick={() => {
-                if (studioId !== undefined && showId !== undefined) {
-                  navigate(getDesignShowRoute(studioId, showId));
-                } else if (studioId !== undefined) {
-                  navigate(getStudioHomeRoute(studioId));
-                }
-              }}
-            >
-              Return to Design Show
-            </Button>
           </section>
         ) : (
           <>

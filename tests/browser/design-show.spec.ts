@@ -45,7 +45,7 @@ test("builds the first reusable Segment from an empty Blueprint accessibly", asy
     }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Add First Segment" }).click();
+  await page.getByRole("button", { name: "Add Segment" }).click();
   const picker = page.getByRole("dialog", { name: "Add Segment" });
   await picker.getByRole("textbox", { name: /Segment name/u }).fill("Opening");
   await picker
@@ -56,7 +56,7 @@ test("builds the first reusable Segment from an empty Blueprint accessibly", asy
   await expect(
     page.getByRole("heading", { level: 1, name: "Opening" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Return to Blueprint" }).click();
+  await page.getByRole("link", { name: "Back to Blueprint" }).click();
   const storyboard = page.getByRole("list", {
     name: "Show Blueprint Storyboard",
   });
@@ -72,7 +72,7 @@ test("builds the first reusable Segment from an empty Blueprint accessibly", asy
     .analyze();
   expect(accessibility.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await page.getByRole("link", { name: "Back to Show overview" }).click();
   await expect(
     page.getByRole("heading", { level: 2, name: "Create New Episode" }),
   ).toBeVisible();
@@ -85,7 +85,7 @@ test("reorders the Storyboard with keyboard and pointer input", async ({
   for (const name of ["Opening", "Interview"]) {
     await page
       .getByRole("button", {
-        name: name === "Opening" ? "Add First Segment" : "Add Segment",
+        name: "Add Segment",
         exact: true,
       })
       .last()
@@ -94,7 +94,7 @@ test("reorders the Storyboard with keyboard and pointer input", async ({
     await picker.getByRole("textbox", { name: /Segment name/u }).fill(name);
     await picker.getByRole("button", { name: "Create and Add" }).click();
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
-    await page.getByRole("button", { name: "Return to Blueprint" }).click();
+    await page.getByRole("link", { name: "Back to Blueprint" }).click();
   }
   await expect
     .poll(() => storyboardNames(page))
@@ -141,7 +141,7 @@ test("edits a reusable Segment definition and preserves it when reopened", async
 }) => {
   await page.setViewportSize({ height: 900, width: 1_600 });
   await createShow(page);
-  await page.getByRole("button", { name: "Add First Segment" }).click();
+  await page.getByRole("button", { name: "Add Segment" }).click();
   const picker = page.getByRole("dialog", { name: "Add Segment" });
   await picker.getByRole("textbox", { name: /Segment name/u }).fill("Opening");
   await picker.getByRole("button", { name: "Create and Add" }).click();
@@ -199,7 +199,7 @@ test("edits a reusable Segment definition and preserves it when reopened", async
     path: "test-results/sprint-7-segment-editor.png",
   });
 
-  await page.getByRole("button", { name: "Return to Blueprint" }).click();
+  await page.getByRole("link", { name: "Back to Blueprint" }).click();
   await expect(
     page
       .getByRole("list", { name: "Show Blueprint Storyboard" })
@@ -239,10 +239,10 @@ test("auto-scrolls the Storyboard workspace during a pointer drag", async ({
     "Recap",
     "Closing",
   ];
-  for (const [index, name] of names.entries()) {
+  for (const name of names) {
     await page
       .getByRole("button", {
-        name: index === 0 ? "Add First Segment" : "Add Segment",
+        name: "Add Segment",
         exact: true,
       })
       .last()
@@ -250,10 +250,10 @@ test("auto-scrolls the Storyboard workspace during a pointer drag", async ({
     const picker = page.getByRole("dialog", { name: "Add Segment" });
     await picker.getByRole("textbox", { name: /Segment name/u }).fill(name);
     await picker.getByRole("button", { name: "Create and Add" }).click();
-    await page.getByRole("button", { name: "Return to Blueprint" }).click();
+    await page.getByRole("link", { name: "Back to Blueprint" }).click();
   }
 
-  const workspace = page.getByRole("main", { name: "Artist Interviews" });
+  const workspace = page.getByRole("main", { name: "Design Show" });
   await workspace.evaluate((element) => {
     element.scrollTop = 0;
   });

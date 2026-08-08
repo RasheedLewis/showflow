@@ -47,7 +47,7 @@ interface SortablePlacementProps {
   readonly total: number;
   readonly onDuplicate: () => void;
   readonly onMove: (destination: number) => void;
-  readonly onOpen: () => void;
+  readonly onOpen: (focusId: string) => void;
   readonly onRemove: () => void;
   readonly onSelect: () => void;
 }
@@ -100,7 +100,13 @@ const SortablePlacement = ({
             >
               Reorder
             </Button>
-            <Button onClick={onOpen} size="small">
+            <Button
+              id={`navigation-origin-blueprint-${placement.id}`}
+              onClick={() =>
+                onOpen(`navigation-origin-blueprint-${placement.id}`)
+              }
+              size="small"
+            >
               Open
             </Button>
             <Menu
@@ -113,7 +119,13 @@ const SortablePlacement = ({
                 />
               }
             >
-              <MenuItem onSelect={onOpen}>Open Segment</MenuItem>
+              <MenuItem
+                onSelect={() =>
+                  onOpen(`navigation-origin-blueprint-${placement.id}`)
+                }
+              >
+                Open Segment
+              </MenuItem>
               <MenuItem
                 disabled={index === 0}
                 onSelect={() => onMove(index - 1)}
@@ -142,7 +154,9 @@ const SortablePlacement = ({
             : `${Math.round(effectiveDurationMs / 1_000)} sec`
         }
         onClick={onSelect}
-        onDoubleClick={onOpen}
+        onDoubleClick={() =>
+          onOpen(`navigation-origin-blueprint-${placement.id}`)
+        }
         {...(placement.label === null
           ? {}
           : { placementLabel: placement.label })}
@@ -163,9 +177,8 @@ const SortablePlacement = ({
 };
 
 export interface BlueprintStoryboardProps {
-  readonly onAddFirst: () => void;
   readonly onDuplicate: (placementId: string) => void;
-  readonly onOpen: (showSegmentId: string) => void;
+  readonly onOpen: (showSegmentId: string, focusId: string) => void;
   readonly onRemove: (placementId: string) => void;
   readonly onReorder: (orderedPlacementIds: readonly string[]) => Promise<void>;
   readonly placements: readonly BlueprintPlacementDto[];
@@ -173,7 +186,6 @@ export interface BlueprintStoryboardProps {
 }
 
 export const BlueprintStoryboard = ({
-  onAddFirst,
   onDuplicate,
   onOpen,
   onRemove,
@@ -252,11 +264,7 @@ export const BlueprintStoryboard = ({
     return (
       <div className={styles.emptyWrap}>
         <EmptyState
-          action={
-            <Button leadingIcon="plus" onClick={onAddFirst} variant="primary">
-              Add First Segment
-            </Button>
-          }
+          action={null}
           description="Add reusable Segments in the order they usually occur. Every new Episode will begin here."
           heading="Design your Show’s default Storyboard"
           icon="plus"
@@ -286,7 +294,7 @@ export const BlueprintStoryboard = ({
               key={placement.id}
               onDuplicate={() => onDuplicate(placement.id)}
               onMove={(destination) => move(index, destination)}
-              onOpen={() => onOpen(placement.showSegmentId)}
+              onOpen={(focusId) => onOpen(placement.showSegmentId, focusId)}
               onRemove={() => onRemove(placement.id)}
               onSelect={() => setSelectedId(placement.id)}
               placement={placement}

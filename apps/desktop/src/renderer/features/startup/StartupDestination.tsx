@@ -10,8 +10,11 @@ import { GetShowDesignRequestSchema } from "@showflow/contracts";
 
 import {
   DESIGN_SHOW_ROUTE,
+  DESIGN_SHOW_ROOT_ROUTE,
   SHOW_DETAIL_ROUTE,
+  getDesignShowRoute,
   getStudioHomeRoute,
+  isDesignShowSection,
   STUDIO_CREATION_ROUTE,
 } from "../../app-routes.mts";
 import { showDesignQueryKey } from "../shows/show-queries";
@@ -36,14 +39,29 @@ const resolveDurableRoute = async (
   const studioHomeRoute = getStudioHomeRoute(selectedStudioId);
   if (lastRoute === studioHomeRoute) return studioHomeRoute;
 
+  const designRouteMatch = matchPath(
+    { end: true, path: DESIGN_SHOW_ROUTE },
+    lastRoute,
+  );
+  const legacyDesignRouteMatch = matchPath(
+    { end: true, path: DESIGN_SHOW_ROOT_ROUTE },
+    lastRoute,
+  );
   const showRouteMatch =
-    matchPath({ end: true, path: DESIGN_SHOW_ROUTE }, lastRoute) ??
+    designRouteMatch ??
+    legacyDesignRouteMatch ??
     matchPath({ end: true, path: SHOW_DETAIL_ROUTE }, lastRoute);
   const request = GetShowDesignRequestSchema.safeParse({
     showId: showRouteMatch?.params.showId,
     studioId: showRouteMatch?.params.studioId,
   });
   if (!request.success || request.data.studioId !== selectedStudioId) {
+    return studioHomeRoute;
+  }
+  if (
+    designRouteMatch !== null &&
+    !isDesignShowSection(designRouteMatch.params.designSection)
+  ) {
     return studioHomeRoute;
   }
 
@@ -58,7 +76,9 @@ const resolveDurableRoute = async (
     showDesignQueryKey(request.data.studioId, request.data.showId),
     result.data,
   );
-  return lastRoute;
+  return legacyDesignRouteMatch === null
+    ? lastRoute
+    : getDesignShowRoute(request.data.studioId, request.data.showId);
 };
 
 const resolveStartupDestination = async (
@@ -111,8 +131,6 @@ export const StartupDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={<span>Startup</span>}
-      primaryAction={<span />}
       studioSwitcher={
         <Button disabled size="small" variant="ghost">
           Studio

@@ -12,6 +12,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { ShowCardDto, ShowDesignDto } from "@showflow/contracts";
 
 import { getDesignShowRoute, getStudioHomeRoute } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import studioStyles from "../studios/studio-pages.module.css";
@@ -110,7 +111,15 @@ export const ShowCreationPage = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={<span>Studio Home / New Show</span>}
+      parentNavigation={
+        studioId === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to Shows"
+            label="Shows"
+            to={getStudioHomeRoute(studioId)}
+          />
+        )
+      }
       primaryAction={
         <Button
           disabled={isSubmitting || studioQuery.isError}
@@ -156,11 +165,6 @@ export const ShowCreationPage = () => {
               Showflow could not load this Studio. Return to Studio Home and try
               again.
             </p>
-            {studioId === undefined ? null : (
-              <Button onClick={() => navigate(getStudioHomeRoute(studioId))}>
-                Return to Studio Home
-              </Button>
-            )}
           </section>
         ) : (
           <section

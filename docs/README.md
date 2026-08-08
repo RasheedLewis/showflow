@@ -15,12 +15,18 @@ editing code, user-facing behavior, architecture, or visual foundations.
 |---|---:|---:|---|
 | [Architecture PRD](architecture-prd-v1.3.md) | 1 | 1.3 | Domain ownership, canonical concepts, invariants, and MVP scope |
 | [MVP UX Specification](ux-spec-v1.0.md) | 2 | 1.0 | User-facing workflows, navigation, interaction behavior, and accessibility |
+| [Navigation System UI/UX Specification](navigation-system-spec-v1.0.md) | Supplemental | 1.0 | Normative navigation roles, placement, route behavior, and acceptance criteria |
 | [Technical Specification](technical-spec-v1.0.md) | 3 | 1.0 | Stack, package boundaries, security, persistence, testing, and distribution |
 | [Design System Specification](design-system-spec-v1.0.md) | 4 | 1.0 | Visual foundations, components, tokens, motion, and content voice |
 | [Detailed Implementation Plan](implementation-plan-v1.0.md) | Operational | 1.0 | Dependency-ordered Sprints, test gates, decision timing, and completion criteria |
 
 The implementation plan sequences the work. It does not override the four
 product and engineering specifications.
+
+The Navigation System UI/UX Specification is a supplemental implementation
+reference beneath the four authoritative specifications. It makes their
+navigation requirements concrete without changing domain ownership, MVP scope,
+or the documented temporary Catalog-navigation default.
 
 Accepted implementation choices, product decision requests, and open
 specification issues are indexed in the
@@ -149,10 +155,15 @@ Before implementing a feature:
 ```text
 Architecture rule
   → user-facing behavior
+    → navigation behavior when applicable
     → technical boundary
       → design-system treatment
         → Sprint task and tests
 ```
+
+For application-shell, routing, parent-path, workspace-tab, object-opening, or
+sequential-navigation work, read the Navigation System UI/UX Specification after
+the controlling UX section and before selecting the technical treatment.
 
 At completion, update documentation whenever implemented behavior or an approved
 decision changes what these documents promise.

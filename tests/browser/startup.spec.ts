@@ -29,7 +29,7 @@ test("opens the selected persisted Studio and loads every Studio at startup", as
   await page.goto("/#/");
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
+    page.getByRole("heading", { level: 1, name: "Shows" }),
   ).toBeVisible();
   await page
     .getByRole("button", {
@@ -96,7 +96,7 @@ test("recovers a missing persisted Show route to Studio Home", async ({
   );
 
   await expect(
-    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
+    page.getByRole("heading", { level: 1, name: "Shows" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 2, name: "Create your first Show" }),

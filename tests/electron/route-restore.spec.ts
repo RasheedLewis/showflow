@@ -93,7 +93,7 @@ test("restores a durable Show route and recovers it after deletion", async () =>
       await expect(
         recoveredPage.getByRole("heading", {
           level: 1,
-          name: "Public Sphere",
+          name: "Shows",
         }),
       ).toBeVisible();
       await expect(

@@ -38,7 +38,7 @@ test("creates, selects, and opens the first Studio", async ({ page }) => {
     new RegExp(`/#/studio/${DEFAULT_STUDIO_ID}$`, "u"),
   );
   await expect(
-    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
+    page.getByRole("heading", { level: 1, name: "Shows" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 2, name: "Create your first Show" }),
@@ -93,7 +93,7 @@ test("creates another Studio and switches back while persisting selection", asyn
     .fill("Public Sphere");
   await page.getByRole("button", { name: "Create Studio" }).click();
   await expect(
-    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
+    page.getByRole("heading", { level: 1, name: "Shows" }),
   ).toBeVisible();
 
   await page
@@ -137,7 +137,7 @@ test("creates another Studio and switches back while persisting selection", asyn
     new RegExp(`/#/studio/${DEFAULT_STUDIO_ID}$`, "u"),
   );
   await expect(
-    page.getByRole("heading", { level: 1, name: "Public Sphere" }),
+    page.getByRole("heading", { level: 1, name: "Shows" }),
   ).toBeVisible();
   await expect
     .poll(() =>

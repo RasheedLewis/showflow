@@ -39,12 +39,12 @@ test("creates a blank Show and opens its empty Blueprint", async ({ page }) => {
 
   await expect(page).toHaveURL(
     new RegExp(
-      `/#/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design$`,
+      `/#/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/blueprint$`,
       "u",
     ),
   );
   await expect(
-    page.getByRole("heading", { level: 1, name: "Artist Interviews" }),
+    page.getByRole("heading", { level: 1, name: "Design Show" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -67,7 +67,7 @@ test("creates a blank Show and opens its empty Blueprint", async ({ page }) => {
     .toMatchObject({
       ok: true,
       data: {
-        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/blueprint`,
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });

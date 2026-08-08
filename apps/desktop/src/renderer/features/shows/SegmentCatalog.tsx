@@ -17,7 +17,6 @@ export interface SegmentCatalogProps {
   readonly items: readonly SegmentCatalogItemDto[];
   readonly onAdd?: (showSegmentId: string) => void;
   readonly onArchive: (showSegmentId: string) => void;
-  readonly onCreate: () => void;
   readonly onOpen: (showSegmentId: string) => void;
 }
 
@@ -27,7 +26,6 @@ export const SegmentCatalog = ({
   items,
   onAdd,
   onArchive,
-  onCreate,
   onOpen,
 }: SegmentCatalogProps) => {
   const [search, setSearch] = useState("");
@@ -73,19 +71,12 @@ export const SegmentCatalog = ({
             value={sort}
           />
         </div>
-        <Button leadingIcon="plus" onClick={onCreate} variant="primary">
-          New Segment
-        </Button>
       </div>
 
       {visibleItems.length === 0 ? (
         <div className={styles.emptyWrap}>
           <EmptyState
-            action={
-              <Button leadingIcon="plus" onClick={onCreate} variant="primary">
-                New Segment
-              </Button>
-            }
+            action={null}
             description={
               search.trim().length === 0
                 ? "Create reusable production roles to use throughout this Show."
@@ -106,7 +97,11 @@ export const SegmentCatalog = ({
               <ObjectCard
                 actions={
                   <div className={styles.cardActions}>
-                    <Button onClick={() => onOpen(segment.id)} size="small">
+                    <Button
+                      id={`navigation-origin-catalog-${segment.id}`}
+                      onClick={() => onOpen(segment.id)}
+                      size="small"
+                    >
                       Open
                     </Button>
                     {onAdd === undefined ? null : (

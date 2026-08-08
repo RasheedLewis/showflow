@@ -11,14 +11,17 @@ import {
 } from "@showflow/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import {
   getDesignShowRoute,
+  getDesignShowSectionRoute,
   getDesignShowSegmentRoute,
   getShowDetailRoute,
   getStudioHomeRoute,
+  isDesignShowSection,
 } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
@@ -29,19 +32,17 @@ import styles from "./design-show.module.css";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
 import { useDesignShowMutations } from "./useDesignShowMutations";
 
-type DesignTab = "blueprint" | "segments" | "layouts";
-
 export const DesignShowDestination = () => {
   const navigate = useNavigate();
-  const { studioId, showId, segmentId } = useParams<{
+  const { designSection, studioId, showId } = useParams<{
+    designSection: string;
     studioId: string;
     showId: string;
-    segmentId: string;
   }>();
   const [selectionError, setSelectionError] = useState<string>();
-  const [activeTab, setActiveTab] = useState<DesignTab>(
-    segmentId === undefined ? "blueprint" : "segments",
-  );
+  const activeTab = isDesignShowSection(designSection)
+    ? designSection
+    : "blueprint";
   const [pickerMode, setPickerMode] = useState<"blueprint" | "catalog">(
     "blueprint",
   );
@@ -65,19 +66,14 @@ export const DesignShowDestination = () => {
   const studio = studioQuery.data;
   const design = designQuery.data;
   const mutations = useDesignShowMutations(design);
-  const selectedSegment = design?.segments.find(
-    ({ segment }) => segment.id === segmentId,
-  )?.segment;
   const route =
     design === undefined
       ? undefined
-      : segmentId === undefined
-        ? getDesignShowRoute(design.show.studioId, design.show.id)
-        : getDesignShowSegmentRoute(
-            design.show.studioId,
-            design.show.id,
-            segmentId,
-          );
+      : getDesignShowSectionRoute(
+          design.show.studioId,
+          design.show.id,
+          activeTab,
+        );
   const navigationError = usePersistedNavigation({
     route,
     studioId: design?.show.studioId,
@@ -86,7 +82,10 @@ export const DesignShowDestination = () => {
   const isError =
     !routeIsComplete || studioQuery.isError || designQuery.isError;
 
-  const openSegment = (targetSegmentId: string): void => {
+  const openSegment = (
+    targetSegmentId: string,
+    focusId = `navigation-origin-catalog-${targetSegmentId}`,
+  ): void => {
     if (design === undefined) return;
     navigate(
       getDesignShowSegmentRoute(
@@ -94,12 +93,20 @@ export const DesignShowDestination = () => {
         design.show.id,
         targetSegmentId,
       ),
+      {
+        state: {
+          navigationOrigin: {
+            focusId,
+            label: activeTab === "blueprint" ? "Blueprint" : "Segments",
+            returnTo: getDesignShowSectionRoute(
+              design.show.studioId,
+              design.show.id,
+              activeTab,
+            ),
+          },
+        },
+      },
     );
-  };
-  const returnToBlueprint = (): void => {
-    if (design === undefined) return;
-    setActiveTab("blueprint");
-    navigate(getDesignShowRoute(design.show.studioId, design.show.id));
   };
   const run = (operation: Promise<unknown>): void => {
     void operation.catch(() => undefined);
@@ -109,9 +116,16 @@ export const DesignShowDestination = () => {
     setPickerOpen(true);
   };
 
+  if (
+    studioId !== undefined &&
+    showId !== undefined &&
+    !isDesignShowSection(designSection)
+  ) {
+    return <Navigate replace to={getDesignShowRoute(studioId, showId)} />;
+  }
+
   return (
     <ApplicationShell
-      breadcrumb={<span>{design?.show.name ?? "Show"} / Design Show</span>}
       historyActions={
         <>
           <IconButton
@@ -131,14 +145,27 @@ export const DesignShowDestination = () => {
         </>
       }
       primaryAction={
-        <Button
-          disabled={design === undefined || mutations.isSaving}
-          leadingIcon="plus"
-          onClick={() => openPicker("blueprint")}
-          variant="primary"
-        >
-          Add Segment
-        </Button>
+        activeTab === "layouts" ? undefined : (
+          <Button
+            disabled={design === undefined || mutations.isSaving}
+            leadingIcon="plus"
+            onClick={() =>
+              openPicker(activeTab === "blueprint" ? "blueprint" : "catalog")
+            }
+            variant="primary"
+          >
+            {activeTab === "blueprint" ? "Add Segment" : "New Segment"}
+          </Button>
+        )
+      }
+      parentNavigation={
+        studioId === undefined || showId === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to Show overview"
+            label="Show overview"
+            to={getShowDetailRoute(studioId, showId)}
+          />
+        )
       }
       saveState={<SaveStateIndicator state={mutations.saveState} />}
       scope={<ScopeLabel scope="show" />}
@@ -154,7 +181,7 @@ export const DesignShowDestination = () => {
           />
         )
       }
-      title={design?.show.name ?? "Design Show"}
+      title="Design Show"
     >
       <div className={styles.workspace}>
         {(selectionError ?? navigationError ?? mutations.error) ? (
@@ -187,18 +214,6 @@ export const DesignShowDestination = () => {
           <>
             <header className={styles.header}>
               <div className={styles.intro}>
-                <Button
-                  className={styles.backAction}
-                  onClick={() =>
-                    navigate(
-                      getShowDetailRoute(design.show.studioId, design.show.id),
-                    )
-                  }
-                  size="small"
-                  variant="ghost"
-                >
-                  Back to Show Detail
-                </Button>
                 <p className={styles.eyebrow}>Design Show</p>
                 <h2 className={styles.heading}>Show Blueprint</h2>
                 <p className={styles.description}>
@@ -220,15 +235,8 @@ export const DesignShowDestination = () => {
                         <p className={styles.metadata}>
                           Arrange the default Storyboard from left to right.
                         </p>
-                        <Button
-                          leadingIcon="plus"
-                          onClick={() => openPicker("blueprint")}
-                        >
-                          Add Segment
-                        </Button>
                       </div>
                       <BlueprintStoryboard
-                        onAddFirst={() => openPicker("blueprint")}
                         onDuplicate={(placementId) =>
                           run(mutations.duplicatePlacement(placementId))
                         }
@@ -250,51 +258,16 @@ export const DesignShowDestination = () => {
                 {
                   content: (
                     <div className={styles.tabContent}>
-                      {segmentId === undefined ? (
-                        <SegmentCatalog
-                          items={design.segments}
-                          onAdd={(targetSegmentId) =>
-                            run(mutations.addExisting(targetSegmentId))
-                          }
-                          onArchive={(targetSegmentId) =>
-                            run(mutations.archiveSegment(targetSegmentId))
-                          }
-                          onCreate={() => openPicker("catalog")}
-                          onOpen={openSegment}
-                        />
-                      ) : selectedSegment === undefined ? (
-                        <EmptyState
-                          action={
-                            <Button onClick={returnToBlueprint}>
-                              Return to Blueprint
-                            </Button>
-                          }
-                          description="This Segment may have been archived or removed."
-                          heading="Segment unavailable"
-                        />
-                      ) : (
-                        <section className={styles.placeholder}>
-                          <p className={styles.eyebrow}>Show Segment</p>
-                          <h2 className={styles.placeholderTitle}>
-                            {selectedSegment.name}
-                          </h2>
-                          <p className={styles.placeholderCopy}>
-                            {selectedSegment.description ??
-                              "Detailed Segment fields, lifecycle, Layouts, and notes arrive in Sprint 7."}
-                          </p>
-                          <p className={styles.description}>
-                            Changes affect future uses of this Segment.
-                          </p>
-                          <div className={styles.placeholderActions}>
-                            <Button onClick={returnToBlueprint}>
-                              Return to Blueprint
-                            </Button>
-                            <Button disabled variant="ghost">
-                              Edit Segment details in Sprint 7
-                            </Button>
-                          </div>
-                        </section>
-                      )}
+                      <SegmentCatalog
+                        items={design.segments}
+                        onAdd={(targetSegmentId) =>
+                          run(mutations.addExisting(targetSegmentId))
+                        }
+                        onArchive={(targetSegmentId) =>
+                          run(mutations.archiveSegment(targetSegmentId))
+                        }
+                        onOpen={openSegment}
+                      />
                     </div>
                   ),
                   label: "Segments",
@@ -305,7 +278,7 @@ export const DesignShowDestination = () => {
                     <div className={styles.tabContent}>
                       <div className={styles.emptyWrap}>
                         <EmptyState
-                          action={<Button disabled>New Layout</Button>}
+                          action={null}
                           description="Reusable Layout composition arrives in Sprint 10."
                           heading="Layout Catalog"
                         />
@@ -318,15 +291,16 @@ export const DesignShowDestination = () => {
               ]}
               label="Design Show sections"
               onValueChange={(value) => {
-                const nextTab = value as DesignTab;
-                setActiveTab(nextTab);
-                if (segmentId !== undefined && nextTab !== "segments") {
-                  navigate(
-                    getDesignShowRoute(design.show.studioId, design.show.id),
-                  );
-                }
+                if (!isDesignShowSection(value)) return;
+                navigate(
+                  getDesignShowSectionRoute(
+                    design.show.studioId,
+                    design.show.id,
+                    value,
+                  ),
+                );
               }}
-              value={segmentId === undefined ? activeTab : "segments"}
+              value={activeTab}
             />
           </>
         )}

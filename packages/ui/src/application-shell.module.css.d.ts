@@ -1,9 +1,9 @@
 type ApplicationShellClassName =
   | "actionArea"
   | "applicationShell"
-  | "breadcrumb"
   | "catalogPanel"
   | "contextArea"
+  | "contextAreaWithParent"
   | "historyActions"
   | "identityArea"
   | "inspectorPanel"
@@ -12,6 +12,7 @@ type ApplicationShellClassName =
   | "pageTitle"
   | "panelClose"
   | "panelScrim"
+  | "parentNavigation"
   | "primaryAction"
   | "saveState"
   | "scopeArea"

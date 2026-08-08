@@ -7,8 +7,14 @@ import {
   SaveStateIndicator,
 } from "@showflow/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useLayoutEffect, useState } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 
 import {
   APPLICATION_FOUNDATION_ROUTE,
@@ -17,10 +23,12 @@ import {
   SHOW_CREATION_ROUTE,
   SHOW_DETAIL_ROUTE,
   DESIGN_SHOW_ROUTE,
+  DESIGN_SHOW_ROOT_ROUTE,
   DESIGN_SHOW_SEGMENT_ROUTE,
   EPISODE_CREATION_ROUTE,
   PRODUCE_EPISODE_ROUTE,
   EPISODE_SEGMENT_ROUTE,
+  getDesignShowRoute,
 } from "./app-routes.mts";
 import { ComponentGallery } from "./development/ComponentGallery";
 import { COMPONENT_GALLERY_ROUTE } from "./development/component-gallery-contract.mts";
@@ -34,10 +42,24 @@ import { EpisodeCreationPage } from "./features/episodes/EpisodeCreationPage";
 import { ProduceEpisodeDestination } from "./features/episodes/ProduceEpisodeDestination";
 import { EpisodeSegmentEditorDestination } from "./features/episodes/EpisodeSegmentEditorDestination";
 import { ShowSegmentEditorDestination } from "./features/segments/ShowSegmentEditorDestination";
+import { resolveNavigationFocusId } from "./features/navigation/navigation-origin.mts";
+
+const RouteFocusManager = () => {
+  const location = useLocation();
+
+  useLayoutEffect(() => {
+    const focusId = resolveNavigationFocusId(location.state);
+    const focusTarget =
+      (focusId === undefined ? undefined : document.getElementById(focusId)) ??
+      document.querySelector<HTMLElement>("[data-route-heading]");
+    focusTarget?.focus({ preventScroll: focusId === undefined });
+  }, [location.key, location.state]);
+
+  return null;
+};
 
 export const ApplicationFoundation = () => (
   <ApplicationShell
-    breadcrumb={<span>Desktop foundation</span>}
     catalog={
       <div className="support-panel-content">
         <p className="eyebrow">Workspace</p>
@@ -100,34 +122,54 @@ export const ApplicationFoundation = () => (
   </ApplicationShell>
 );
 
+const DesignShowRootRedirect = () => {
+  const { studioId, showId } = useParams<{
+    studioId: string;
+    showId: string;
+  }>();
+
+  if (studioId === undefined || showId === undefined) {
+    return <Navigate replace to="/" />;
+  }
+
+  return <Navigate replace to={getDesignShowRoute(studioId, showId)} />;
+};
+
 const AppRoutes = () => (
-  <Routes>
-    <Route element={<StartupDestination />} path="/" />
-    <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
-    <Route
-      element={<ApplicationFoundation />}
-      path={APPLICATION_FOUNDATION_ROUTE}
-    />
-    <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
-    <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
-    <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
-    <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
-    <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
-    <Route
-      element={<ShowSegmentEditorDestination />}
-      path={DESIGN_SHOW_SEGMENT_ROUTE}
-    />
-    <Route element={<EpisodeCreationPage />} path={EPISODE_CREATION_ROUTE} />
-    <Route
-      element={<ProduceEpisodeDestination />}
-      path={PRODUCE_EPISODE_ROUTE}
-    />
-    <Route
-      element={<EpisodeSegmentEditorDestination />}
-      path={EPISODE_SEGMENT_ROUTE}
-    />
-    <Route element={<Navigate replace to="/" />} path="*" />
-  </Routes>
+  <>
+    <RouteFocusManager />
+    <Routes>
+      <Route element={<StartupDestination />} path="/" />
+      <Route element={<ComponentGallery />} path={COMPONENT_GALLERY_ROUTE} />
+      <Route
+        element={<ApplicationFoundation />}
+        path={APPLICATION_FOUNDATION_ROUTE}
+      />
+      <Route element={<StudioCreationPage />} path={STUDIO_CREATION_ROUTE} />
+      <Route element={<StudioHomeDestination />} path={STUDIO_HOME_ROUTE} />
+      <Route element={<ShowCreationPage />} path={SHOW_CREATION_ROUTE} />
+      <Route element={<ShowDetailDestination />} path={SHOW_DETAIL_ROUTE} />
+      <Route
+        element={<DesignShowRootRedirect />}
+        path={DESIGN_SHOW_ROOT_ROUTE}
+      />
+      <Route element={<DesignShowDestination />} path={DESIGN_SHOW_ROUTE} />
+      <Route
+        element={<ShowSegmentEditorDestination />}
+        path={DESIGN_SHOW_SEGMENT_ROUTE}
+      />
+      <Route element={<EpisodeCreationPage />} path={EPISODE_CREATION_ROUTE} />
+      <Route
+        element={<ProduceEpisodeDestination />}
+        path={PRODUCE_EPISODE_ROUTE}
+      />
+      <Route
+        element={<EpisodeSegmentEditorDestination />}
+        path={EPISODE_SEGMENT_ROUTE}
+      />
+      <Route element={<Navigate replace to="/" />} path="*" />
+    </Routes>
+  </>
 );
 
 export const App = () => {

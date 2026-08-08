@@ -47,7 +47,7 @@ test("reorders and reloads a persistent Blueprint in packaged Electron", async (
         if (!interview.ok) return { ok: false } as const;
         return {
           ok: true,
-          route: `/studio/${studio.data.id}/show/${show.data.show.id}/design`,
+          route: `/studio/${studio.data.id}/show/${show.data.show.id}/design/blueprint`,
           showId: show.data.show.id,
           studioId: studio.data.id,
         } as const;

@@ -21,6 +21,12 @@
   justify-content: space-between;
 }
 
+.sequencePosition {
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-md);
+  line-height: var(--sf-line-height-label-md);
+}
+
 .editorHeader h2,
 .panelHeader h2,
 .unavailable h2 {

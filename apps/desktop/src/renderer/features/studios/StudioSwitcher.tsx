@@ -104,7 +104,10 @@ export const StudioSwitcher = ({
       <MenuItem
         onSelect={() =>
           navigate(STUDIO_CREATION_ROUTE, {
-            state: { openedFromStudioSwitcher: true },
+            state: {
+              openedFromStudioSwitcher: true,
+              returnTo: getStudioHomeRoute(currentStudio.id),
+            },
           })
         }
       >

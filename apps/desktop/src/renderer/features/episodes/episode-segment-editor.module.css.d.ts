@@ -15,6 +15,7 @@ declare const styles: {
   readonly navigation: string;
   readonly panelHeader: string;
   readonly readyCopy: string;
+  readonly sequencePosition: string;
   readonly sourceCopy: string;
   readonly sourceRow: string;
   readonly statusRow: string;

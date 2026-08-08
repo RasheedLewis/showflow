@@ -15,7 +15,10 @@ Before implementing a feature or Sprint subtask, read:
    boundaries, security, persistence, testing, and distribution.
 5. [`docs/design-system-spec-v1.0.md`](docs/design-system-spec-v1.0.md) for visual,
    interaction, accessibility, motion, and content rules.
-6. The current Sprint and its dependencies in
+6. [`docs/navigation-system-spec-v1.0.md`](docs/navigation-system-spec-v1.0.md)
+   for any application-shell, routing, parent-path, tab, object-opening, or
+   sequential-navigation work.
+7. The current Sprint and its dependencies in
    [`docs/implementation-plan-v1.0.md`](docs/implementation-plan-v1.0.md).
 
 When specifications conflict, authority flows from Architecture PRD to UX

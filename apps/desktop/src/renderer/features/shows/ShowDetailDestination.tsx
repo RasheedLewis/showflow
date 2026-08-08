@@ -19,6 +19,7 @@ import {
   getStudioHomeRoute,
 } from "../../app-routes.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import { loadShowDesign, showDesignQueryKey } from "./show-queries";
@@ -89,17 +90,13 @@ export const ShowDetailDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={
-        studioId === undefined ? (
-          <span>Shows</span>
-        ) : (
-          <Button
-            onClick={() => navigate(getStudioHomeRoute(studioId))}
-            size="small"
-            variant="ghost"
-          >
-            Back to Shows
-          </Button>
+      parentNavigation={
+        studioId === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to Shows"
+            label="Shows"
+            to={getStudioHomeRoute(studioId)}
+          />
         )
       }
       menu={
@@ -163,11 +160,6 @@ export const ShowDetailDestination = () => {
                 ? detailQuery.error.message
                 : "Return to Studio Home and choose an available Show."}
             </p>
-            {studioId === undefined ? null : (
-              <Button onClick={() => navigate(getStudioHomeRoute(studioId))}>
-                Return to Studio Home
-              </Button>
-            )}
           </section>
         ) : detail === undefined ? null : (
           <>
@@ -205,19 +197,6 @@ export const ShowDetailDestination = () => {
                     ? "This Show does not have a Blueprint yet. You can design the Show first or explicitly create a blank Episode."
                     : `Start from ${detail.blueprint.placementCount} reusable Segment${detail.blueprint.placementCount === 1 ? "" : "s"} in the current Show Blueprint.`}
                 </p>
-              </div>
-              <div className={styles.actions}>
-                <Button onClick={openDesignShow} size="large">
-                  Design Show
-                </Button>
-                <Button
-                  leadingIcon="plus"
-                  onClick={openEpisodeCreation}
-                  size="large"
-                  variant="primary"
-                >
-                  Create New Episode
-                </Button>
               </div>
             </section>
 
@@ -278,15 +257,7 @@ export const ShowDetailDestination = () => {
                 </p>
               ) : episodes.length === 0 ? (
                 <EmptyState
-                  action={
-                    <Button
-                      leadingIcon="plus"
-                      onClick={openEpisodeCreation}
-                      variant="primary"
-                    >
-                      Create New Episode
-                    </Button>
-                  }
+                  action={null}
                   className={styles.episodeEmptyState}
                   description="Episodes created from this Show will appear here."
                   heading="No Episodes yet"

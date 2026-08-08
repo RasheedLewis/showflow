@@ -11,10 +11,15 @@ import {
   ScopeLabel,
 } from "./index.js";
 
+const parentNavigation = (
+  <a aria-label="Back to Shows" href="#/shows">
+    Shows
+  </a>
+);
+
 const renderShell = () =>
   render(
     <ApplicationShell
-      breadcrumb={<span>Top 10 Music Videos</span>}
       catalog={<p>Reusable Segments</p>}
       catalogLabel="Segment Catalog"
       historyActions={
@@ -25,6 +30,7 @@ const renderShell = () =>
       }
       inspector={<p>Context settings</p>}
       notes={<p>Production notes</p>}
+      parentNavigation={parentNavigation}
       primaryAction={<Button variant="primary">Add Segment</Button>}
       saveState={<SaveStateIndicator state="saved" />}
       scope={<ScopeLabel scope="show" />}
@@ -44,7 +50,14 @@ describe("ApplicationShell", () => {
     expect(
       within(banner).getByRole("button", { name: "Demo Studio" }),
     ).toBeVisible();
-    expect(within(banner).getByText("Top 10 Music Videos")).toBeVisible();
+    expect(
+      within(banner).getByRole("link", { name: "Back to Shows" }),
+    ).toBeVisible();
+    expect(
+      within(banner).getByRole("navigation", { name: "Parent navigation" }),
+    ).toContainElement(
+      within(banner).getByRole("link", { name: "Back to Shows" }),
+    );
     expect(
       within(banner).getByRole("heading", { name: "Show Blueprint" }),
     ).toBeVisible();

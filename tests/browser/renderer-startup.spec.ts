@@ -24,7 +24,9 @@ test("the development screen renders with the typed mock desktop API", async ({
   const appBar = page.getByRole("banner", { name: "Showflow application" });
 
   await expect(appBar.getByText("Showflow", { exact: true })).toBeVisible();
-  await expect(appBar.getByText("Desktop foundation")).toBeVisible();
+  await expect(
+    appBar.getByRole("button", { name: "Studio switcher" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 1, name: "Showflow is ready." }),
   ).toBeVisible();
@@ -305,6 +307,14 @@ test("keyboard focus remains visible and critical targets meet the minimum size"
   await page.setViewportSize({ height: 900, width: 1440 });
   await page.goto(`/#${APPLICATION_FOUNDATION_ROUTE}`);
 
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Showflow is ready." }),
+  ).toBeFocused();
+  await page.evaluate(() => {
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute("tabindex");
+  });
   await page.keyboard.press("Tab");
   const skipLink = page.getByRole("link", { name: "Skip to workspace" });
   await expect(skipLink).toBeFocused();

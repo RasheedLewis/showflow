@@ -75,7 +75,7 @@ test("opens Show Detail with the required semantic hierarchy", async ({
   await page.getByRole("button", { name: "Open Design Show" }).click();
   await expect(page).toHaveURL(
     new RegExp(
-      `/#/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design$`,
+      `/#/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/blueprint$`,
       "u",
     ),
   );

@@ -19,6 +19,11 @@ import {
   getEpisodeSegmentRoute,
   getProduceEpisodeRoute,
 } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
+import {
+  createNavigationFocusState,
+  createNavigationOriginState,
+} from "../navigation/navigation-origin.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
@@ -89,11 +94,11 @@ export const EpisodeSegmentEditorDestination = () => {
       : undefined;
   const navigationError = usePersistedNavigation({ route, studioId });
 
-  const go = async (target: string): Promise<void> => {
+  const go = async (target: string, state?: unknown): Promise<void> => {
     setNavigationPending(true);
     try {
       await content.flush();
-      navigate(target);
+      navigate(target, { state });
     } finally {
       setNavigationPending(false);
     }
@@ -209,6 +214,7 @@ export const EpisodeSegmentEditorDestination = () => {
             Source Show Segment: <strong>{item.sourceSegment.name}</strong>
           </p>
           <Button
+            id={`navigation-origin-show-segment-${item.episodeSegment.id}`}
             onClick={() =>
               void go(
                 getDesignShowSegmentRoute(
@@ -216,6 +222,11 @@ export const EpisodeSegmentEditorDestination = () => {
                   item.sourceSegment.showId,
                   item.sourceSegment.id,
                 ),
+                createNavigationOriginState({
+                  focusId: `navigation-origin-show-segment-${item.episodeSegment.id}`,
+                  label: "Episode Segment",
+                  returnTo: route ?? returnRoute,
+                }),
               )
             }
             size="small"
@@ -328,16 +339,6 @@ export const EpisodeSegmentEditorDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={
-        <Button
-          disabled={navigationPending}
-          onClick={() => void go(returnRoute)}
-          size="small"
-          variant="ghost"
-        >
-          Return to Storyboard
-        </Button>
-      }
       catalog={catalog}
       catalogLabel="Episode content"
       defaultCatalogOpen
@@ -345,14 +346,22 @@ export const EpisodeSegmentEditorDestination = () => {
       inspectorLabel="Episode Segment inspector"
       notes={notes}
       notesLabel="Episode Segment notes area"
-      primaryAction={
-        <Button
+      parentNavigation={
+        <ParentNavigation
+          accessibleLabel="Back to Episode Storyboard"
           disabled={navigationPending}
-          onClick={() => void go(returnRoute)}
-          variant="primary"
-        >
-          Return to Storyboard
-        </Button>
+          label="Storyboard"
+          onClick={(event) => {
+            event.preventDefault();
+            void go(
+              returnRoute,
+              createNavigationFocusState(
+                `navigation-origin-episode-${item?.episodeSegment.id ?? "missing"}`,
+              ),
+            );
+          }}
+          to={returnRoute}
+        />
       }
       saveState={<SaveStateIndicator state={content.saveState} />}
       scope={<ScopeLabel scope="episode-segment" />}
@@ -415,6 +424,11 @@ export const EpisodeSegmentEditorDestination = () => {
               className={styles.navigation}
             >
               <Button
+                aria-label={
+                  previous === undefined
+                    ? "Previous Segment"
+                    : `Previous Segment: ${previous.sourceSegment.name}`
+                }
                 disabled={disabled || previous === undefined}
                 onClick={() =>
                   previous === undefined || storyboard === undefined
@@ -431,7 +445,15 @@ export const EpisodeSegmentEditorDestination = () => {
               >
                 Previous Segment
               </Button>
+              <span className={styles.sequencePosition}>
+                Segment {itemIndex + 1} of {orderedItems.length}
+              </span>
               <Button
+                aria-label={
+                  next === undefined
+                    ? "Next Segment"
+                    : `Next Segment: ${next.sourceSegment.name}`
+                }
                 disabled={disabled || next === undefined}
                 onClick={() =>
                   next === undefined || storyboard === undefined

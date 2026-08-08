@@ -84,6 +84,7 @@ const SortableItem = ({
           <div className={styles.cardActions}>
             <Button
               aria-label={`Open ${item.sourceSegment.name}`}
+              id={`navigation-origin-episode-${item.episodeSegment.id}`}
               onClick={onOpen}
               size="small"
               variant="ghost"
@@ -156,7 +157,6 @@ const SortableItem = ({
 
 export interface EpisodeStoryboardProps {
   readonly items: EpisodeStoryboardDto["items"];
-  readonly onAddFirst: () => void;
   readonly onDuplicate: (episodeSegmentId: string) => void;
   readonly onOpen: (episodeSegmentId: string) => void;
   readonly onRemove: (episodeSegmentId: string) => void;
@@ -167,7 +167,6 @@ export interface EpisodeStoryboardProps {
 
 export const EpisodeStoryboard = ({
   items,
-  onAddFirst,
   onDuplicate,
   onOpen,
   onRemove,
@@ -226,11 +225,7 @@ export const EpisodeStoryboard = ({
     return (
       <div className={styles.emptyWrap}>
         <EmptyState
-          action={
-            <Button leadingIcon="plus" onClick={onAddFirst} variant="primary">
-              Add Segment
-            </Button>
-          }
+          action={null}
           description="Add Segments from the Show Catalog. New Segments you create will be reusable in future Episodes."
           heading="Build this Episode’s Storyboard"
           icon="plus"

@@ -47,7 +47,7 @@ test("reopens a persisted Studio and loads the complete Studio switcher", async 
     try {
       const secondPage = await secondApplication.firstWindow();
       await expect(
-        secondPage.getByRole("heading", { level: 1, name: "Public Sphere" }),
+        secondPage.getByRole("heading", { level: 1, name: "Shows" }),
       ).toBeVisible();
       await secondPage
         .getByRole("button", {

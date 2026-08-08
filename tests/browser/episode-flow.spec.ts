@@ -16,11 +16,11 @@ const createShowWithBlueprint = async (page: Page): Promise<void> => {
     .fill("Artist Interviews");
   await page.getByRole("button", { name: "Create Show" }).click();
 
-  for (const [index, name] of ["Opening", "Interview"].entries()) {
+  for (const name of ["Opening", "Interview"]) {
     await page
       .getByRole("button", {
         exact: true,
-        name: index === 0 ? "Add First Segment" : "Add Segment",
+        name: "Add Segment",
       })
       .last()
       .click();
@@ -28,7 +28,7 @@ const createShowWithBlueprint = async (page: Page): Promise<void> => {
     await picker.getByRole("textbox", { name: /Segment name/u }).fill(name);
     await picker.getByRole("button", { name: "Create and Add" }).click();
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();
-    await page.getByRole("button", { name: "Return to Blueprint" }).click();
+    await page.getByRole("link", { name: "Back to Blueprint" }).click();
   }
 };
 
@@ -88,8 +88,8 @@ test("6.T13 creates Studio → Show → Blueprint → Episode and reorders it", 
     fullPage: true,
     path: "/private/tmp/showflow-sprint-6-produce-episode.png",
   });
-  await page.getByRole("button", { name: "Back to Show Detail" }).click();
-  await page.getByRole("button", { name: "Back to Shows" }).click();
+  await page.getByRole("link", { name: "Back to Show overview" }).click();
+  await page.getByRole("link", { name: "Back to Shows" }).click();
   await expect(page.getByText("1 Episode", { exact: true })).toBeVisible();
 });
 
@@ -121,8 +121,8 @@ test("8.T12 completes Episode Segment content and returns a safe summary to the 
     .getByRole("textbox", { name: "Notes template" })
     .fill("Confirm pronunciation.");
 
-  await page.getByRole("button", { name: "Return to Blueprint" }).click();
-  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await page.getByRole("link", { name: "Back to Blueprint" }).click();
+  await page.getByRole("link", { name: "Back to Show overview" }).click();
   await page
     .getByRole("button", { name: "Create New Episode" })
     .first()
@@ -159,10 +159,7 @@ test("8.T12 completes Episode Segment content and returns a safe summary to the 
     path: "/private/tmp/showflow-sprint-8-episode-content.png",
   });
 
-  await page
-    .getByRole("button", { name: "Return to Storyboard" })
-    .last()
-    .click();
+  await page.getByRole("link", { name: "Back to Episode Storyboard" }).click();
   const savedInterview = page
     .getByRole("list", { name: "Episode Storyboard" })
     .getByRole("listitem")
@@ -206,8 +203,8 @@ test("9.T12 imports an image Resource, assigns it to a required field, and updat
     .getByRole("checkbox", { name: "Required for every Episode" })
     .check();
 
-  await page.getByRole("button", { name: "Return to Blueprint" }).click();
-  await page.getByRole("button", { name: "Back to Show Detail" }).click();
+  await page.getByRole("link", { name: "Back to Blueprint" }).click();
+  await page.getByRole("link", { name: "Back to Show overview" }).click();
   await page
     .getByRole("button", { name: "Create New Episode" })
     .first()

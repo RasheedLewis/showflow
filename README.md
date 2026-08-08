@@ -242,6 +242,11 @@ The specifications are authoritative in the following order when they conflict:
 3. [Technical Specification v1.0](docs/technical-spec-v1.0.md) — stack, package boundaries, persistence, security, testing, and distribution.
 4. [Design System Specification v1.0](docs/design-system-spec-v1.0.md) — visual foundations, components, tokens, motion, and content voice.
 
+The supplemental [Navigation System UI/UX Specification v1.0](docs/navigation-system-spec-v1.0.md)
+defines the consistent parent path, route tabs, Primary command placement,
+origin-aware return behavior, and navigation acceptance criteria used during
+implementation.
+
 The [Detailed Implementation Plan v1.0](docs/implementation-plan-v1.0.md)
 defines delivery order, test gates, and decision timing. It must conform to the
 four specifications above and does not override them. See the
@@ -257,13 +262,13 @@ specification issues.
 
 ### Suggested reading paths
 
-| If you are…            | Read in this order                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| New to the product     | This README → Architecture PRD → UX Specification                                                |
-| Implementing a feature | Architecture section → relevant UX section → Technical section → Design section → current Sprint |
-| Reviewing architecture | Architecture PRD → Technical Specification → implementation plan                                 |
-| Reviewing UI           | UX Specification → Design System → relevant acceptance criteria                                  |
-| Planning delivery      | Implementation Plan → [decision register](docs/decisions/README.md) → deferred backlog           |
+| If you are…            | Read in this order                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| New to the product     | This README → Architecture PRD → UX Specification                                                                                  |
+| Implementing a feature | Architecture section → relevant UX section → Navigation spec when applicable → Technical section → Design section → current Sprint |
+| Reviewing architecture | Architecture PRD → Technical Specification → implementation plan                                                                   |
+| Reviewing UI           | UX Specification → Navigation System Specification → Design System → relevant acceptance criteria                                  |
+| Planning delivery      | Implementation Plan → [decision register](docs/decisions/README.md) → deferred backlog                                             |
 
 ## Getting started
 

@@ -15,6 +15,7 @@ import {
   getProduceEpisodeRoute,
   getShowDetailRoute,
 } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import {
@@ -120,20 +121,35 @@ export const EpisodeCreationPage = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={
-        studioId === undefined || showId === undefined ? (
-          <span>Show Detail</span>
+      parentNavigation={
+        studioId === undefined || showId === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to Show overview"
+            label="Show overview"
+            to={getShowDetailRoute(studioId, showId)}
+          />
+        )
+      }
+      primaryAction={
+        design === undefined ? undefined : blueprintIsEmpty ? (
+          <Button
+            disabled={isSaving}
+            onClick={() => void createEpisode("blank")}
+            variant="primary"
+          >
+            {isSaving ? "Creating Episode…" : "Create Blank Episode"}
+          </Button>
         ) : (
           <Button
-            onClick={() => navigate(getShowDetailRoute(studioId, showId))}
-            size="small"
-            variant="ghost"
+            disabled={isSaving}
+            form="create-episode-form"
+            type="submit"
+            variant="primary"
           >
-            Back to Show Detail
+            {isSaving ? "Creating Episode…" : "Create Episode"}
           </Button>
         )
       }
-      primaryAction={null}
       studioSwitcher={
         studioQuery.data === undefined ? (
           <Button disabled size="small" variant="ghost">
@@ -177,6 +193,7 @@ export const EpisodeCreationPage = () => {
             </div>
             <form
               className={styles.form}
+              id="create-episode-form"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!blueprintIsEmpty) void createEpisode("blueprint");
@@ -214,28 +231,15 @@ export const EpisodeCreationPage = () => {
               ) : null}
               <div className={styles.actions}>
                 {blueprintIsEmpty ? (
-                  <>
-                    <Button
-                      disabled={isSaving}
-                      onClick={() =>
-                        navigate(getDesignShowRoute(studioId, showId))
-                      }
-                    >
-                      Design Show
-                    </Button>
-                    <Button
-                      disabled={isSaving}
-                      onClick={() => void createEpisode("blank")}
-                      variant="primary"
-                    >
-                      {isSaving ? "Creating Episode…" : "Create Blank Episode"}
-                    </Button>
-                  </>
-                ) : (
-                  <Button disabled={isSaving} type="submit" variant="primary">
-                    {isSaving ? "Creating Episode…" : "Create Episode"}
+                  <Button
+                    disabled={isSaving}
+                    onClick={() =>
+                      navigate(getDesignShowRoute(studioId, showId))
+                    }
+                  >
+                    Design Show
                   </Button>
-                )}
+                ) : null}
               </div>
             </form>
           </section>

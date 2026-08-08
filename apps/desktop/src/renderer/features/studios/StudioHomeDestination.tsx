@@ -125,13 +125,8 @@ export const StudioHomeDestination = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={<span>Studio</span>}
       primaryAction={
-        studioQuery.isError ? (
-          <Button onClick={() => navigate("/studio/new")} variant="primary">
-            Return to Studio setup
-          </Button>
-        ) : studio !== undefined && showCards.length > 0 ? (
+        studio !== undefined ? (
           <Button
             leadingIcon="plus"
             onClick={() => navigate(getShowCreationRoute(studio.id))}
@@ -139,9 +134,7 @@ export const StudioHomeDestination = () => {
           >
             New Show
           </Button>
-        ) : (
-          <span />
-        )
+        ) : undefined
       }
       studioSwitcher={
         studio === undefined ? (
@@ -155,7 +148,7 @@ export const StudioHomeDestination = () => {
           />
         )
       }
-      title={studio?.name ?? "Studio Home"}
+      title="Shows"
     >
       <div
         className={
@@ -185,6 +178,9 @@ export const StudioHomeDestination = () => {
             <p className={styles.message} role="alert">
               {loadErrorMessage}
             </p>
+            <Button onClick={() => navigate("/studio/new")}>
+              Studio setup
+            </Button>
           </section>
         ) : showsQuery.isError ? (
           <section
@@ -247,18 +243,7 @@ export const StudioHomeDestination = () => {
               ) : null}
               {showCards.length === 0 ? (
                 <EmptyState
-                  action={
-                    <Button
-                      leadingIcon="plus"
-                      onClick={() => {
-                        if (studio !== undefined)
-                          navigate(getShowCreationRoute(studio.id));
-                      }}
-                      variant="primary"
-                    >
-                      New Show
-                    </Button>
-                  }
+                  action={null}
                   className={styles.emptyShowState}
                   description="Design a reusable production once, then create new Episodes from it."
                   heading="Create your first Show"

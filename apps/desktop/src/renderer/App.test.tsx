@@ -192,13 +192,12 @@ describe("App", () => {
     expect(
       within(appBar).getByRole("button", { name: "Studio switcher" }),
     ).toBeVisible();
-    expect(within(appBar).getByText("Desktop foundation")).toBeVisible();
     expect(
       within(appBar).getByRole("heading", {
         level: 1,
         name: "Showflow is ready.",
       }),
-    ).toBeVisible();
+    ).toHaveFocus();
     expect(within(appBar).getByText("Saved")).toBeVisible();
     expect(
       within(appBar).getByRole("button", { name: "Create Studio" }),
@@ -305,7 +304,12 @@ describe("App", () => {
     renderApp("/", api);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Field Notes" }),
+      await screen.findByRole("heading", { level: 1, name: "Shows" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", {
+        name: "Switch Studio. Current Studio: Field Notes",
+      }),
     ).toBeVisible();
     fireEvent.pointerDown(
       screen.getByRole("button", {
@@ -326,7 +330,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Public Sphere",
+        name: "Shows",
       }),
     ).toBeVisible();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
@@ -393,12 +397,12 @@ describe("App", () => {
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
       data: {
-        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/blueprint`,
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Back to Show Detail" }),
+      screen.getByRole("link", { name: "Back to Show overview" }),
     );
     expect(
       await screen.findByRole("heading", {
@@ -427,7 +431,7 @@ describe("App", () => {
     expect(screen.getByRole("tab", { name: "Segments" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "Layouts" })).toBeVisible();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add First Segment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Segment" }));
     const picker = await screen.findByRole("dialog", { name: "Add Segment" });
     fireEvent.change(
       within(picker).getByRole("textbox", { name: /Segment name/ }),
@@ -447,14 +451,106 @@ describe("App", () => {
       await screen.findByRole("heading", { level: 1, name: "Opening" }),
     ).toBeVisible();
     expect(screen.getByText("Welcome the audience.")).toBeVisible();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Return to Blueprint" }),
-    );
+    fireEvent.click(screen.getByRole("link", { name: "Back to Blueprint" }));
     const storyboard = await screen.findByRole("list", {
       name: "Show Blueprint Storyboard",
     });
     expect(within(storyboard).getByText("Opening")).toBeVisible();
     expect(screen.getByText("Saved")).toBeVisible();
+  });
+
+  it("keeps Design Show sections durable and exposes one contextual primary command", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    const view = renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/segments`,
+      api,
+    );
+
+    expect(
+      await screen.findByRole("tab", { name: "Segments" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getAllByRole("button", { name: "New Segment" })).toHaveLength(
+      1,
+    );
+    await waitFor(async () =>
+      expect(await api.app.getApplicationSettings()).toMatchObject({
+        ok: true,
+        data: {
+          lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/segments`,
+        },
+      }),
+    );
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Layouts" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Layouts" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
+    );
+    expect(
+      screen.queryByRole("button", { name: "New Layout" }),
+    ).not.toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await api.app.getApplicationSettings()).toMatchObject({
+        ok: true,
+        data: {
+          lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/layouts`,
+        },
+      }),
+    );
+
+    view.unmount();
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/layouts`,
+      api,
+    );
+    expect(await screen.findByRole("tab", { name: "Layouts" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("returns a Show Segment editor to the Segment Catalog origin", async () => {
+    const api = createMockDesktopApi();
+    await api.studios.create({ name: "Public Sphere" });
+    await api.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    await api.segments.create({
+      blueprintId: DEFAULT_BLUEPRINT_ID,
+      name: "Opening",
+      showId: DEFAULT_SHOW_ID,
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/segments`,
+      api,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Open" }));
+    expect(
+      await screen.findByRole("link", { name: "Back to Segments" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /Return/u }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("link", { name: "Back to Segments" }));
+    expect(
+      await screen.findByRole("tab", { name: "Segments" }),
+    ).toHaveAttribute("aria-selected", "true");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Open" })).toHaveFocus(),
+    );
   });
 
   it("duplicates, removes, and persistently undoes Blueprint structure", async () => {
@@ -804,7 +900,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Public Sphere",
+        name: "Shows",
       }),
     ).toBeVisible();
     expect(
@@ -834,7 +930,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Public Sphere",
+        name: "Shows",
       }),
     ).toBeVisible();
     expect(
@@ -883,7 +979,7 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: "Artist Interviews",
+        name: "Design Show",
       }),
     ).toBeVisible();
     expect(
@@ -1052,7 +1148,7 @@ describe("App", () => {
       screen.getByRole("heading", { level: 2, name: "No Episodes yet" }),
     ).toBeVisible();
     expect(
-      screen.getAllByRole("button", { name: "Create New Episode" })[0],
+      screen.getByRole("button", { name: "Create New Episode" }),
     ).toBeEnabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Design Show" }));
@@ -1064,7 +1160,7 @@ describe("App", () => {
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
       ok: true,
       data: {
-        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design`,
+        lastRoute: `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/blueprint`,
         lastStudioId: DEFAULT_STUDIO_ID,
       },
     });
@@ -1136,7 +1232,7 @@ describe("App", () => {
       target: { value: "Public Sphere" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
-    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
+    await screen.findByRole("heading", { level: 1, name: "Shows" });
 
     fireEvent.pointerDown(
       screen.getByRole("button", {
@@ -1161,7 +1257,7 @@ describe("App", () => {
       target: { value: "Field Notes" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Studio" }));
-    await screen.findByRole("heading", { level: 1, name: "Field Notes" });
+    await screen.findByRole("heading", { level: 1, name: "Shows" });
 
     fireEvent.pointerDown(
       screen.getByRole("button", {
@@ -1172,9 +1268,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Public Sphere" }));
 
     expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Public Sphere",
+      await screen.findByRole("button", {
+        name: "Switch Studio. Current Studio: Public Sphere",
       }),
     ).toBeVisible();
     await expect(api.app.getApplicationSettings()).resolves.toMatchObject({
@@ -1205,13 +1300,10 @@ describe("App", () => {
     }) satisfies ShowflowDesktopApi;
     renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
 
-    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
-    fireEvent.pointerDown(
-      screen.getByRole("button", {
-        name: "Switch Studio. Current Studio: Public Sphere",
-      }),
-      { button: 0, ctrlKey: false },
-    );
+    const studioSwitcher = await screen.findByRole("button", {
+      name: "Switch Studio. Current Studio: Public Sphere",
+    });
+    fireEvent.pointerDown(studioSwitcher, { button: 0, ctrlKey: false });
     fireEvent.click(
       await screen.findByRole("menuitem", { name: "Field Notes" }),
     );
@@ -1220,10 +1312,12 @@ describe("App", () => {
       "The current Studio remains open. Try again.",
     );
     expect(
-      screen.getByRole("heading", { level: 1, name: "Public Sphere" }),
+      screen.getByRole("heading", { level: 1, name: "Shows" }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("heading", { level: 1, name: "Field Notes" }),
+      screen.queryByRole("button", {
+        name: "Switch Studio. Current Studio: Field Notes",
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -1245,13 +1339,10 @@ describe("App", () => {
     }) satisfies ShowflowDesktopApi;
     renderApp(`/studio/${DEFAULT_STUDIO_ID}`, api);
 
-    await screen.findByRole("heading", { level: 1, name: "Public Sphere" });
-    fireEvent.pointerDown(
-      screen.getByRole("button", {
-        name: "Switch Studio. Current Studio: Public Sphere",
-      }),
-      { button: 0, ctrlKey: false },
-    );
+    const studioSwitcher = await screen.findByRole("button", {
+      name: "Switch Studio. Current Studio: Public Sphere",
+    });
+    fireEvent.pointerDown(studioSwitcher, { button: 0, ctrlKey: false });
 
     expect(
       await screen.findByRole("menuitem", { name: "Retry loading Studios" }),
@@ -1281,9 +1372,7 @@ describe("App", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "This Studio is no longer available",
     );
-    expect(
-      screen.getByRole("button", { name: "Return to Studio setup" }),
-    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Studio setup" })).toBeVisible();
   });
 
   it("does not navigate until Studio selection is saved", async () => {
@@ -1533,12 +1622,12 @@ describe("App", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Back to Show Detail" }),
+      screen.getByRole("link", { name: "Back to Show overview" }),
     );
     expect(
       await screen.findByRole("button", { name: "Episode 24" }),
     ).toBeVisible();
-    fireEvent.click(screen.getByRole("button", { name: "Back to Shows" }));
+    fireEvent.click(screen.getByRole("link", { name: "Back to Shows" }));
     expect(await screen.findByText("1 Episode")).toBeVisible();
   });
 
@@ -1650,12 +1739,30 @@ describe("App", () => {
       target: { value: "30" },
     });
     await waitFor(
-      () => expect(screen.getByText("Saved", { exact: true })).toBeVisible(),
+      async () => {
+        const saved = await fixture.api.segments.getEditor({
+          showId: DEFAULT_SHOW_ID,
+          showSegmentId: fixture.segmentId,
+          studioId: DEFAULT_STUDIO_ID,
+        });
+        expect(saved).toMatchObject({
+          ok: true,
+          data: { expectedDurationMs: 150_000 },
+        });
+      },
       { timeout: 2_000 },
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Return to Blueprint" }),
+    fireEvent.click(screen.getByRole("link", { name: "Back to Segments" }));
+    fireEvent.mouseDown(await screen.findByRole("tab", { name: "Blueprint" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Blueprint" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
     );
 
     expect(await screen.findByText("150 sec", { exact: true })).toBeVisible();
@@ -1849,6 +1956,7 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Previous Segment" }),
     ).toBeDisabled();
+    expect(screen.getByText("Segment 1 of 2")).toBeVisible();
     const guest = screen.getByRole("textbox", { name: /Guest name/u });
     fireEvent.change(guest, { target: { value: "First guest" } });
     fireEvent.click(
@@ -1864,15 +1972,20 @@ describe("App", () => {
       throw new Error("Expected a duration reset action.");
     }
     fireEvent.click(resetDuration);
-    fireEvent.click(screen.getByRole("button", { name: "Next Segment" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Next Segment: Interview" }),
+    );
 
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Previous Segment" }),
+        screen.getByRole("button", { name: "Previous Segment: Interview" }),
       ).toBeEnabled(),
     );
     expect(screen.getByRole("button", { name: "Next Segment" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Previous Segment" }));
+    expect(screen.getByText("Segment 2 of 2")).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Previous Segment: Interview" }),
+    );
     fireEvent.click(
       await screen.findByRole("button", { name: "Open Episode content" }),
     );

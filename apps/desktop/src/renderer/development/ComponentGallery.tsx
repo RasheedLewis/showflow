@@ -37,6 +37,7 @@ import {
 
 import styles from "./component-gallery.module.css";
 import type { GalleryComponentName } from "./component-gallery-contract.mts";
+import { ParentNavigation } from "../features/navigation/ParentNavigation";
 
 interface GalleryExampleProps {
   readonly children: ReactNode;
@@ -102,11 +103,16 @@ export const ComponentGallery = () => {
   return (
     <div className={styles.shellHost} data-component="ApplicationShell">
       <ApplicationShell
-        breadcrumb={<span>Development</span>}
-        primaryAction={
-          <Button onClick={() => navigate("/")} variant="primary">
-            Return to app
-          </Button>
+        parentNavigation={
+          <ParentNavigation
+            accessibleLabel="Back to Showflow"
+            label="Showflow"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("/");
+            }}
+            to="/"
+          />
         }
         saveState={<SaveStateIndicator state="saved" />}
         studioSwitcher={<Badge tone="accent">Internal</Badge>}

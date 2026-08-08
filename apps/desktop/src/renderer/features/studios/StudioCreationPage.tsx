@@ -2,11 +2,12 @@ import { ApplicationShell, Button, TextInput } from "@showflow/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { matchPath, useLocation, useNavigate } from "react-router-dom";
 
 import type { StudioDto } from "@showflow/contracts";
 
-import { getStudioHomeRoute } from "../../app-routes.mts";
+import { getStudioHomeRoute, STUDIO_HOME_ROUTE } from "../../app-routes.mts";
+import { ParentNavigation } from "../navigation/ParentNavigation";
 import { loadStudios, studioQueryKey, studiosQueryKey } from "./studio-queries";
 import styles from "./studio-pages.module.css";
 
@@ -28,6 +29,20 @@ export const StudioCreationPage = () => {
     location.state !== null &&
     "openedFromStudioSwitcher" in location.state &&
     location.state.openedFromStudioSwitcher === true;
+  const requestedReturnTo =
+    openedFromStudioSwitcher &&
+    "returnTo" in location.state &&
+    typeof location.state.returnTo === "string"
+      ? location.state.returnTo
+      : undefined;
+  const returnRouteMatch =
+    requestedReturnTo === undefined
+      ? null
+      : matchPath({ end: true, path: STUDIO_HOME_ROUTE }, requestedReturnTo);
+  const parentRoute =
+    returnRouteMatch === null || returnRouteMatch.params.studioId === undefined
+      ? undefined
+      : getStudioHomeRoute(returnRouteMatch.params.studioId);
 
   const selectAndOpenStudio = async (studio: StudioDto): Promise<void> => {
     const route = getStudioHomeRoute(studio.id);
@@ -98,7 +113,15 @@ export const StudioCreationPage = () => {
 
   return (
     <ApplicationShell
-      breadcrumb={<span>Studio setup</span>}
+      parentNavigation={
+        parentRoute === undefined ? undefined : (
+          <ParentNavigation
+            accessibleLabel="Back to current Studio"
+            label="Current Studio"
+            to={parentRoute}
+          />
+        )
+      }
       primaryAction={
         <Button
           disabled={isSubmitting}
