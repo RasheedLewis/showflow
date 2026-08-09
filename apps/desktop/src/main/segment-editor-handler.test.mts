@@ -14,6 +14,7 @@ import {
 
 import {
   handleGetSegmentEditorRequest,
+  handleUpdateSegmentActionsRequest,
   handleUpdateSegmentDetailsRequest,
   type SegmentEditorOperations,
 } from "./segment-editor-handler.mjs";
@@ -23,6 +24,12 @@ const studioId = parseEntityId<"studio">(
 );
 const showId = parseEntityId<"show">("514ad6df-710d-4301-9bff-b096e9db3dd4");
 const timestamp = parseUtcTimestamp("2026-08-07T12:00:00.000Z");
+const layoutId = parseEntityId<"layout">(
+  "49739c0a-a6f1-45d2-9198-a54e0ac45191",
+);
+const resourceId = parseEntityId<"resource">(
+  "c40232ad-32e0-4812-bac9-b564c93de8c1",
+);
 const segment = createShowSegment(
   { showId, name: "Interview" },
   {
@@ -58,6 +65,7 @@ const operations = (
   reorderFields: { execute: vi.fn() },
   restoreField: { execute: vi.fn() },
   updateDetails: { execute: vi.fn().mockResolvedValue(editor.segment) },
+  updateActions: { execute: vi.fn() },
   updateField: { execute: vi.fn() },
   updateLayouts: { execute: vi.fn() },
   ...overrides,
@@ -128,6 +136,37 @@ describe("Segment editor handlers", () => {
       showSegmentId: segment.id,
       name: "Interview",
       notesTemplate: "Line one\nLine two",
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("maps validated ordered lifecycle actions into domain identities", async () => {
+    const updateActions = { execute: vi.fn() };
+    const result = await handleUpdateSegmentActionsRequest(
+      {
+        ...request,
+        actions: [
+          { kind: "activateLayout", layoutId },
+          { kind: "waitForAnimationCompletion" },
+          { kind: "startMedia", resourceId },
+        ],
+        expectedUpdatedAt: timestamp,
+        phase: "enter",
+      },
+      true,
+      operations({ updateActions }),
+    );
+
+    expect(updateActions.execute).toHaveBeenCalledWith({
+      actions: [
+        { kind: "activateLayout", layoutId },
+        { kind: "waitForAnimationCompletion" },
+        { kind: "startMedia", resourceId },
+      ],
+      expectedUpdatedAt: timestamp,
+      phase: "enter",
+      showId,
+      showSegmentId: segment.id,
     });
     expect(result.ok).toBe(true);
   });

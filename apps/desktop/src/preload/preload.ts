@@ -33,6 +33,7 @@ import {
   SEGMENTS_REORDER_FIELDS_CHANNEL,
   SEGMENTS_RESTORE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_DETAILS_CHANNEL,
+  SEGMENTS_UPDATE_ACTIONS_CHANNEL,
   SEGMENTS_UPDATE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_LAYOUTS_CHANNEL,
   RESOURCES_GET_URL_CHANNEL,
@@ -102,6 +103,8 @@ const showflowDesktopApi = createShowflowDesktopApi({
     ipcRenderer.invoke(SEGMENTS_RESTORE_FIELD_CHANNEL, request),
   updateSegmentDetails: (request) =>
     ipcRenderer.invoke(SEGMENTS_UPDATE_DETAILS_CHANNEL, request),
+  updateSegmentActions: (request) =>
+    ipcRenderer.invoke(SEGMENTS_UPDATE_ACTIONS_CHANNEL, request),
   updateSegmentField: (request) =>
     ipcRenderer.invoke(SEGMENTS_UPDATE_FIELD_CHANNEL, request),
   updateSegmentLayouts: (request) =>

@@ -1,11 +1,13 @@
 # Showflow
 ## MVP UX Specification
-### Version 1.0 — Design Show and Produce Episode
+### Version 1.1 — Design Show and Produce Episode
 
 **Document status:** First implementation-oriented pass  
 **Primary audience:** Codex coding agents, software engineers, product designers  
-**Companion document:** Showflow Architecture PRD v1.3  
+**Companion document:** Showflow Architecture PRD v1.4  
 **Scope:** Desktop-first UX for designing a recurring Show and producing an Episode. Broadcasting execution is not included.
+
+**Revision note:** Version 1.1 adds lifecycle duration holds and clarifies Segment action editing, preview status, Layout selection, Resource selection, and Exit/Cleanup feedback.
 
 ---
 
@@ -879,14 +881,32 @@ Required:
 - Reorder actions
 - Remove action
 - Preview phase
+- Readable action timing summary
 
 The UI should phrase actions as production instructions:
 
 - Show Winner Title
 - Then switch to Host + Video
 - Wait for the animation to finish
+- Hold for 3 seconds
 
 Do not expose low-level command identifiers.
+
+The Enter and Exit action picker supports these user-facing actions for MVP:
+
+- Show Layout
+- Hold for a duration
+- Wait for animation
+- Start media, when a compatible media target exists
+- Stop media, when a compatible media target exists
+
+Adding Show Layout must require an explicit Layout choice. The editor must not silently choose the first Layout in the Catalog. If an action is unavailable, keep it disabled only when its visible helper text explains what is missing and how to enable it.
+
+Duration is edited in seconds through an accessible numeric control and stored as positive whole milliseconds. The control must expose its label, units, positive-value constraint, and validation error to assistive technology. An explicit hold begins after the preceding action finishes, keeps the current audience output visible, and must not advance Active automatically.
+
+Each animation wait shows its resolved duration, including placement delay, or states that its length cannot be calculated. A resolved duration of zero receives a warning because the wait will complete immediately. The phase summary shows the calculated time before Active or Cleanup when every wait is determinate; otherwise it identifies the action that prevents an exact total. This summary does not replace the manually entered Segment expected duration.
+
+The Exit editor explains that finishing Exit proceeds to Cleanup and that the inferred Cleanup clears temporary audience output. The user can therefore distinguish a three-second outro hold from the later invisible cleanup work.
 
 ### 14.8 Prepare and Cleanup Editor
 
@@ -1006,7 +1026,7 @@ Recommended initial choices:
 - Blank
 - Host
 - Host + Video
-- Fullscreen Video
+- Fullscreen Media
 - Split Screen
 - Title Card
 
@@ -1016,8 +1036,9 @@ The complete preset catalog and exact Slot configurations have not been designed
 
 MVP implementation:
 
-- Include only `Blank`, `Host`, `Host + Video`, and `Fullscreen Video`.
+- Include only `Blank`, `Host`, `Host + Video`, and `Fullscreen Media`.
 - Keep presets as data rather than hardcoded UX branches where practical.
+- Preserve the existing persisted preset identifier when changing the user-facing name from Fullscreen Video to Fullscreen Media.
 
 ### 15.4 Layout Creation From Episode
 
@@ -1152,6 +1173,8 @@ Animation controls:
 - Delay
 - Easing
 
+Show the effective animation wait beside these controls. A zero-duration animation remains valid but must be identified as completing immediately.
+
 ### 16.10 Layout Preview
 
 Required:
@@ -1277,6 +1300,7 @@ After import:
 - Retain original filename.
 - Allow rename within Showflow.
 - Validate file support.
+- In a contextual Resource picker, make the newly imported Resource the current selection and keep the confirm action in view.
 
 ### 18.3 Resource Scope
 
@@ -1484,6 +1508,7 @@ MVP implementation:
 - Sum Segment expected durations.
 - Treat it as an estimate.
 - Do not attempt automatic timing inference beyond media metadata.
+- Keep deterministic Enter/Exit phase summaries separate from this Episode estimate.
 
 ---
 
@@ -1669,6 +1694,17 @@ Controls:
 - Trigger Cue
 - Exit
 - Stop
+
+Opening Segment Preview must bring the preview heading and primary controls into view without discarding the editor's scroll position or unsaved state. Move keyboard focus to the preview heading or its first control so the context change is announced.
+
+Outside the audience frame, keep a persistent production-status summary showing:
+
+- Current lifecycle phase
+- Current action in that phase
+- Current Layout
+- Remaining time for an explicit duration hold
+
+The same information must be available as text and announced politely when it changes; color or motion alone is insufficient. Keep Restart, Enter, Active, Exit, and Stop reachable without scrolling past the audience frame. Reduced-motion preferences may shorten decorative animation, but never an intentional duration hold.
 
 ### 23.4 Blueprint Preview
 
@@ -2335,11 +2371,14 @@ The MVP UX is successful when a first-time creator can, without understanding OB
 13. Insert, remove, duplicate, and reorder Segments.
 14. Identify which Segments need content.
 15. Open a Segment and preview what the audience will see.
-16. Configure or trigger a basic Host Cue.
-17. Rehearse the Episode from any Segment.
-18. Return to the Storyboard without losing location or edits.
-19. Complete the workflow without encountering broadcast-engine terminology.
-20. Recognize that newly created Segments and Layouts are reusable Show assets.
+16. Configure Enter to show Host + Video for three seconds before the Fullscreen Media Active Layout appears.
+17. Advance manually from Active and show a Fullscreen Media Layout containing an image for three seconds before Cleanup.
+18. Verify the current phase, action, Layout, and remaining hold time without interpreting the audience image alone.
+19. Configure or trigger a basic Host Cue.
+20. Rehearse the Episode from any Segment.
+21. Return to the Storyboard without losing location or edits.
+22. Complete the workflow without encountering broadcast-engine terminology.
+23. Recognize that newly created Segments and Layouts are reusable Show assets.
 
 ---
 
@@ -2365,7 +2404,7 @@ The following features are not fully specified and must not be treated as settle
 | Graphic styling depth | Open | Presets and limited controls |
 | Resource storage model | Open | Defined by technical architecture |
 | Device configuration | Open | Simple selector/status |
-| Runtime calculation | Open | Sum expected durations |
+| Episode runtime calculation | Open | Sum expected durations; keep lifecycle phase summaries separate |
 | Episode override model | Open | Limited explicit overrides |
 | Full Blueprint runtime preview | Open | Visual sequence only |
 | Audience versus Host preview | Open | Audience only |

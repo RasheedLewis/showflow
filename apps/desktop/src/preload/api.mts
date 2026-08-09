@@ -40,6 +40,7 @@ import {
   RestoreSegmentFieldRequestSchema,
   ShowSegmentEditorResultSchema,
   UpdateSegmentDetailsRequestSchema,
+  UpdateSegmentActionsRequestSchema,
   UpdateSegmentFieldRequestSchema,
   UpdateSegmentLayoutsRequestSchema,
   GetResourceUrlRequestSchema,
@@ -88,6 +89,7 @@ export interface DesktopApiTransports {
   readonly reorderSegmentFields: (request: unknown) => Promise<unknown>;
   readonly restoreSegmentField: (request: unknown) => Promise<unknown>;
   readonly updateSegmentDetails: (request: unknown) => Promise<unknown>;
+  readonly updateSegmentActions: (request: unknown) => Promise<unknown>;
   readonly updateSegmentField: (request: unknown) => Promise<unknown>;
   readonly updateSegmentLayouts: (request: unknown) => Promise<unknown>;
   readonly addBlueprintSegment: (request: unknown) => Promise<unknown>;
@@ -241,6 +243,12 @@ export const createShowflowDesktopApi = (
       const validRequest = UpdateSegmentDetailsRequestSchema.parse(request);
       return ShowSegmentEditorResultSchema.parse(
         await transports.updateSegmentDetails(validRequest),
+      );
+    },
+    updateActions: async (request: unknown) => {
+      const validRequest = UpdateSegmentActionsRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.updateSegmentActions(validRequest),
       );
     },
     updateField: async (request: unknown) => {

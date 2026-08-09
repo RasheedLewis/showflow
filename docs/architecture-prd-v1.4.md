@@ -1,11 +1,13 @@
 # Showflow
 ## Architecture Product Requirements Document
-### Version 1.3 — Producing System MVP
+### Version 1.4 — Producing System MVP
 
 **Document status:** Implementation-ready first pass  
 **Primary audience:** Codex coding agents, software engineers, product designers  
 **Product name:** Showflow  
 **Scope:** Show design and episode production architecture. Live broadcasting execution is a later phase.
+
+**Revision note:** Version 1.4 adds explicit duration holds to Segment lifecycle choreography while preserving manual Active advancement and the prohibition on general-purpose automation.
 
 ---
 
@@ -570,11 +572,12 @@ Example:
 ```text
 1. Activate Layout: Winner Title Card
 2. Wait for active Layout's entrance animations to finish
-3. Activate Layout: Host + Video
-4. Continue to Active
+3. Hold for 3 seconds
+4. Activate Layout: Host + Video
+5. Continue to Active
 ```
 
-Enter may contain multiple Layout activations.
+Enter may contain multiple Layout activations and explicit duration holds between them.
 
 This supports animated title cards and other opening choreography without introducing arbitrary Stages or a nested timeline.
 
@@ -604,7 +607,8 @@ Example:
 ```text
 1. Activate Layout: Winner Outro
 2. Wait for entrance animation to finish
-3. Continue to Cleanup
+3. Hold for 3 seconds
+4. Continue to Cleanup
 ```
 
 Exit supports an outro composition without requiring a separate Episode Segment.
@@ -641,6 +645,7 @@ The MVP should support a limited, extensible action set.
 - `stopMedia`
 - `waitForAnimationCompletion`
 - `waitForMediaCompletion`
+- `waitForDuration`
 - `setActiveDefaults`
 - `clearTemporaryState`
 
@@ -664,9 +669,14 @@ An action may declare one of these completion policies:
 - Continue immediately
 - Continue after animation completion
 - Continue after media completion
+- Continue after an explicit duration
 - Stop at Active and wait for the host
 
 The UI should use plain-language production instructions rather than exposing implementation-level action names.
+
+An explicit duration hold stores a positive integer number of milliseconds. It starts only after the preceding action completes, leaves the current audience output unchanged, and completes deterministically through the shared runtime clock. Stop, restart, Segment jump, window close, or Layout change cancels a pending hold through the same cancellation path as other asynchronous lifecycle actions.
+
+Explicit holds may be used in Enter and Exit choreography. They must not advance a Segment out of Active, trigger a Host Cue, create a condition or branch, or introduce a timeline. Reduced-motion settings must not shorten an intentional duration hold.
 
 ---
 
@@ -826,7 +836,7 @@ Examples:
 
 - Host
 - Host + Video
-- Fullscreen Video
+- Fullscreen Media
 - Split Screen
 - Winner Title Card
 - Outro
@@ -1239,12 +1249,13 @@ Prepare
 Enter
 1. Activate Winner Title Layout
 2. Wait for entrance animation completion
-3. Activate Host + Video Layout
-4. Continue to Active
+3. Hold for 3 seconds
+4. Activate Host + Video Layout
+5. Continue to Active
 
 Active
 - Default Layout: Host + Video
-- Available Layouts: Host, Host + Video, Fullscreen Video
+- Available Layouts: Host, Host + Video, Fullscreen Media
 
 Exit
 1. Activate Winner Outro Layout
@@ -1743,7 +1754,7 @@ Layout Catalog:
 - Title Card
 - Host
 - Host + Video
-- Fullscreen Video
+- Fullscreen Media
 - Winner Outro
 
 Component Catalog:
@@ -1804,15 +1815,16 @@ Prepare:
 Enter:
 1. Activate Title Card Layout
 2. Wait for animation completion
-3. Activate Host + Video Layout
-4. Continue to Active
+3. Hold for 3 seconds
+4. Activate Host + Video Layout
+5. Continue to Active
 
 Active:
 - Default Layout: Host + Video
 - Available Layouts:
   - Host
   - Host + Video
-  - Fullscreen Video
+  - Fullscreen Media
 - Host Cues:
   - Show Winner Graphic
   - Play Applause
@@ -1863,15 +1875,16 @@ The Producing MVP is successful when a creator can:
 8. Configure a Lower Third once and reuse it wherever that Layout is used.
 9. Configure Component enter and exit animation from a preset list.
 10. Configure a Segment with Prepare, Enter, Active, Exit, and Cleanup.
-11. Use multiple Layouts inside one Segment without creating nested Stages.
-12. Create an Episode from the Blueprint.
-13. Reorder, duplicate, remove, and insert Segments in the Episode Storyboard.
-14. Enter Episode-specific Segment data.
-15. Preview a Layout and Segment.
-16. Manually trigger a Host Cue and have it complete automatically after a configured lifetime.
-17. Rehearse an Episode without broadcasting.
-18. Receive clear validation messages for missing production inputs.
-19. Complete the common workflow without encountering OBS-specific or broadcast-engine terminology.
+11. Add an exact, deterministic duration hold to Enter or Exit choreography without advancing Active automatically.
+12. Use multiple Layouts inside one Segment without creating nested Stages.
+13. Create an Episode from the Blueprint.
+14. Reorder, duplicate, remove, and insert Segments in the Episode Storyboard.
+15. Enter Episode-specific Segment data.
+16. Preview a Layout and Segment.
+17. Manually trigger a Host Cue and have it complete automatically after a configured lifetime.
+18. Rehearse an Episode without broadcasting.
+19. Receive clear validation messages for missing production inputs.
+20. Complete the common workflow without encountering OBS-specific or broadcast-engine terminology.
 
 ---
 

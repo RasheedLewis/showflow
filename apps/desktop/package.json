@@ -25,6 +25,7 @@
     "@showflow/application": "workspace:*",
     "@showflow/contracts": "workspace:*",
     "@showflow/domain": "workspace:*",
+    "@showflow/execution-contracts": "workspace:*",
     "@showflow/persistence": "workspace:*",
     "@showflow/resources": "workspace:*",
     "@showflow/ui": "workspace:*",

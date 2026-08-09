@@ -93,6 +93,6 @@ semantic class rather than assigning `--sf-font-mono` ad hoc.
 ## References
 
 - [Design System Specification §6, Typography](../design-system-spec-v1.0.md#6-typography)
-- [Technical Specification §4.11, Styling](../technical-spec-v1.0.md#411-styling)
-- [Implementation Plan, Sprint 3 Subtask 3.1](../implementation-plan-v1.0.md#31--load-geist-required)
+- [Technical Specification §4.11, Styling](../technical-spec-v1.1.md#411-styling)
+- [Implementation Plan, Sprint 3 Subtask 3.1](../implementation-plan-v1.1.md#31--load-geist-required)
 - [ADR 0010, Initial Design Token Contract](0010-initial-design-token-contract.md)

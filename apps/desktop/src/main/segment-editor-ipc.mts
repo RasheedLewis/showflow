@@ -5,6 +5,7 @@ import {
   SEGMENTS_REORDER_FIELDS_CHANNEL,
   SEGMENTS_RESTORE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_DETAILS_CHANNEL,
+  SEGMENTS_UPDATE_ACTIONS_CHANNEL,
   SEGMENTS_UPDATE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_LAYOUTS_CHANNEL,
   type ShowSegmentEditorResult,
@@ -18,6 +19,7 @@ import {
   handleReorderSegmentFieldsRequest,
   handleRestoreSegmentFieldRequest,
   handleUpdateSegmentDetailsRequest,
+  handleUpdateSegmentActionsRequest,
   handleUpdateSegmentFieldRequest,
   handleUpdateSegmentLayoutsRequest,
   type SegmentEditorOperations,
@@ -34,6 +36,7 @@ export const registerSegmentEditorIpc = (
   const handlers = [
     [SEGMENTS_GET_EDITOR_CHANNEL, handleGetSegmentEditorRequest],
     [SEGMENTS_UPDATE_DETAILS_CHANNEL, handleUpdateSegmentDetailsRequest],
+    [SEGMENTS_UPDATE_ACTIONS_CHANNEL, handleUpdateSegmentActionsRequest],
     [SEGMENTS_CREATE_FIELD_CHANNEL, handleCreateSegmentFieldRequest],
     [SEGMENTS_UPDATE_FIELD_CHANNEL, handleUpdateSegmentFieldRequest],
     [SEGMENTS_DELETE_FIELD_CHANNEL, handleDeleteSegmentFieldRequest],

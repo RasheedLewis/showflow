@@ -50,6 +50,7 @@ import type {
   ShowSegmentEditorResult,
   UpdateSegmentDetailsRequest,
   UpdateSegmentFieldRequest,
+  UpdateSegmentActionsRequest,
   UpdateSegmentLayoutsRequest,
 } from "./segment-editor.ts";
 import type {
@@ -127,6 +128,9 @@ export interface ShowflowDesktopApi {
     ) => Promise<ShowSegmentEditorResult>;
     updateField: (
       request: UpdateSegmentFieldRequest,
+    ) => Promise<ShowSegmentEditorResult>;
+    updateActions: (
+      request: UpdateSegmentActionsRequest,
     ) => Promise<ShowSegmentEditorResult>;
     updateLayouts: (
       request: UpdateSegmentLayoutsRequest,

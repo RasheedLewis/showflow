@@ -8,6 +8,10 @@ import type {
   ResourceDto,
 } from "@showflow/contracts";
 import { LOWER_THIRD_STYLE_PRESETS } from "@showflow/domain";
+import {
+  ANIMATION_PRESET_OPTIONS,
+  type AnimationConfig,
+} from "@showflow/execution-contracts";
 
 import { ResourcePicker } from "../resources/ResourcePicker";
 import styles from "./placement-inspector.module.css";
@@ -32,6 +36,98 @@ const initialBinding = (
   value: property.defaultValue ?? (property.type === "boolean" ? false : ""),
 });
 
+const EASING_OPTIONS = [
+  { label: "Standard", value: "cubic-bezier(0.2, 0, 0, 1)" },
+  { label: "Enter", value: "cubic-bezier(0, 0, 0.2, 1)" },
+  { label: "Exit", value: "cubic-bezier(0.4, 0, 1, 1)" },
+  { label: "Linear", value: "linear" },
+] as const;
+
+const AnimationControls = ({
+  configuration,
+  defaultConfiguration,
+  label,
+  onChange,
+}: {
+  readonly configuration: AnimationConfig | null;
+  readonly defaultConfiguration: AnimationConfig;
+  readonly label: "Enter" | "Exit";
+  readonly onChange: (configuration: AnimationConfig | null) => void;
+}) => (
+  <section className={styles["animation"]}>
+    <strong>{label} animation</strong>
+    <Select
+      label={`${label} animation source`}
+      onChange={(event) =>
+        onChange(
+          event.currentTarget.value === "default"
+            ? null
+            : { ...defaultConfiguration },
+        )
+      }
+      options={[
+        { label: "Use Component default", value: "default" },
+        { label: "Override for this Placement", value: "override" },
+      ]}
+      value={configuration === null ? "default" : "override"}
+    />
+    {configuration === null ? (
+      <p>
+        {ANIMATION_PRESET_OPTIONS.find(
+          ({ value }) => value === defaultConfiguration.preset,
+        )?.label ?? "None"}{" "}
+        · {defaultConfiguration.durationMs} ms
+      </p>
+    ) : (
+      <>
+        <Select
+          label={`${label} preset`}
+          onChange={(event) =>
+            onChange({
+              ...configuration,
+              preset: event.currentTarget.value as AnimationConfig["preset"],
+            })
+          }
+          options={ANIMATION_PRESET_OPTIONS}
+          value={configuration.preset}
+        />
+        <TextInput
+          label={`${label} duration in milliseconds`}
+          min={0}
+          onChange={(event) => {
+            const durationMs = Number(event.currentTarget.value);
+            if (Number.isInteger(durationMs) && durationMs >= 0)
+              onChange({ ...configuration, durationMs });
+          }}
+          step={10}
+          type="number"
+          value={configuration.durationMs}
+        />
+        <TextInput
+          label={`${label} delay in milliseconds`}
+          min={0}
+          onChange={(event) => {
+            const delayMs = Number(event.currentTarget.value);
+            if (Number.isInteger(delayMs) && delayMs >= 0)
+              onChange({ ...configuration, delayMs });
+          }}
+          step={10}
+          type="number"
+          value={configuration.delayMs}
+        />
+        <Select
+          label={`${label} easing`}
+          onChange={(event) =>
+            onChange({ ...configuration, easing: event.currentTarget.value })
+          }
+          options={EASING_OPTIONS}
+          value={configuration.easing}
+        />
+      </>
+    )}
+  </section>
+);
+
 export const PlacementInspector = ({
   component,
   placement,
@@ -47,15 +143,23 @@ export const PlacementInspector = ({
   readonly onSave: (
     bindings: Readonly<Record<string, BindingDto>>,
     visibleByDefault: boolean,
+    enterAnimationOverride: AnimationConfig | null,
+    exitAnimationOverride: AnimationConfig | null,
   ) => Promise<void>;
   readonly onRemove: () => Promise<void>;
 }) => {
   const [bindings, setBindings] = useState(placement.bindings);
   const [visible, setVisible] = useState(placement.visibleByDefault);
+  const [enterAnimation, setEnterAnimation] = useState<AnimationConfig | null>(
+    placement.enterAnimationOverride,
+  );
+  const [exitAnimation, setExitAnimation] = useState<AnimationConfig | null>(
+    placement.exitAnimationOverride,
+  );
   const update = (key: string, binding: BindingDto): void => {
     const next = { ...bindings, [key]: binding };
     setBindings(next);
-    void onSave(next, visible);
+    void onSave(next, visible, enterAnimation, exitAnimation);
   };
   return (
     <div className={styles["inspector"]}>
@@ -217,7 +321,30 @@ export const PlacementInspector = ({
         label="Visible by default"
         onChange={(event) => {
           setVisible(event.currentTarget.checked);
-          void onSave(bindings, event.currentTarget.checked);
+          void onSave(
+            bindings,
+            event.currentTarget.checked,
+            enterAnimation,
+            exitAnimation,
+          );
+        }}
+      />
+      <AnimationControls
+        configuration={enterAnimation}
+        defaultConfiguration={component.defaultEnterAnimation}
+        label="Enter"
+        onChange={(configuration) => {
+          setEnterAnimation(configuration);
+          void onSave(bindings, visible, configuration, exitAnimation);
+        }}
+      />
+      <AnimationControls
+        configuration={exitAnimation}
+        defaultConfiguration={component.defaultExitAnimation}
+        label="Exit"
+        onChange={(configuration) => {
+          setExitAnimation(configuration);
+          void onSave(bindings, visible, enterAnimation, configuration);
         }}
       />
       <Button onClick={() => void onRemove()} variant="destructive">

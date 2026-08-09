@@ -91,5 +91,5 @@ changing its content or navigation behavior.
 - [Design System Specification §§5–9](../design-system-spec-v1.0.md#5-color-system)
 - [Design System Specification §24, Motion](../design-system-spec-v1.0.md#24-motion)
 - [Design System Specification §27, Design Tokens](../design-system-spec-v1.0.md#27-design-tokens)
-- [Implementation Plan, Sprint 3 Subtask 3.2](../implementation-plan-v1.0.md#32--implement-semantic-tokens-required)
+- [Implementation Plan, Sprint 3 Subtask 3.2](../implementation-plan-v1.1.md#32--implement-semantic-tokens-required)
 - [ADR 0010, Initial Design Token Contract](0010-initial-design-token-contract.md)

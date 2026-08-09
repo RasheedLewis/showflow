@@ -103,8 +103,8 @@ own packaging validation.
 
 ## References
 
-- [Architecture PRD §34, Persistence and Identity](../architecture-prd-v1.3.md#34-persistence-and-identity)
-- [Architecture PRD §40, Deferred Decisions](../architecture-prd-v1.3.md#40-deferred-decisions)
-- [Technical Specification §11, Persistence](../technical-spec-v1.0.md#11-persistence)
-- [Implementation Plan, Sprint 1 Subtask 1.3](../implementation-plan-v1.0.md#13--decide-sqlite-adapter-decision-required)
+- [Architecture PRD §34, Persistence and Identity](../architecture-prd-v1.4.md#34-persistence-and-identity)
+- [Architecture PRD §40, Deferred Decisions](../architecture-prd-v1.4.md#40-deferred-decisions)
+- [Technical Specification §11, Persistence](../technical-spec-v1.1.md#11-persistence)
+- [Implementation Plan, Sprint 1 Subtask 1.3](../implementation-plan-v1.1.md#13--decide-sqlite-adapter-decision-required)
 - [ADR 0009, Decision Record Governance](0009-decision-record-governance.md)

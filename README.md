@@ -237,9 +237,9 @@ React component
 
 The specifications are authoritative in the following order when they conflict:
 
-1. [Architecture PRD v1.3](docs/architecture-prd-v1.3.md) — domain ownership, terminology, invariants, and MVP scope.
-2. [MVP UX Specification v1.0](docs/ux-spec-v1.0.md) — user-facing workflows, screen behavior, accessibility, and open interactions.
-3. [Technical Specification v1.0](docs/technical-spec-v1.0.md) — stack, package boundaries, persistence, security, testing, and distribution.
+1. [Architecture PRD v1.4](docs/architecture-prd-v1.4.md) — domain ownership, terminology, invariants, and MVP scope.
+2. [MVP UX Specification v1.1](docs/ux-spec-v1.1.md) — user-facing workflows, screen behavior, accessibility, and open interactions.
+3. [Technical Specification v1.1](docs/technical-spec-v1.1.md) — stack, package boundaries, persistence, security, testing, and distribution.
 4. [Design System Specification v1.0](docs/design-system-spec-v1.0.md) — visual foundations, components, tokens, motion, and content voice.
 
 The supplemental [Navigation System UI/UX Specification v1.0](docs/navigation-system-spec-v1.0.md)
@@ -247,7 +247,7 @@ defines the consistent parent path, route tabs, Primary command placement,
 origin-aware return behavior, and navigation acceptance criteria used during
 implementation.
 
-The [Detailed Implementation Plan v1.0](docs/implementation-plan-v1.0.md)
+The [Detailed Implementation Plan v1.1](docs/implementation-plan-v1.1.md)
 defines delivery order, test gates, and decision timing. It must conform to the
 four specifications above and does not override them. See the
 [documentation guide](docs/README.md) for terminology, open-specification, and
@@ -370,6 +370,7 @@ Segment lifecycle—is next.
 - [x] **Sprint 10:** Layout Catalog and constrained Layout editor
 - [x] **Sprint 11:** Components, Placements, and bindings
 - [ ] **Sprint 12:** Preview runtime and Segment lifecycle
+- [ ] **Sprint 12A:** Lifecycle timing and preview UX polish
 - [ ] **Sprint 13:** Host Cues
 - [ ] **Sprint 14:** Episode rehearsal
 - [ ] **Sprint 15:** Hardening, accessibility, and performance
@@ -378,7 +379,7 @@ Segment lifecycle—is next.
 </details>
 
 The full gates, subtasks, tests, and decision timing live in the
-[Detailed Implementation Plan](docs/implementation-plan-v1.0.md).
+[Detailed Implementation Plan](docs/implementation-plan-v1.1.md).
 
 ## Contributing
 

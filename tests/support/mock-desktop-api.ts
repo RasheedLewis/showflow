@@ -43,6 +43,7 @@ import {
   type SegmentDataFieldDto,
   type ShowSegmentEditorDto,
   type UpdateSegmentDetailsRequest,
+  type UpdateSegmentActionsRequest,
   type UpdateSegmentFieldRequest,
   type UpdateSegmentLayoutsRequest,
   type ResourceContext,
@@ -700,6 +701,20 @@ export const createMockDesktopApi = (
           }),
         );
       },
+      updateActions: async (request: UpdateSegmentActionsRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            lifecycle: {
+              ...editor.lifecycle,
+              [request.phase]: request.actions,
+            },
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
       updateField: async (request: UpdateSegmentFieldRequest) => {
         const editor = getScopedSegmentEditor(request);
         if (editor === undefined) return segmentEditorNotFound();
@@ -1093,6 +1108,14 @@ export const createMockDesktopApi = (
                   bindings: request.bindings,
                   fixedProperties: request.fixedProperties,
                   visibleByDefault: request.visibleByDefault,
+                  enterAnimationOverride:
+                    request.enterAnimationOverride === undefined
+                      ? placement.enterAnimationOverride
+                      : request.enterAnimationOverride,
+                  exitAnimationOverride:
+                    request.exitAnimationOverride === undefined
+                      ? placement.exitAnimationOverride
+                      : request.exitAnimationOverride,
                 }
               : placement,
           ),
@@ -1699,6 +1722,22 @@ export const installMockDesktopApi = async (
         | { kind: "resource"; resourceId: string }
         | { kind: "segmentField"; fieldKey: string }
         | { kind: "episodeMetadata" | "showMetadata"; field: string };
+      type BrowserAnimation = {
+        preset:
+          | "none"
+          | "fade"
+          | "slideUp"
+          | "slideDown"
+          | "slideLeft"
+          | "slideRight"
+          | "scaleIn"
+          | "scaleOut"
+          | "pop"
+          | "wipe";
+        durationMs: number;
+        delayMs: number;
+        easing: string;
+      };
       type BrowserComponentPlacement = {
         id: string;
         layoutId: string;
@@ -1708,8 +1747,8 @@ export const installMockDesktopApi = async (
         bindings: Record<string, BrowserBinding>;
         visibleByDefault: boolean;
         layerOverride: number | null;
-        enterAnimationOverride: null;
-        exitAnimationOverride: null;
+        enterAnimationOverride: BrowserAnimation | null;
+        exitAnimationOverride: BrowserAnimation | null;
         createdAt: string;
         updatedAt: string;
       };
@@ -1733,18 +1772,8 @@ export const installMockDesktopApi = async (
           defaultValue?: unknown;
         }>;
         defaultProperties: Record<string, unknown>;
-        defaultEnterAnimation: {
-          preset: "none" | "slideUp";
-          durationMs: number;
-          delayMs: number;
-          easing: string;
-        };
-        defaultExitAnimation: {
-          preset: "none" | "slideDown";
-          durationMs: number;
-          delayMs: number;
-          easing: string;
-        };
+        defaultEnterAnimation: BrowserAnimation;
+        defaultExitAnimation: BrowserAnimation;
         supportedSlotRoles: string[];
         archivedAt: null;
         createdAt: string;
@@ -2440,6 +2469,24 @@ export const installMockDesktopApi = async (
               updatedAt: timestamp,
             });
           },
+          updateActions: async (request: {
+            actions: unknown[];
+            phase: "enter" | "exit";
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            return setEditor({
+              ...editor,
+              lifecycle: {
+                ...editor.lifecycle,
+                [request.phase]: request.actions,
+              },
+              updatedAt: nextTimestamp(),
+            });
+          },
           updateLayouts: async (request: {
             availableLayoutIds: string[];
             defaultLayoutId: string | null;
@@ -3016,6 +3063,8 @@ export const installMockDesktopApi = async (
           },
           updatePlacement: async (request: {
             bindings: Record<string, BrowserBinding>;
+            enterAnimationOverride?: BrowserAnimation | null;
+            exitAnimationOverride?: BrowserAnimation | null;
             fixedProperties: Record<string, unknown>;
             layoutId: string;
             placementId: string;
@@ -3035,6 +3084,14 @@ export const installMockDesktopApi = async (
                     ? {
                         ...placement,
                         bindings: request.bindings,
+                        enterAnimationOverride:
+                          request.enterAnimationOverride === undefined
+                            ? placement.enterAnimationOverride
+                            : request.enterAnimationOverride,
+                        exitAnimationOverride:
+                          request.exitAnimationOverride === undefined
+                            ? placement.exitAnimationOverride
+                            : request.exitAnimationOverride,
                         fixedProperties: request.fixedProperties,
                         visibleByDefault: request.visibleByDefault,
                         updatedAt: nextTimestamp(),

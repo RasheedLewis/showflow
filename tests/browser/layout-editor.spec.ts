@@ -122,7 +122,7 @@ test("10.T8 10.T11 10.T12 edits with coalesced undo, edit-only guides, and acces
   expect(accessibility.violations).toEqual([]);
 });
 
-test("11.T15 places a Host composition and renders Episode values", async ({
+test("11.T15 and 12.T11 render a Host composition in Segment Preview and Episode content", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -238,6 +238,26 @@ test("11.T15 places a Host composition and renders Episode values", async ({
     .getByRole("combobox", { name: "Default Layout" })
     .selectOption({ label: "Guest interview" });
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Preview Segment" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Preview Guest intro" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Enter", exact: true }).click();
+  const segmentPreview = page.locator('section[data-runtime-state="active"]');
+  await expect(segmentPreview).toBeVisible();
+  await expect(
+    segmentPreview.locator('[data-component-type="lowerThird"]'),
+  ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "test-results/sprint-12-segment-preview.png",
+  });
+  await segmentPreview.getByRole("button", { name: "Exit" }).click();
+  await expect(
+    page.locator('section[data-runtime-state="stopped"]'),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close Preview" }).click();
   await page.getByRole("link", { name: "Back to Segments" }).click();
   await page.getByRole("link", { name: "Back to Show overview" }).click();
   await page

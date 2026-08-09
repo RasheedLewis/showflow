@@ -8,10 +8,10 @@ rules for coding agents; they do not replace the product specifications.
 Before implementing a feature or Sprint subtask, read:
 
 1. [`docs/README.md`](docs/README.md) for document governance and terminology.
-2. [`docs/architecture-prd-v1.3.md`](docs/architecture-prd-v1.3.md) for domain
+2. [`docs/architecture-prd-v1.4.md`](docs/architecture-prd-v1.4.md) for domain
    ownership, invariants, terminology, and MVP scope.
-3. [`docs/ux-spec-v1.0.md`](docs/ux-spec-v1.0.md) for user-facing behavior.
-4. [`docs/technical-spec-v1.0.md`](docs/technical-spec-v1.0.md) for implementation
+3. [`docs/ux-spec-v1.1.md`](docs/ux-spec-v1.1.md) for user-facing behavior.
+4. [`docs/technical-spec-v1.1.md`](docs/technical-spec-v1.1.md) for implementation
    boundaries, security, persistence, testing, and distribution.
 5. [`docs/design-system-spec-v1.0.md`](docs/design-system-spec-v1.0.md) for visual,
    interaction, accessibility, motion, and content rules.
@@ -19,7 +19,7 @@ Before implementing a feature or Sprint subtask, read:
    for any application-shell, routing, parent-path, tab, object-opening, or
    sequential-navigation work.
 7. The current Sprint and its dependencies in
-   [`docs/implementation-plan-v1.0.md`](docs/implementation-plan-v1.0.md).
+   [`docs/implementation-plan-v1.1.md`](docs/implementation-plan-v1.1.md).
 
 When specifications conflict, authority flows from Architecture PRD to UX
 Specification to Technical Specification to Design System Specification. The

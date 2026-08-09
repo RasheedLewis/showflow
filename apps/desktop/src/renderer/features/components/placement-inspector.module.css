@@ -3,6 +3,20 @@
   display: grid;
   gap: var(--sf-space-3);
 }
+
+.animation {
+  border-top: var(--sf-border-width-default) solid var(--sf-border-subtle);
+  display: grid;
+  gap: var(--sf-space-3);
+  padding-top: var(--sf-space-4);
+}
+
+.animation p {
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+  margin: 0;
+}
 .inspector h3,
 .scope {
   margin: 0;

@@ -1,17 +1,19 @@
 # Showflow
 ## Technical Specification
-### Version 1.0 — Desktop Producing MVP
+### Version 1.1 — Desktop Producing MVP
 
 **Document status:** Implementation-oriented first pass  
 **Primary audience:** Codex coding agents and software engineers  
 **Companion documents:**
-- Showflow Architecture PRD v1.3
-- Showflow MVP UX Specification v1.0
+- Showflow Architecture PRD v1.4
+- Showflow MVP UX Specification v1.1
 
 **Reference development environment:** macOS on Apple Silicon  
 **Target platforms:** macOS, Windows, and Linux  
 **Current scope:** Design Show, Produce Episode, preview, and rehearsal  
 **Excluded from this version:** Live broadcasting, OBS integration, cloud sync, mobile applications, and advanced media processing
+
+**Revision note:** Version 1.1 adds an engine-neutral duration-hold instruction, runtime progress reporting, persistence compatibility requirements, and deterministic timing behavior for Segment lifecycle previews.
 
 ---
 
@@ -40,9 +42,9 @@ The coding agent must optimize for:
 
 When documents conflict, use this order:
 
-1. **Architecture PRD v1.3** for domain ownership and invariants.
-2. **MVP UX Specification v1.0** for user-facing behavior.
-3. **Technical Specification v1.0** for implementation decisions.
+1. **Architecture PRD v1.4** for domain ownership and invariants.
+2. **MVP UX Specification v1.1** for user-facing behavior.
+3. **Technical Specification v1.1** for implementation decisions.
 4. Existing code only when it does not conflict with the three documents above.
 
 The coding agent must not change product terminology or ownership rules to simplify implementation.
@@ -325,11 +327,11 @@ showflow/
 │
 ├── docs/
 │   ├── README.md
-│   ├── architecture-prd-v1.3.md
-│   ├── ux-spec-v1.0.md
-│   ├── technical-spec-v1.0.md
+│   ├── architecture-prd-v1.4.md
+│   ├── ux-spec-v1.1.md
+│   ├── technical-spec-v1.1.md
 │   ├── design-system-spec-v1.0.md
-│   └── implementation-plan-v1.0.md
+│   └── implementation-plan-v1.1.md
 │
 ├── migrations/
 ├── scripts/
@@ -442,6 +444,7 @@ Contains future-engine-neutral instructions such as:
 - Stop Resource
 - Run enter animation
 - Run exit animation
+- Hold for Duration
 
 It must not import OBS-specific types.
 
@@ -796,6 +799,8 @@ type SegmentLifecyclePhase =
 
 Do not model phases as user-created database records.
 
+Lifecycle action contracts include `waitForDuration` with a positive integer `durationMs`. Keep the contract engine neutral and serializable. Use a discriminated union shared by domain validation, application commands, IPC, persisted JSON validation, instruction generation, preview, and rehearsal.
+
 ## 10.4 Show-Scoped Creation
 
 Application commands must enforce:
@@ -1000,6 +1005,8 @@ Some flexible configuration may be stored as validated JSON text, including:
 - Cue completion configuration
 - Notes template formatting
 - Local override configuration
+
+Adding a lifecycle action variant to validated JSON does not require a SQL migration when table shape is unchanged. Existing action lists without `waitForDuration` must continue to parse and execute unchanged. The repository must round-trip the new variant and reject zero, negative, fractional, non-finite, or otherwise invalid millisecond values at its boundary.
 
 Core ownership and ordering relationships should remain relational.
 
@@ -1625,12 +1632,15 @@ The runtime consumes normalized execution instructions produced from:
 - Execute lifecycle in order.
 - Activate Layouts.
 - Wait for configured completion.
+- Execute explicit duration holds against the abstract clock.
 - Track current Segment.
 - Trigger manual Host Cues.
 - Complete timed Cues.
 - Restore default state when configured.
 - Stop cleanly.
 - Emit state events for UI.
+
+Runtime events must include a serializable progress snapshot with the current lifecycle phase, current action index and kind, active Layout ID, and remaining duration in milliseconds while an explicit hold is pending. Emit an initial snapshot, changes at action and phase boundaries, duration progress at a restrained cadence, cancellation, completion, and failure. The renderer resolves production names from IDs and announces meaningful changes without coupling the runtime to React.
 
 ## 19.5 Renderer-Only MVP
 
@@ -1648,11 +1658,14 @@ Abstract time behind a clock interface for deterministic tests.
 
 Do not scatter direct `setTimeout` calls throughout Cue and lifecycle components.
 
+`waitForDuration` completes at the exact configured fake-clock instant in tests. Its promise resolves only after the preceding instruction has completed and rejects or returns the standard cancellation result when aborted. Reduced-motion settings may shorten nonessential animation waits, but must never alter an explicit duration hold.
+
 ## 19.7 Cancellation
 
 Every asynchronous runtime action must support cancellation when:
 
 - Preview stops.
+- Preview restarts.
 - User jumps to another Segment.
 - Layout changes.
 - Rehearsal exits.
@@ -1891,6 +1904,7 @@ Use Vitest for:
 - Binding resolution
 - Readiness calculation
 - Lifecycle instruction generation
+- Duration-hold validation and instruction ordering
 - Cue lifetime behavior
 - Migration helpers
 
@@ -1905,6 +1919,7 @@ Use React Testing Library with Vitest for:
 - Storyboard card actions
 - Inspector behavior
 - Accessible names and keyboard operation
+- Lifecycle action timing summaries and runtime progress status
 
 Mock `window.showflow` through a typed test adapter.
 
@@ -2456,6 +2471,8 @@ Exit criteria:
 - Layout activation
 - Single-action Host Cues
 - Cancellation
+- Explicit Enter/Exit duration holds
+- Runtime phase, action, Layout, and remaining-time events
 - Deterministic runtime tests
 
 ## Milestone 5 — Rehearsal
@@ -2491,11 +2508,13 @@ The technical MVP foundation is acceptable when:
 13. Layouts render through a constrained DOM/CSS canvas.
 14. Binding resolution is shared by preview, validation, and rehearsal.
 15. Lifecycle and Cue timing are deterministic and cancellable.
-16. Core workflows have unit, integration, and browser-level tests.
-17. Electron-specific tests remain a small smoke layer.
-18. Temporary design values are centralized as tokens.
-19. No OBS-specific concepts enter the domain.
-20. Open technical areas remain isolated rather than invented.
+16. Explicit lifecycle holds complete at exact clock time and are not changed by reduced-motion preferences.
+17. Runtime progress events report the current phase, action, Layout, and remaining hold time.
+18. Core workflows have unit, integration, and browser-level tests.
+19. Electron-specific tests remain a small smoke layer.
+20. Temporary design values are centralized as tokens.
+21. No OBS-specific concepts enter the domain.
+22. Open technical areas remain isolated rather than invented.
 
 ---
 

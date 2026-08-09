@@ -13,12 +13,12 @@ editing code, user-facing behavior, architecture, or visual foundations.
 
 | Document | Authority | Current version | Use it for |
 |---|---:|---:|---|
-| [Architecture PRD](architecture-prd-v1.3.md) | 1 | 1.3 | Domain ownership, canonical concepts, invariants, and MVP scope |
-| [MVP UX Specification](ux-spec-v1.0.md) | 2 | 1.0 | User-facing workflows, navigation, interaction behavior, and accessibility |
+| [Architecture PRD](architecture-prd-v1.4.md) | 1 | 1.4 | Domain ownership, canonical concepts, invariants, and MVP scope |
+| [MVP UX Specification](ux-spec-v1.1.md) | 2 | 1.1 | User-facing workflows, navigation, interaction behavior, and accessibility |
 | [Navigation System UI/UX Specification](navigation-system-spec-v1.0.md) | Supplemental | 1.0 | Normative navigation roles, placement, route behavior, and acceptance criteria |
-| [Technical Specification](technical-spec-v1.0.md) | 3 | 1.0 | Stack, package boundaries, security, persistence, testing, and distribution |
+| [Technical Specification](technical-spec-v1.1.md) | 3 | 1.1 | Stack, package boundaries, security, persistence, testing, and distribution |
 | [Design System Specification](design-system-spec-v1.0.md) | 4 | 1.0 | Visual foundations, components, tokens, motion, and content voice |
-| [Detailed Implementation Plan](implementation-plan-v1.0.md) | Operational | 1.0 | Dependency-ordered Sprints, test gates, decision timing, and completion criteria |
+| [Detailed Implementation Plan](implementation-plan-v1.1.md) | Operational | 1.1 | Dependency-ordered Sprints, test gates, decision timing, and completion criteria |
 
 The implementation plan sequences the work. It does not override the four
 product and engineering specifications.

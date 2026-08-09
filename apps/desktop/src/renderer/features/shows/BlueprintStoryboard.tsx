@@ -48,6 +48,7 @@ interface SortablePlacementProps {
   readonly onDuplicate: () => void;
   readonly onMove: (destination: number) => void;
   readonly onOpen: (focusId: string) => void;
+  readonly onPreview: (focusId: string) => void;
   readonly onRemove: () => void;
   readonly onSelect: () => void;
 }
@@ -57,6 +58,7 @@ const SortablePlacement = ({
   onDuplicate,
   onMove,
   onOpen,
+  onPreview,
   onRemove,
   onSelect,
   placement,
@@ -108,6 +110,15 @@ const SortablePlacement = ({
               size="small"
             >
               Open
+            </Button>
+            <Button
+              onClick={() =>
+                onPreview(`navigation-origin-blueprint-${placement.id}`)
+              }
+              size="small"
+              variant="ghost"
+            >
+              Preview
             </Button>
             <Menu
               trigger={
@@ -179,6 +190,7 @@ const SortablePlacement = ({
 export interface BlueprintStoryboardProps {
   readonly onDuplicate: (placementId: string) => void;
   readonly onOpen: (showSegmentId: string, focusId: string) => void;
+  readonly onPreview: (showSegmentId: string, focusId: string) => void;
   readonly onRemove: (placementId: string) => void;
   readonly onReorder: (orderedPlacementIds: readonly string[]) => Promise<void>;
   readonly placements: readonly BlueprintPlacementDto[];
@@ -188,6 +200,7 @@ export interface BlueprintStoryboardProps {
 export const BlueprintStoryboard = ({
   onDuplicate,
   onOpen,
+  onPreview,
   onRemove,
   onReorder,
   placements,
@@ -295,6 +308,9 @@ export const BlueprintStoryboard = ({
               onDuplicate={() => onDuplicate(placement.id)}
               onMove={(destination) => move(index, destination)}
               onOpen={(focusId) => onOpen(placement.showSegmentId, focusId)}
+              onPreview={(focusId) =>
+                onPreview(placement.showSegmentId, focusId)
+              }
               onRemove={() => onRemove(placement.id)}
               onSelect={() => setSelectedId(placement.id)}
               placement={placement}

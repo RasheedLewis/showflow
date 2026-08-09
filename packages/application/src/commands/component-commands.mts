@@ -4,6 +4,7 @@ import {
   createEntityMetadata,
   isBuiltInComponentType,
   type Binding,
+  type AnimationConfig,
   type BuiltInComponentType,
   type ComponentPlacement,
   type ComponentPlacementId,
@@ -151,6 +152,8 @@ export interface UpdateComponentPlacementCommandInput extends LayoutMutationScop
   readonly bindings: Readonly<Record<string, Binding>>;
   readonly fixedProperties: JsonObject;
   readonly visibleByDefault: boolean;
+  readonly enterAnimationOverride?: AnimationConfig | null;
+  readonly exitAnimationOverride?: AnimationConfig | null;
 }
 
 export class UpdateComponentPlacementCommand {
@@ -183,12 +186,31 @@ export class UpdateComponentPlacementCommand {
         "VALIDATION_ERROR",
         `One ${component.name} property is not available. Review the Placement and try again.`,
       );
+    const {
+      enterAnimationOverride: currentEnterAnimationOverride,
+      exitAnimationOverride: currentExitAnimationOverride,
+      ...placementWithoutAnimationOverrides
+    } = placement;
+    const enterAnimationOverride =
+      input.enterAnimationOverride === undefined
+        ? currentEnterAnimationOverride
+        : (input.enterAnimationOverride ?? undefined);
+    const exitAnimationOverride =
+      input.exitAnimationOverride === undefined
+        ? currentExitAnimationOverride
+        : (input.exitAnimationOverride ?? undefined);
     const updatedPlacement = touchEntity(
       {
-        ...placement,
+        ...placementWithoutAnimationOverrides,
         bindings: { ...input.bindings },
         fixedProperties: { ...input.fixedProperties },
         visibleByDefault: input.visibleByDefault,
+        ...(enterAnimationOverride === undefined
+          ? {}
+          : { enterAnimationOverride }),
+        ...(exitAnimationOverride === undefined
+          ? {}
+          : { exitAnimationOverride }),
       },
       this.dependencies,
     );

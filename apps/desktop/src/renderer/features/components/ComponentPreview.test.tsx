@@ -118,6 +118,40 @@ const layout: LayoutDto = {
 };
 
 describe("ComponentPreview", () => {
+  test("12.6 resolves a Placement override and exposes deterministic animation timing", () => {
+    const { container } = render(
+      <ComponentPreview
+        animationPhase="enter"
+        components={[component]}
+        layout={{
+          ...layout,
+          componentPlacements: [
+            {
+              ...placement,
+              enterAnimationOverride: {
+                delayMs: 40,
+                durationMs: 260,
+                easing: "ease-in-out",
+                preset: "wipe",
+              },
+            },
+          ],
+        }}
+        resources={[]}
+      />,
+    );
+
+    const renderedPlacement = container.querySelector(
+      "[data-animation-preset]",
+    );
+    expect(renderedPlacement).toHaveAttribute("data-animation-preset", "wipe");
+    expect(renderedPlacement).toHaveStyle({
+      "--sf-preview-animation-delay": "40ms",
+      "--sf-preview-animation-duration": "260ms",
+      "--sf-preview-animation-easing": "ease-in-out",
+    });
+  });
+
   test("11.T10 renders a restrained Lower Third from resolved Segment and Episode content", () => {
     render(
       <ComponentPreview

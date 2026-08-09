@@ -5,9 +5,9 @@
 **Document status:** Implementation-oriented first pass  
 **Primary audience:** Codex coding agents, software engineers, product designers  
 **Companion documents:**
-- Showflow Architecture PRD v1.3
-- Showflow MVP UX Specification v1.0
-- Showflow Technical Specification v1.0
+- Showflow Architecture PRD v1.4
+- Showflow MVP UX Specification v1.1
+- Showflow Technical Specification v1.1
 
 **Primary platform:** Desktop  
 **Primary environment:** macOS on Apple Silicon  

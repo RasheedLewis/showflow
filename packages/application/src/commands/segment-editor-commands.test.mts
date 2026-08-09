@@ -11,6 +11,9 @@ import {
   type ShowId,
   type Layout,
   type LayoutId,
+  type Resource,
+  type ResourceId,
+  type Show,
   type ShowSegment,
   type ShowSegmentId,
 } from "@showflow/domain";
@@ -28,7 +31,9 @@ import type {
   SegmentDataFieldUsageRepository,
   SegmentFieldBindingUsage,
   LayoutRepository,
+  ResourceRepository,
   ShowSegmentRepository,
+  ShowRepository,
 } from "../repositories/repositories.mjs";
 
 const timestamp = parseUtcTimestamp("2026-08-07T12:00:00.000Z");
@@ -189,20 +194,117 @@ describe("Segment editor commands", () => {
     ).rejects.toThrow("zero or a positive");
   });
 
-  it("persists the limited Enter and Exit action APIs", async () => {
-    await new UpdateSegmentLifecycleActionsCommand(
-      repository,
+  it("persists the limited Enter and Exit action APIs within the Show boundary", async () => {
+    const studioId = entityId<"studio">(30);
+    const show = {
+      createdAt: timestamp,
+      id: repository.segment.showId,
+      name: "Show",
+      studioId,
+      styleDefaults: {},
+      updatedAt: timestamp,
+    } satisfies Show;
+    const layout = {
+      aspectRatio: "16:9",
+      canvas: { height: 1080, width: 1920 },
+      componentPlacements: [],
+      createdAt: timestamp,
+      id: entityId<"layout">(31),
+      name: "Host",
+      showId: show.id,
+      slots: [],
+      updatedAt: timestamp,
+    } satisfies Layout;
+    const resource = {
+      availability: "available",
+      category: "audio",
+      createdAt: timestamp,
+      displayName: "Intro sting",
+      id: entityId<"resource">(32),
+      mimeType: "audio/mpeg",
+      owner: { scope: "show", showId: show.id },
+      updatedAt: timestamp,
+    } satisfies Resource;
+    const layouts = new Map<LayoutId, Layout>([[layout.id, layout]]);
+    const resources = new Map<ResourceId, Resource>([[resource.id, resource]]);
+    const layoutRepository = {
+      getById: async (id: LayoutId) => layouts.get(id) ?? null,
+      listByShowId: async () => [...layouts.values()],
+      save: async (value: Layout) => {
+        layouts.set(value.id, value);
+      },
+    } satisfies LayoutRepository;
+    const resourceRepository = {
+      delete: async (id: ResourceId) => {
+        resources.delete(id);
+      },
+      getById: async (id: ResourceId) => resources.get(id) ?? null,
+      listByOwner: async () => [...resources.values()],
+      listUsage: async () => [],
+      save: async (value: Resource) => {
+        resources.set(value.id, value);
+      },
+    } satisfies ResourceRepository;
+    const showRepository = {
+      getById: async () => show,
+      listByStudioId: async () => [show],
+      save: async () => undefined,
+    } satisfies ShowRepository;
+    const command = new UpdateSegmentLifecycleActionsCommand(
+      {
+        layouts: layoutRepository,
+        resources: resourceRepository,
+        segments: repository,
+        shows: showRepository,
+      },
       dependencies,
-    ).execute({
+    );
+    await command.execute({
       ...scope(),
-      actions: [{ kind: "waitForAnimationCompletion" }],
+      actions: [
+        { kind: "activateLayout", layoutId: layout.id },
+        { kind: "waitForAnimationCompletion" },
+        { kind: "startMedia", resourceId: resource.id },
+      ],
       phase: "enter",
     });
     expect(repository.segment.lifecycle.enter).toEqual([
+      { kind: "activateLayout", layoutId: layout.id },
       { kind: "waitForAnimationCompletion" },
+      { kind: "startMedia", resourceId: resource.id },
     ]);
     expect(repository.segment.lifecycle.prepare).toEqual([]);
     expect(repository.segment.lifecycle.cleanup).toEqual([]);
+
+    const foreignShowId = entityId<"show">(33);
+    const foreignResource = {
+      ...resource,
+      id: entityId<"resource">(34),
+      owner: { scope: "show", showId: foreignShowId },
+    } satisfies Resource;
+    resources.set(foreignResource.id, foreignResource);
+    await expect(
+      command.execute({
+        ...scope(),
+        actions: [{ kind: "startMedia", resourceId: foreignResource.id }],
+        phase: "exit",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+    const foreignLayout = {
+      ...layout,
+      id: entityId<"layout">(35),
+      showId: foreignShowId,
+    } satisfies Layout;
+    layouts.set(foreignLayout.id, foreignLayout);
+    await expect(
+      command.execute({
+        ...scope(),
+        actions: [{ kind: "activateLayout", layoutId: foreignLayout.id }],
+        phase: "exit",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(repository.segment.lifecycle.exit).toEqual([]);
   });
 
   it("blocks deletion when Episode content uses the field", async () => {

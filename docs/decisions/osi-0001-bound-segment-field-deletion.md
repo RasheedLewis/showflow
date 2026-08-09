@@ -5,7 +5,7 @@
 - **Date raised:** 2026-08-08
 - **Owner:** Product
 - **Sprint / Subtask:** Sprint 11, Subtask 11.4 and Test 11.T14
-- **Controlling specification:** Implementation Plan v1.0, D11.4 — Deleting a Bound Segment Field
+- **Controlling specification:** Implementation Plan v1.1, D11.4 — Deleting a Bound Segment Field
 - **Related PDR / ADR:** None
 
 > [!CAUTION]
@@ -20,7 +20,7 @@ proceed and leave explicit validation errors at every affected placement?
 
 ## Specification evidence
 
-- **Source:** Implementation Plan v1.0, Sprint 11 D11.4 and Decision Register P-03
+- **Source:** Implementation Plan v1.1, Sprint 11 D11.4 and Decision Register P-03
 - **Label or conflicting text:** `[DECISION REQUIRED]`; the plan recommends blocking and listing usages as temporary MVP behavior.
 - **Authority analysis:** The implementation plan identifies the unresolved product behavior and supplies only a temporary recommendation. No higher-authority specification resolves destructive bound-field deletion.
 
@@ -32,7 +32,7 @@ proceed and leave explicit validation errors at every affected placement?
 
 ## Safe interim handling
 
-- **Documented MVP default:** Block deletion and list usages, from Implementation Plan v1.0 D11.4 and P-03.
+- **Documented MVP default:** Block deletion and list usages, from Implementation Plan v1.1 D11.4 and P-03.
 - **Temporary treatment:** The application command rejects deletion with a conflict and names each affected Layout, Component, and property.
 - **Replaceable boundary:** Usage discovery is isolated behind `SegmentDataFieldUsageRepository`; the destructive policy remains in `DeleteSegmentDataFieldCommand`.
 - **Assumptions explicitly prohibited:** Do not cascade-delete bindings, silently orphan bindings, or treat the temporary block as permanent product policy.

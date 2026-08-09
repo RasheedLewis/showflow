@@ -167,6 +167,12 @@ export const handleUpdateComponentPlacementRequest = async (
       fixedProperties: parsed.data.fixedProperties,
       bindings,
       visibleByDefault: parsed.data.visibleByDefault,
+      ...(parsed.data.enterAnimationOverride === undefined
+        ? {}
+        : { enterAnimationOverride: parsed.data.enterAnimationOverride }),
+      ...(parsed.data.exitAnimationOverride === undefined
+        ? {}
+        : { exitAnimationOverride: parsed.data.exitAnimationOverride }),
     });
     return LayoutResultSchema.parse({ ok: true, data: layoutDto(layout) });
   } catch (error) {

@@ -14,9 +14,9 @@ future destinations introduced by Sprints 10–14
 
 **Controlling documents:**
 
-- Showflow Architecture PRD v1.3
-- Showflow MVP UX Specification v1.0
-- Showflow Technical Specification v1.0
+- Showflow Architecture PRD v1.4
+- Showflow MVP UX Specification v1.1
+- Showflow Technical Specification v1.1
 - Showflow Design System Specification v1.0
 
 ---

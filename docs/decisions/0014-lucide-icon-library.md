@@ -80,5 +80,5 @@ product icons require migration.
 ## References
 
 - [Design System Specification §10, Iconography](../design-system-spec-v1.0.md#10-iconography)
-- [Technical Specification §4.10, UI Primitives](../technical-spec-v1.0.md#410-ui-primitives)
-- [Implementation Plan D3.1](../implementation-plan-v1.0.md#d31--exact-icon-library-decision-required-before-33-finalization)
+- [Technical Specification §4.10, UI Primitives](../technical-spec-v1.1.md#410-ui-primitives)
+- [Implementation Plan D3.1](../implementation-plan-v1.1.md#d31--exact-icon-library-decision-required-before-33-finalization)

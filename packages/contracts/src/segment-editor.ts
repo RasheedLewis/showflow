@@ -12,6 +12,8 @@ export const SEGMENTS_UPDATE_FIELD_CHANNEL =
   "showflow:v1:segments:update-field" as const;
 export const SEGMENTS_UPDATE_LAYOUTS_CHANNEL =
   "showflow:v1:segments:update-layouts" as const;
+export const SEGMENTS_UPDATE_ACTIONS_CHANNEL =
+  "showflow:v1:segments:update-actions" as const;
 export const SEGMENTS_DELETE_FIELD_CHANNEL =
   "showflow:v1:segments:delete-field" as const;
 export const SEGMENTS_RESTORE_FIELD_CHANNEL =
@@ -54,7 +56,7 @@ export const SegmentDataFieldDtoSchema = z
   })
   .strict();
 
-const LifecycleActionSchema = z.discriminatedUnion("kind", [
+export const LifecycleActionDtoSchema = z.discriminatedUnion("kind", [
   z
     .object({
       kind: z.literal("preloadResource"),
@@ -98,10 +100,10 @@ const SegmentLifecycleDtoSchema = z
         hostCueIds: z.array(z.string().uuid()),
       })
       .strict(),
-    cleanup: z.array(LifecycleActionSchema),
-    enter: z.array(LifecycleActionSchema),
-    exit: z.array(LifecycleActionSchema),
-    prepare: z.array(LifecycleActionSchema),
+    cleanup: z.array(LifecycleActionDtoSchema),
+    enter: z.array(LifecycleActionDtoSchema),
+    exit: z.array(LifecycleActionDtoSchema),
+    prepare: z.array(LifecycleActionDtoSchema),
   })
   .strict();
 
@@ -187,6 +189,11 @@ export const UpdateSegmentLayoutsRequestSchema =
     defaultLayoutId: z.string().uuid().nullable(),
     availableLayoutIds: z.array(z.string().uuid()),
   }).strict();
+export const UpdateSegmentActionsRequestSchema =
+  SegmentMutationScopeSchema.extend({
+    actions: z.array(LifecycleActionDtoSchema),
+    phase: z.enum(["enter", "exit"]),
+  }).strict();
 
 export const ShowSegmentEditorResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), data: ShowSegmentEditorDtoSchema }).strict(),
@@ -197,6 +204,7 @@ export type SegmentDataFieldTypeDto = z.infer<
   typeof SegmentDataFieldTypeSchema
 >;
 export type SegmentDataFieldDto = z.infer<typeof SegmentDataFieldDtoSchema>;
+export type LifecycleActionDto = z.infer<typeof LifecycleActionDtoSchema>;
 export type ShowSegmentEditorDto = z.infer<typeof ShowSegmentEditorDtoSchema>;
 export type ShowSegmentEditorResult = z.infer<
   typeof ShowSegmentEditorResultSchema
@@ -224,4 +232,7 @@ export type ReorderSegmentFieldsRequest = z.infer<
 >;
 export type UpdateSegmentLayoutsRequest = z.infer<
   typeof UpdateSegmentLayoutsRequestSchema
+>;
+export type UpdateSegmentActionsRequest = z.infer<
+  typeof UpdateSegmentActionsRequestSchema
 >;

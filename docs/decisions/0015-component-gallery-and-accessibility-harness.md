@@ -93,8 +93,8 @@ path.
 
 ## References
 
-- [Technical Specification §4.4, UI Framework](../technical-spec-v1.0.md#44-ui-framework)
-- [Technical Specification §14.1, Route Structure](../technical-spec-v1.0.md#141-route-structure)
-- [Technical Specification §27, Accessibility Engineering](../technical-spec-v1.0.md#27-accessibility-engineering)
-- [Implementation Plan 3.8](../implementation-plan-v1.0.md#38--add-component-development-gallery-required)
+- [Technical Specification §4.4, UI Framework](../technical-spec-v1.1.md#44-ui-framework)
+- [Technical Specification §14.1, Route Structure](../technical-spec-v1.1.md#141-route-structure)
+- [Technical Specification §27, Accessibility Engineering](../technical-spec-v1.1.md#27-accessibility-engineering)
+- [Implementation Plan 3.8](../implementation-plan-v1.1.md#38--add-component-development-gallery-required)
 - [ADR 0007, Test Harnesses](0007-test-harnesses.md)

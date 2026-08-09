@@ -19,6 +19,10 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { getDesignShowLayoutRoute } from "../../app-routes.mts";
+import {
+  componentQueryKey,
+  loadComponents,
+} from "../components/component-queries";
 import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
 import {
   layoutCatalogQueryKey,
@@ -32,10 +36,13 @@ import {
   resolveShowSegmentOrigin,
 } from "../navigation/navigation-origin.mts";
 import { usePersistedNavigation } from "../navigation/usePersistedNavigation";
+import { loadResources, resourceQueryKey } from "../resources/resource-queries";
 import { loadShowDesign, showDesignQueryKey } from "../shows/show-queries";
 import { StudioSwitcher } from "../studios/StudioSwitcher";
 import { loadStudio, studioQueryKey } from "../studios/studio-queries";
 import { SegmentDataFieldEditor } from "./SegmentDataFieldEditor";
+import { LifecycleActionEditor } from "./LifecycleActionEditor";
+import { SegmentPreview } from "./SegmentPreview";
 import {
   loadSegmentEditor,
   segmentEditorQueryKey,
@@ -47,6 +54,11 @@ import {
 } from "./useSegmentEditorMutations";
 
 type LifecyclePhase = "prepare" | "enter" | "active" | "exit" | "cleanup";
+
+const requestsPreview = (state: unknown): boolean =>
+  typeof state === "object" &&
+  state !== null &&
+  Reflect.get(state, "previewOnOpen") === true;
 
 const PHASE_LABELS: Readonly<Record<LifecyclePhase, string>> = {
   prepare: "Prepare",
@@ -249,8 +261,8 @@ const PhaseCanvas = ({
                   (actionCount === 1 ? "action." : "actions.")}
             </strong>
             <span>
-              The limited production action builder arrives with lifecycle
-              preview in Sprint 12.
+              Use the inspector to keep this ordered production sequence short
+              and clear.
             </span>
           </div>
         )}
@@ -270,6 +282,12 @@ export const ShowSegmentEditorDestination = () => {
   const [phase, setPhase] = useState<LifecyclePhase>("active");
   const [selectionError, setSelectionError] = useState<string>();
   const [layoutDialogOpen, setLayoutDialogOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(() =>
+    requestsPreview(location.state),
+  );
+  const [previewStartPhase, setPreviewStartPhase] = useState<
+    "enter" | "exit"
+  >();
   const [navigationPending, setNavigationPending] = useState(false);
   const routeIsComplete =
     studioId !== undefined && showId !== undefined && segmentId !== undefined;
@@ -303,6 +321,27 @@ export const ShowSegmentEditorDestination = () => {
     enabled: studioId !== undefined && showId !== undefined,
     queryFn: () => loadLayoutCatalog(studioId ?? "", showId ?? ""),
     queryKey: layoutCatalogQueryKey(studioId ?? "", showId ?? ""),
+    retry: false,
+  });
+  const componentsQuery = useQuery({
+    enabled: studioId !== undefined && showId !== undefined,
+    queryFn: () => loadComponents(studioId ?? "", showId ?? ""),
+    queryKey: componentQueryKey(studioId ?? "", showId ?? ""),
+    retry: false,
+  });
+  const resourcesQuery = useQuery({
+    enabled: studioId !== undefined && showId !== undefined,
+    queryFn: () =>
+      loadResources({
+        scope: "show",
+        studioId: studioId ?? "",
+        showId: showId ?? "",
+      }),
+    queryKey: resourceQueryKey({
+      scope: "show",
+      studioId: studioId ?? "",
+      showId: showId ?? "",
+    }),
     retry: false,
   });
   const editor = editorQuery.data;
@@ -340,14 +379,26 @@ export const ShowSegmentEditorDestination = () => {
     }
   };
   const loading =
-    studioQuery.isPending || designQuery.isPending || editorQuery.isPending;
+    studioQuery.isPending ||
+    designQuery.isPending ||
+    editorQuery.isPending ||
+    (previewOpen &&
+      (layoutsQuery.isPending ||
+        componentsQuery.isPending ||
+        resourcesQuery.isPending));
   const error =
     selectionError ??
     navigationError ??
     mutations.error ??
-    (editorQuery.error instanceof Error
-      ? editorQuery.error.message
-      : undefined);
+    (previewOpen && componentsQuery.error instanceof Error
+      ? componentsQuery.error.message
+      : previewOpen && layoutsQuery.error instanceof Error
+        ? layoutsQuery.error.message
+        : previewOpen && resourcesQuery.error instanceof Error
+          ? resourcesQuery.error.message
+          : editorQuery.error instanceof Error
+            ? editorQuery.error.message
+            : undefined);
 
   const inspector =
     editor === undefined || details.draft === undefined ? null : (
@@ -473,17 +524,42 @@ export const ShowSegmentEditorDestination = () => {
                   />
                 ))}
               </fieldset>
+              <Button
+                id={`navigation-origin-layout-${editor.id}`}
+                onClick={() => setLayoutDialogOpen(true)}
+                variant="ghost"
+              >
+                Create a Layout
+              </Button>
               <p className={styles.dependencyCopy}>
                 Host Cues arrive in Sprint 13.
               </p>
             </InspectorSection>
           </>
+        ) : phase === "enter" || phase === "exit" ? (
+          <InspectorSection
+            description="Keep the sequence short, ordered, and production-focused."
+            heading={PHASE_LABELS[phase] + " actions"}
+          >
+            <LifecycleActionEditor
+              actions={editor.lifecycle[phase]}
+              disabled={mutations.isSaving}
+              layouts={(layoutsQuery.data ?? []).map(({ layout }) => layout)}
+              onChange={(actions) => mutations.updateActions(phase, actions)}
+              onPreview={() => {
+                setPreviewStartPhase(phase);
+                setPreviewOpen(true);
+              }}
+              phase={phase}
+              resources={resourcesQuery.data ?? []}
+            />
+          </InspectorSection>
         ) : (
           <InspectorSection
             description={
               phase === "prepare" || phase === "cleanup"
                 ? "Showflow infers this technical work from the Segment configuration."
-                : "Ordered production actions are stored now; editing arrives with lifecycle preview."
+                : "Ordered production actions are stored with this reusable Segment."
             }
             heading={PHASE_LABELS[phase] + " summary"}
           >
@@ -492,14 +568,7 @@ export const ShowSegmentEditorDestination = () => {
                 ? "Showflow will validate content and prepare referenced Resources and Layouts."
                 : phase === "cleanup"
                   ? "Showflow will clear temporary state and stop temporary media."
-                  : String(editor.lifecycle[phase].length) +
-                    " saved " +
-                    PHASE_LABELS[phase] +
-                    " " +
-                    (editor.lifecycle[phase].length === 1
-                      ? "action. "
-                      : "actions. ") +
-                    "The action builder arrives in Sprint 12."}
+                  : "Showflow keeps this inferred lifecycle work read-only."}
             </p>
           </InspectorSection>
         )}
@@ -509,27 +578,29 @@ export const ShowSegmentEditorDestination = () => {
   return (
     <ApplicationShell
       historyActions={
-        <>
-          <IconButton
-            disabled={!mutations.canUndo || mutations.isSaving}
-            icon="undo"
-            label="Undo Segment change"
-            onClick={() => run(mutations.undo())}
-            tooltip="Undo"
-          />
-          <IconButton
-            disabled={!mutations.canRedo || mutations.isSaving}
-            icon="redo"
-            label="Redo Segment change"
-            onClick={() => run(mutations.redo())}
-            tooltip="Redo"
-          />
-        </>
+        previewOpen ? undefined : (
+          <>
+            <IconButton
+              disabled={!mutations.canUndo || mutations.isSaving}
+              icon="undo"
+              label="Undo Segment change"
+              onClick={() => run(mutations.undo())}
+              tooltip="Undo"
+            />
+            <IconButton
+              disabled={!mutations.canRedo || mutations.isSaving}
+              icon="redo"
+              label="Redo Segment change"
+              onClick={() => run(mutations.redo())}
+              tooltip="Redo"
+            />
+          </>
+        )
       }
-      inspector={inspector}
+      inspector={previewOpen ? null : inspector}
       inspectorLabel="Segment inspector"
       notes={
-        details.draft === undefined ? null : (
+        previewOpen || details.draft === undefined ? null : (
           <NotesPanel
             className={styles.notesPanel}
             heading="Notes template"
@@ -559,14 +630,15 @@ export const ShowSegmentEditorDestination = () => {
         )
       }
       primaryAction={
-        phase === "active" && editor !== undefined ? (
+        editor !== undefined && !previewOpen ? (
           <Button
-            id={`navigation-origin-layout-${editor.id}`}
-            leadingIcon="plus"
-            onClick={() => setLayoutDialogOpen(true)}
+            onClick={() => {
+              setPreviewStartPhase(undefined);
+              setPreviewOpen(true);
+            }}
             variant="primary"
           >
-            Create a Layout
+            Preview Segment
           </Button>
         ) : undefined
       }
@@ -602,6 +674,22 @@ export const ShowSegmentEditorDestination = () => {
             <h2>Showflow could not open this Segment</h2>
             <p>Return to Design Show and choose an available Segment.</p>
           </section>
+        ) : previewOpen && designQuery.data !== undefined ? (
+          <SegmentPreview
+            components={componentsQuery.data ?? []}
+            editor={editor}
+            layouts={(layoutsQuery.data ?? []).map(({ layout }) => layout)}
+            onClose={() => {
+              setPreviewOpen(false);
+              setPreviewStartPhase(undefined);
+            }}
+            resources={resourcesQuery.data ?? []}
+            showName={designQuery.data.show.name}
+            {...(previewStartPhase === undefined
+              ? {}
+              : { startAt: previewStartPhase })}
+            studioId={designQuery.data.show.studioId}
+          />
         ) : (
           <>
             <header className={styles.editorHeader}>

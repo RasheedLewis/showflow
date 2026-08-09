@@ -29,7 +29,9 @@ import { normalizeShowSegmentName } from "./catalog-commands.mjs";
 import { ApplicationError } from "../errors/application-error.mjs";
 import type {
   LayoutRepository,
+  ResourceRepository,
   SegmentDataFieldUsageRepository,
+  ShowRepository,
   ShowSegmentRepository,
 } from "../repositories/repositories.mjs";
 
@@ -343,14 +345,86 @@ export interface UpdateSegmentLifecycleActionsCommandInput extends SegmentMutati
 
 export class UpdateSegmentLifecycleActionsCommand {
   constructor(
-    readonly repository: SegmentEditorRepository,
+    readonly repositories: {
+      readonly layouts: LayoutRepository;
+      readonly resources: ResourceRepository;
+      readonly segments: SegmentEditorRepository;
+      readonly shows: ShowRepository;
+    },
     readonly dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
   ) {}
 
   async execute(
     input: UpdateSegmentLifecycleActionsCommandInput,
   ): Promise<ShowSegment> {
-    const current = await requireCurrentSegment(this.repository, input);
+    const current = await requireCurrentSegment(
+      this.repositories.segments,
+      input,
+    );
+    const layoutIds = [
+      ...new Set(
+        input.actions.flatMap((action) =>
+          action.kind === "activateLayout" ||
+          action.kind === "setActiveDefaults"
+            ? [action.layoutId]
+            : [],
+        ),
+      ),
+    ];
+    const layouts = await Promise.all(
+      layoutIds.map(async (id) =>
+        requireEntity(await this.repositories.layouts.getById(id), "Layout"),
+      ),
+    );
+    if (layouts.some(({ showId }) => showId !== current.showId)) {
+      throw new ApplicationError(
+        "NOT_FOUND",
+        "One lifecycle action uses a Layout that is not available in this Show.",
+      );
+    }
+    const resourceIds = [
+      ...new Set(
+        input.actions.flatMap((action) => {
+          switch (action.kind) {
+            case "preloadResource":
+            case "playSound":
+            case "startMedia":
+            case "stopMedia":
+              return [action.resourceId];
+            case "waitForMediaCompletion":
+              return action.resourceId === undefined ? [] : [action.resourceId];
+            default:
+              return [];
+          }
+        }),
+      ),
+    ];
+    const show = requireEntity(
+      await this.repositories.shows.getById(current.showId),
+      "Show",
+    );
+    const resources = await Promise.all(
+      resourceIds.map(async (id) =>
+        requireEntity(
+          await this.repositories.resources.getById(id),
+          "Resource",
+        ),
+      ),
+    );
+    if (
+      resources.some(({ owner }) =>
+        owner.scope === "show"
+          ? owner.showId !== current.showId
+          : owner.scope === "studio"
+            ? owner.studioId !== show.studioId
+            : true,
+      )
+    ) {
+      throw new ApplicationError(
+        "NOT_FOUND",
+        "One lifecycle action uses a Resource that is not available to this Show.",
+      );
+    }
     const updatedAt = currentUtcTimestamp(this.dependencies.clock);
     const lifecycle = defineSegmentLifecycle({
       ...current.lifecycle,
@@ -358,7 +432,7 @@ export class UpdateSegmentLifecycleActionsCommand {
       updatedAt,
     });
     return saveValidSegment(
-      this.repository,
+      this.repositories.segments,
       touchEntity({ ...current, lifecycle }, this.dependencies),
     );
   }

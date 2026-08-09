@@ -120,6 +120,8 @@ describe("PlacementInspector", () => {
         camera: { kind: "resource", resourceId: secondCameraId },
       },
       true,
+      null,
+      null,
     );
   });
 
@@ -151,6 +153,58 @@ describe("PlacementInspector", () => {
     expect(onSave).toHaveBeenCalledWith(
       { stylePreset: { kind: "literal", value: "highContrast" } },
       true,
+      null,
+      null,
+    );
+  });
+
+  test("12.7 supports Component defaults and a complete Placement animation override", () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const animatedComponent = {
+      ...component("lowerThird", []),
+      defaultEnterAnimation: {
+        preset: "slideUp" as const,
+        durationMs: 300,
+        delayMs: 0,
+        easing: "cubic-bezier(0, 0, 0.2, 1)",
+      },
+    };
+    render(
+      <PlacementInspector
+        component={animatedComponent}
+        onRemove={vi.fn().mockResolvedValue(undefined)}
+        onSave={onSave}
+        placement={placement}
+        resourceContext={{ scope: "show", studioId, showId }}
+        resources={[]}
+      />,
+    );
+
+    expect(screen.getByText("Slide Up · 300 ms")).toBeVisible();
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Enter animation source" }),
+      { target: { value: "override" } },
+    );
+
+    expect(onSave).toHaveBeenLastCalledWith(
+      {},
+      true,
+      animatedComponent.defaultEnterAnimation,
+      null,
+    );
+    expect(screen.getByRole("combobox", { name: "Enter preset" })).toHaveValue(
+      "slideUp",
+    );
+    expect(
+      screen.getByRole("spinbutton", {
+        name: "Enter duration in milliseconds",
+      }),
+    ).toHaveValue(300);
+    expect(
+      screen.getByRole("spinbutton", { name: "Enter delay in milliseconds" }),
+    ).toHaveValue(0);
+    expect(screen.getByRole("combobox", { name: "Enter easing" })).toHaveValue(
+      "cubic-bezier(0, 0, 0.2, 1)",
     );
   });
 });

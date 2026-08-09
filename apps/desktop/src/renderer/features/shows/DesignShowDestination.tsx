@@ -89,6 +89,7 @@ export const DesignShowDestination = () => {
   const openSegment = (
     targetSegmentId: string,
     focusId = `navigation-origin-catalog-${targetSegmentId}`,
+    previewOnOpen = false,
   ): void => {
     if (design === undefined) return;
     navigate(
@@ -108,6 +109,7 @@ export const DesignShowDestination = () => {
               activeTab,
             ),
           },
+          ...(previewOnOpen ? { previewOnOpen: true } : {}),
         },
       },
     );
@@ -246,7 +248,8 @@ export const DesignShowDestination = () => {
                     <div className={styles.tabContent}>
                       <div className={styles.toolbar}>
                         <p className={styles.metadata}>
-                          Arrange the default Storyboard from left to right.
+                          Visual-only preview. Arrange the default Storyboard
+                          from left to right, or preview an individual Segment.
                         </p>
                       </div>
                       <BlueprintStoryboard
@@ -254,6 +257,9 @@ export const DesignShowDestination = () => {
                           run(mutations.duplicatePlacement(placementId))
                         }
                         onOpen={openSegment}
+                        onPreview={(targetSegmentId, focusId) =>
+                          openSegment(targetSegmentId, focusId, true)
+                        }
                         onRemove={(placementId) =>
                           run(mutations.removePlacement(placementId))
                         }

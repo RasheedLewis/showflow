@@ -143,6 +143,8 @@ export const UpdateComponentPlacementRequestSchema =
     fixedProperties: z.record(z.string(), z.json()),
     bindings: z.record(z.string(), BindingDtoSchema),
     visibleByDefault: z.boolean(),
+    enterAnimationOverride: AnimationConfigDtoSchema.nullable().optional(),
+    exitAnimationOverride: AnimationConfigDtoSchema.nullable().optional(),
   }).strict();
 export const RemoveComponentPlacementRequestSchema =
   PlacementMutationSchema.extend({

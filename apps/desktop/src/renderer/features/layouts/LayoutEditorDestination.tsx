@@ -74,6 +74,8 @@ type PlacementState = {
   readonly bindings: Readonly<Record<string, BindingDto>>;
   readonly componentType: BuiltInComponentType;
   readonly fixedProperties: ComponentPlacementDto["fixedProperties"];
+  readonly enterAnimationOverride: ComponentPlacementDto["enterAnimationOverride"];
+  readonly exitAnimationOverride: ComponentPlacementDto["exitAnimationOverride"];
   readonly visibleByDefault: boolean;
 };
 type HistoryEntry =
@@ -146,6 +148,8 @@ const placementState = (
         bindings: { ...placement.bindings },
         componentType: component.type,
         fixedProperties: { ...placement.fixedProperties },
+        enterAnimationOverride: placement.enterAnimationOverride,
+        exitAnimationOverride: placement.exitAnimationOverride,
         visibleByDefault: placement.visibleByDefault,
       };
 
@@ -421,6 +425,8 @@ export const LayoutEditorDestination = () => {
         bindings: { ...assignedPlacement.bindings },
         componentType: type,
         fixedProperties: { ...assignedPlacement.fixedProperties },
+        enterAnimationOverride: assignedPlacement.enterAnimationOverride,
+        exitAnimationOverride: assignedPlacement.exitAnimationOverride,
         visibleByDefault: assignedPlacement.visibleByDefault,
       },
     });
@@ -434,6 +440,8 @@ export const LayoutEditorDestination = () => {
   const updatePlacement = async (
     bindings: Readonly<Record<string, BindingDto>>,
     visibleByDefault: boolean,
+    enterAnimationOverride: ComponentPlacementDto["enterAnimationOverride"],
+    exitAnimationOverride: ComponentPlacementDto["exitAnimationOverride"],
   ): Promise<void> => {
     if (selectedPlacement === undefined || layout === undefined) return;
     const before = placementState(selectedPlacement, selectedComponent);
@@ -448,6 +456,8 @@ export const LayoutEditorDestination = () => {
       bindings,
       fixedProperties: selectedPlacement.fixedProperties,
       visibleByDefault,
+      enterAnimationOverride,
+      exitAnimationOverride,
     });
     if (!result.ok) {
       setError(result.error.message);
@@ -461,6 +471,8 @@ export const LayoutEditorDestination = () => {
       after: {
         ...before,
         bindings: { ...bindings },
+        enterAnimationOverride,
+        exitAnimationOverride,
         visibleByDefault,
       },
     });
@@ -558,6 +570,8 @@ export const LayoutEditorDestination = () => {
       bindings: target.bindings,
       fixedProperties: target.fixedProperties,
       visibleByDefault: target.visibleByDefault,
+      enterAnimationOverride: target.enterAnimationOverride,
+      exitAnimationOverride: target.exitAnimationOverride,
     });
     if (!updated.ok) {
       await cacheLayout(assigned.data);

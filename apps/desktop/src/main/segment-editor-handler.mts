@@ -7,6 +7,7 @@ import {
   type RestoreSegmentDataFieldCommand,
   type UpdateSegmentDataFieldCommand,
   type UpdateShowSegmentDetailsCommand,
+  type UpdateSegmentLifecycleActionsCommand,
   type UpdateSegmentActiveLayoutsCommand,
 } from "@showflow/application";
 import {
@@ -17,15 +18,18 @@ import {
   RestoreSegmentFieldRequestSchema,
   UpdateSegmentDetailsRequestSchema,
   UpdateSegmentFieldRequestSchema,
+  UpdateSegmentActionsRequestSchema,
   UpdateSegmentLayoutsRequestSchema,
   type ApiErrorCode,
   type SegmentDataFieldDto,
+  type LifecycleActionDto,
   type ShowSegmentEditorDto,
   type ShowSegmentEditorResult,
 } from "@showflow/contracts";
 import {
   parseEntityId,
   parseUtcTimestamp,
+  type LifecycleAction,
   type SegmentDataField,
 } from "@showflow/domain";
 
@@ -37,6 +41,7 @@ export interface SegmentEditorOperations {
   readonly restoreField: Pick<RestoreSegmentDataFieldCommand, "execute">;
   readonly updateDetails: Pick<UpdateShowSegmentDetailsCommand, "execute">;
   readonly updateField: Pick<UpdateSegmentDataFieldCommand, "execute">;
+  readonly updateActions: Pick<UpdateSegmentLifecycleActionsCommand, "execute">;
   readonly updateLayouts: Pick<UpdateSegmentActiveLayoutsCommand, "execute">;
 }
 
@@ -410,6 +415,67 @@ export const handleUpdateSegmentLayoutsRequest = async (
               valid.data.defaultLayoutId,
             ),
           }),
+    });
+    return finishMutation(valid.data, operations.get);
+  } catch (error) {
+    return mutationFailure(error);
+  }
+};
+
+const domainLifecycleAction = (action: LifecycleActionDto): LifecycleAction => {
+  switch (action.kind) {
+    case "preloadResource":
+    case "playSound":
+    case "startMedia":
+    case "stopMedia":
+      return {
+        kind: action.kind,
+        resourceId: parseEntityId<"resource">(action.resourceId),
+      };
+    case "activateLayout":
+      return {
+        kind: action.kind,
+        layoutId: parseEntityId<"layout">(action.layoutId),
+      };
+    case "waitForMediaCompletion":
+      return action.resourceId === undefined
+        ? { kind: action.kind }
+        : {
+            kind: action.kind,
+            resourceId: parseEntityId<"resource">(action.resourceId),
+          };
+    case "setActiveDefaults":
+      return {
+        kind: action.kind,
+        layoutId: parseEntityId<"layout">(action.layoutId),
+      };
+    case "waitForAnimationCompletion":
+    case "clearTemporaryState":
+      return { kind: action.kind };
+  }
+};
+
+export const handleUpdateSegmentActionsRequest = async (
+  request: unknown,
+  senderIsTrusted: boolean,
+  operations: SegmentEditorOperations,
+): Promise<ShowSegmentEditorResult> => {
+  if (!senderIsTrusted)
+    return errorResult(
+      "IPC_UNTRUSTED_SENDER",
+      "The lifecycle action request did not come from Showflow.",
+    );
+  const valid = UpdateSegmentActionsRequestSchema.safeParse(request);
+  if (!valid.success)
+    return errorResult(
+      "IPC_INVALID_REQUEST",
+      "Review the ordered production actions and try again.",
+    );
+  try {
+    await operations.updateActions.execute({
+      ...scope(valid.data),
+      actions: valid.data.actions.map(domainLifecycleAction),
+      phase: valid.data.phase,
     });
     return finishMutation(valid.data, operations.get);
   } catch (error) {

@@ -98,7 +98,9 @@ remains reviewable. Template files are not records and do not receive numbers.
 
 ## Product Decision Request register
 
-No product decision requests are currently recorded.
+|                                          PDR | Status  | Decision                                                       |
+| -------------------------------------------: | ------- | -------------------------------------------------------------- |
+| [0001](pdr-0001-lifecycle-duration-holds.md) | Decided | Add explicit duration holds to Enter and Exit before Sprint 13 |
 
 ## Open Specification Issue register
 

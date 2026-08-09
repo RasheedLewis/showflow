@@ -205,6 +205,7 @@ const createValidTransports = () => ({
   updateEpisodeSegment: async () => validEpisodeResult,
   updateResourceMetadata: async () => validResourceListResult,
   updateSegmentDetails: async () => validSegmentEditorResult,
+  updateSegmentActions: async () => validSegmentEditorResult,
   updateSegmentField: async () => validSegmentEditorResult,
   updateSegmentLayouts: async () => validSegmentEditorResult,
 });

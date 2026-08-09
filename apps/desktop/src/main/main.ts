@@ -37,6 +37,7 @@ import {
   RestoreSegmentDataFieldCommand,
   UpdateSegmentDataFieldCommand,
   UpdateShowSegmentDetailsCommand,
+  UpdateSegmentLifecycleActionsCommand,
   UpdateSegmentActiveLayoutsCommand,
   DeleteResourceCommand,
   GetResourceAccessQuery,
@@ -375,6 +376,12 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       restoreField: new RestoreSegmentDataFieldCommand(segmentRepository),
       updateDetails: new UpdateShowSegmentDetailsCommand(segmentRepository),
       updateField: new UpdateSegmentDataFieldCommand(segmentRepository),
+      updateActions: new UpdateSegmentLifecycleActionsCommand({
+        layouts: layoutRepository,
+        resources: resourceRepository,
+        segments: segmentRepository,
+        shows: showRepository,
+      }),
       updateLayouts: new UpdateSegmentActiveLayoutsCommand({
         segments: segmentRepository,
         layouts: layoutRepository,

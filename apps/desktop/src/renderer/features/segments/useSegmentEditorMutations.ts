@@ -1,6 +1,7 @@
 import type {
   SegmentDataFieldDto,
   SegmentDataFieldTypeDto,
+  LifecycleActionDto,
   ShowDesignDto,
   ShowSegmentEditorDto,
   ShowSegmentEditorResult,
@@ -40,6 +41,11 @@ type HistoryInstruction =
       readonly kind: "layouts";
       readonly defaultLayoutId: string | null;
       readonly availableLayoutIds: readonly string[];
+    }
+  | {
+      readonly kind: "actions";
+      readonly actions: readonly LifecycleActionDto[];
+      readonly phase: "enter" | "exit";
     };
 type HistoryCommand = () => Promise<HistoryCommand>;
 type ApplyHistoryInstruction = (
@@ -69,6 +75,10 @@ export interface SegmentEditorMutations {
   readonly saveState: SaveState;
   readonly undo: () => Promise<void>;
   readonly updateDetails: (value: SegmentDetailsDraft) => Promise<void>;
+  readonly updateActions: (
+    phase: "enter" | "exit",
+    actions: readonly LifecycleActionDto[],
+  ) => Promise<void>;
   readonly updateField: (
     fieldId: string,
     value: SegmentFieldDraft,
@@ -316,6 +326,21 @@ export const useSegmentEditorMutations = (
           );
           return inverse;
         }
+        case "actions": {
+          const inverse = {
+            kind: "actions",
+            actions: current.lifecycle[instruction.phase],
+            phase: instruction.phase,
+          } as const;
+          await applyResult((latest, studioId) =>
+            window.showflow.segments.updateActions({
+              ...scope(latest, studioId),
+              actions: [...instruction.actions],
+              phase: instruction.phase,
+            }),
+          );
+          return inverse;
+        }
       }
     },
     [applyResult, findCurrentEntry, scope],
@@ -445,6 +470,18 @@ export const useSegmentEditorMutations = (
     },
     [applyInstruction, findCurrentEntry, record],
   );
+  const updateActions = useCallback(
+    async (
+      phase: "enter" | "exit",
+      actions: readonly LifecycleActionDto[],
+    ): Promise<void> => {
+      const before = findCurrentEntry().editor.lifecycle[phase];
+      if (JSON.stringify(before) === JSON.stringify(actions)) return;
+      await applyInstruction({ kind: "actions", actions, phase });
+      record({ kind: "actions", actions: before, phase });
+    },
+    [applyInstruction, findCurrentEntry, record],
+  );
 
   const runHistory = useCallback(
     async (
@@ -477,6 +514,7 @@ export const useSegmentEditorMutations = (
     saveState: pendingCount > 0 ? "saving" : saveState,
     undo: () => runHistory(undoStack, redoStack),
     updateDetails,
+    updateActions,
     updateField,
     updateLayouts,
   };

@@ -1,4 +1,10 @@
 declare const styles: Readonly<{
+  actionAddButtons: string;
+  actionButtons: string;
+  actionCard: string;
+  actionEditor: string;
+  actionInstruction: string;
+  actionList: string;
   audienceFrame: string;
   canvasStage: string;
   dependencyCopy: string;

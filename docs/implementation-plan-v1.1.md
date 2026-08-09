@@ -1,19 +1,21 @@
 # Showflow
 ## Detailed MVP Implementation Plan
-### Version 1.0 — Gated Sprints for Codex
+### Version 1.1 — Gated Sprints for Codex
 
 **Document status:** Execution plan  
 **Primary audience:** Codex coding agents and supervising engineers  
 **Companion documents:**
-- `docs/architecture-prd-v1.3.md`
-- `docs/ux-spec-v1.0.md`
-- `docs/technical-spec-v1.0.md`
+- `docs/architecture-prd-v1.4.md`
+- `docs/ux-spec-v1.1.md`
+- `docs/technical-spec-v1.1.md`
 - `docs/design-system-spec-v1.0.md`
 
 **Primary development platform:** macOS on Apple Silicon  
 **Desktop targets:** macOS, Windows, and Linux  
 **MVP boundary:** Designing Shows, producing Episodes, previewing Segments, and rehearsing Episodes  
 **Not in MVP:** Live broadcasting, OBS integration, cloud sync, mobile applications, collaboration, advanced media processing
+
+**Revision note:** Version 1.1 inserts Sprint 12A to add explicit lifecycle duration holds and address Segment action-editor and preview UX findings before Host Cues begin in Sprint 13.
 
 ---
 
@@ -146,6 +148,7 @@ A task is done only when:
 | 10 | Layout Catalog and constrained Layout editor | Reusable compositions and Slots |
 | 11 | Components, Placements, and bindings | Rendered production layouts |
 | 12 | Preview runtime and Segment lifecycle | Deterministic Segment execution |
+| 12A | Lifecycle timing and preview UX polish | Exact Enter/Exit holds with clear preview state |
 | 13 | Host Cues | Manual production controls |
 | 14 | Episode rehearsal | End-to-end nonbroadcast show run |
 | 15 | Hardening, accessibility, and performance | Reliable production-grade MVP behavior |
@@ -2271,7 +2274,7 @@ Create data-driven presets:
 - Blank
 - Host
 - Host + Video
-- Fullscreen Video
+- Fullscreen Media
 
 ### 10.4 — Implement Layout Editor Shell `[REQUIRED]`
 
@@ -2876,6 +2879,204 @@ Architecture test confirms no user keyframe/timeline model has been introduced.
 - Segment runtime is deterministic and cancellable.
 - Preview uses the same binding and instruction layers intended for rehearsal.
 - Tests 12.T1–12.T13 pass.
+
+---
+
+# Sprint 12A — Lifecycle Timing and Preview UX Polish
+
+## Goal
+
+Add deterministic duration holds to Enter and Exit choreography and make Segment configuration and preview state understandable without introducing automatic Active advancement or a general timeline.
+
+Sprint 12A is a required bridge between Sprints 12 and 13. Do not begin Sprint 13 until this Sprint's exit criteria pass.
+
+## User-Visible Increment
+
+A user can configure and verify this complete Segment flow through the UX:
+
+1. Enter activates a Host + Video Layout.
+2. Enter holds that Layout for exactly three seconds.
+3. Active displays a Fullscreen Media Layout and waits for the user.
+4. The user manually starts Exit.
+5. Exit activates a Fullscreen Media Layout whose placement resolves an image Resource.
+6. Exit holds that image for exactly three seconds.
+7. Cleanup clears the temporary audience output.
+
+The preview identifies the current phase, action, Layout, and remaining hold time throughout the flow.
+
+## Subtasks
+
+### 12A.1 — Add Duration Action Contracts and Persistence `[REQUIRED]`
+
+Add `waitForDuration` to the lifecycle action and execution-instruction discriminated unions.
+
+Requirements:
+
+- Store a positive integer `durationMs`.
+- Validate domain, application, IPC, and persisted JSON boundaries at runtime.
+- Round-trip the action through the existing repository.
+- Preserve compatibility with stored lifecycle lists that do not contain the new action.
+- Add a SQL migration only if the persisted table shape actually changes.
+
+### 12A.2 — Execute Duration Holds Deterministically `[REQUIRED]`
+
+Generate normalized duration instructions in action order and execute them through the Sprint 12 abstract clock.
+
+Requirements:
+
+- Start the hold only after the preceding action completes.
+- Leave the current audience output unchanged during the hold.
+- Complete at the exact configured clock time.
+- Use the unified cancellation path for stop, restart, Segment jump, window close, and Layout change.
+- Do not shorten explicit holds for reduced-motion preferences.
+
+### 12A.3 — Add Hold Editing and Phase Timing Feedback `[REQUIRED]`
+
+Extend the Enter/Exit action editor with a user-facing `Hold for` action.
+
+Requirements:
+
+- Edit duration in seconds with an accessible labeled numeric input.
+- Validate values greater than zero and identify the unit in the label and error.
+- Support add, reorder, and remove with mouse and keyboard.
+- Summarize the calculated time before Active or Cleanup when all actions are determinate.
+- Show the effective duration of animation waits, including placement delay.
+- Warn when an animation wait resolves to zero and completes immediately.
+- Keep the manually entered Segment expected duration separate from calculated phase timing.
+
+### 12A.4 — Emit and Display Runtime Progress `[REQUIRED]`
+
+Add a serializable runtime progress snapshot/event with:
+
+- Current lifecycle phase
+- Current action index and kind
+- Active Layout ID
+- Remaining duration in milliseconds while a hold is pending
+
+Display production-language names outside the audience frame. Announce meaningful changes through a polite live region, and do not rely on color or motion alone.
+
+### 12A.5 — Keep Segment Preview Controls Reachable `[REQUIRED]`
+
+When Segment Preview opens:
+
+- Bring the preview heading and primary controls into view.
+- Move focus to the preview heading or first control.
+- Preserve editor state and the return scroll position.
+- Keep Restart, Enter, Active, Exit, and Stop reachable without scrolling beyond the audience frame.
+- Keep the current Layout prominent even during transient Enter and Exit actions.
+
+### 12A.6 — Make Action Configuration Explicit `[REQUIRED]`
+
+- Require an explicit Layout choice when adding Show Layout; never silently select the first Catalog Layout.
+- Explain why Start media or Stop media is disabled and what compatible target is required.
+- Use validation copy that identifies the affected action and the correction needed.
+
+### 12A.7 — Clarify Fullscreen Media and Resource Selection `[REQUIRED]`
+
+- Change the user-facing preset name from `Fullscreen Video` to `Fullscreen Media` because it accepts image or video Resources.
+- Preserve the existing persisted preset identifier for compatibility.
+- When import starts from a contextual Resource picker, select the newly imported Resource and keep the confirm action visible.
+- Verify that the selected image Resource resolves through the allowlisted Resource URL boundary in preview.
+
+### 12A.8 — Clarify Exit and Cleanup `[REQUIRED]`
+
+- Show the calculated Exit time before Cleanup when it is determinate.
+- Explain that finishing Exit proceeds to inferred Cleanup.
+- Explain that Cleanup clears temporary audience output.
+- Keep Prepare and Cleanup read-only except for the minimum behavior already allowed by Sprint 12.
+
+### 12A.9 — Add Exact Flow E2E Coverage `[REQUIRED]`
+
+Add browser-level coverage for the complete three-second Enter, manual Active transition, and three-second image Exit flow. Add a focused Electron smoke only if the flow depends on packaged-only Resource protocol behavior that browser mocks cannot verify.
+
+## Decision Notes
+
+### D12A.1 — Explicit Holds Versus a Timeline `[REQUIRED]`
+
+Use one ordered `waitForDuration` action. Do not add tracks, keyframes, conditions, branching, scripts, or user-defined lifecycle phases.
+
+### D12A.2 — Active Advancement `[REQUIRED]`
+
+Finishing Enter displays the Active default Layout. Active remains in place until the user explicitly starts Exit or otherwise advances the Segment. A duration hold cannot trigger that advance.
+
+### D12A.3 — Duration Units `[REQUIRED]`
+
+Persist positive integer milliseconds and present seconds in the UI. Do not use wall-clock time for execution or tests.
+
+### D12A.4 — Fullscreen Preset Compatibility `[REQUIRED]`
+
+Use `Fullscreen Media` in user-facing copy while retaining the existing persisted preset identifier. A data migration is not required for the label change.
+
+### D12A.5 — Expected Versus Calculated Time `[REQUIRED]`
+
+Phase timing summarizes deterministic lifecycle waits. Segment expected duration remains a separate creator-entered estimate and must not be silently rewritten.
+
+## Required Tests
+
+### 12A.T1 — Duration Contract Test
+
+Valid positive integer milliseconds parse; zero, negative, fractional, non-finite, and malformed values fail at runtime boundaries.
+
+### 12A.T2 — Persistence Compatibility Test
+
+The repository round-trips `waitForDuration`, and lifecycle lists written before Sprint 12A still load unchanged.
+
+### 12A.T3 — Instruction Ordering Test
+
+Activate Host + Video → hold three seconds → establish Active Fullscreen Media produces the exact normalized instruction order.
+
+### 12A.T4 — Exact Clock Test
+
+The hold remains pending before 3000 milliseconds and completes at exactly 3000 milliseconds with a fake clock.
+
+### 12A.T5 — Duration Cancellation Test
+
+Stop, restart, Segment jump, window close, and Layout change each cancel a pending duration hold and leave no delayed continuation.
+
+### 12A.T6 — Reduced Motion Duration Test
+
+Reduced motion may shorten decorative animation but does not change a three-second explicit hold.
+
+### 12A.T7 — Action Editor Accessibility Test
+
+The user can add, edit, reorder, and remove a hold by keyboard; the duration input exposes name, seconds unit, value, and error.
+
+### 12A.T8 — Timing Feedback Test
+
+Animation waits show their effective duration, zero-duration waits warn, and determinate Enter/Exit totals are correct.
+
+### 12A.T9 — Explicit Layout Selection Test
+
+Adding Show Layout begins unconfigured and cannot save or preview until the user selects a Layout.
+
+### 12A.T10 — Disabled Media Explanation Test
+
+Unavailable Start/Stop media actions expose visible and accessible guidance about the missing compatible target.
+
+### 12A.T11 — Runtime Progress Test
+
+Preview reports the correct phase, action, active Layout, and remaining hold time across execution, cancellation, completion, and failure.
+
+### 12A.T12 — Preview Entry and Control Reachability Test
+
+Opening preview moves focus and visibility to its heading/controls, retains editor state, and keeps lifecycle controls reachable at the supported desktop viewport.
+
+### 12A.T13 — Resource Import Selection Test
+
+A newly imported image becomes the current contextual selection, remains confirmable, and renders by Resource ID rather than a renderer-visible file path.
+
+### 12A.T14 — Timed Segment Flow E2E Test
+
+Configure and run: Enter Host + Video → hold three seconds → Active Fullscreen Media → manual Exit → Fullscreen Media with image → hold three seconds → Cleanup. Assert there is no automatic transition out of Active and no serious accessibility violation.
+
+## Exit Criteria
+
+- The exact User-Visible Increment can be configured and run through the Segment UX.
+- Duration behavior is deterministic, cancellable, persistent, and unchanged by reduced motion.
+- Preview state and transition timing are understandable without inspecting the audience frame alone.
+- No general timeline, automation trigger, branching, or automatic Active advance has been introduced.
+- Existing lifecycle configurations and the persisted Fullscreen preset identifier remain compatible.
+- Tests 12A.T1–12A.T14 pass, along with the complete Sprint 0–12 regression suite.
 
 ---
 

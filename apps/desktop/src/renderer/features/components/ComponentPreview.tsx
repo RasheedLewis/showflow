@@ -6,6 +6,7 @@ import type {
   SegmentDataFieldDto,
 } from "@showflow/contracts";
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   LOWER_THIRD_STYLE_PRESETS,
   parseEntityId,
@@ -17,6 +18,7 @@ import {
   type Resource,
   type SegmentDataField,
 } from "@showflow/domain";
+import { getAnimationCompletionMs } from "@showflow/execution-contracts";
 
 import styles from "./component-preview.module.css";
 
@@ -172,12 +174,14 @@ const availabilityLabel = (
 const ResourceVisual = ({
   className,
   fallback,
+  preloadedUrl,
   resource,
   studioId,
   variant = "content",
 }: {
   readonly className?: string | undefined;
   readonly fallback: string;
+  readonly preloadedUrl?: string | undefined;
   readonly resource: ResourceDto | undefined;
   readonly studioId: string | undefined;
   readonly variant?: "content" | "thumbnail";
@@ -197,6 +201,7 @@ const ResourceVisual = ({
       resource === undefined ||
       studioId === undefined ||
       resource.availability !== "available" ||
+      preloadedUrl !== undefined ||
       requestKey === undefined
     )
       return () => {
@@ -215,10 +220,15 @@ const ResourceVisual = ({
     return () => {
       active = false;
     };
-  }, [requestKey, resource, studioId, variant]);
+  }, [preloadedUrl, requestKey, resource, studioId, variant]);
 
   if (resource === undefined) return <span>{fallback}</span>;
-  const activeResult = urlResult?.key === requestKey ? urlResult : undefined;
+  const activeResult =
+    preloadedUrl === undefined
+      ? urlResult?.key === requestKey
+        ? urlResult
+        : undefined
+      : { key: requestKey ?? resource.id, url: preloadedUrl };
   const status = availabilityLabel(resource) ?? activeResult?.error;
   if (status !== undefined)
     return (
@@ -233,6 +243,7 @@ const ResourceVisual = ({
       <img
         alt={resource.displayName}
         className={className}
+        data-resource-id={resource.id}
         src={activeResult.url}
       />
     );
@@ -241,6 +252,7 @@ const ResourceVisual = ({
       <video
         aria-label={resource.displayName}
         className={className}
+        data-resource-id={resource.id}
         muted
         playsInline
         preload="metadata"
@@ -254,12 +266,14 @@ const PlacementContent = ({
   component,
   placement,
   context,
+  resourceUrls,
   resources,
   studioId,
 }: {
   readonly component: Component;
   readonly placement: ComponentPlacement;
   readonly context: BindingResolutionContext;
+  readonly resourceUrls: Readonly<Record<string, string>>;
   readonly resources: readonly ResourceDto[];
   readonly studioId: string | undefined;
 }) => {
@@ -277,6 +291,10 @@ const PlacementContent = ({
       ? resources.find((resource) => resource.id === id)
       : undefined;
   };
+  const preloadedUrlFor = (key: string): string | undefined => {
+    const resource = resourceFor(key);
+    return resource === undefined ? undefined : resourceUrls[resource.id];
+  };
   switch (component.type) {
     case "background":
       return (
@@ -284,6 +302,7 @@ const PlacementContent = ({
           <ResourceVisual
             className={styles["backgroundMedia"]}
             fallback="Show background"
+            preloadedUrl={preloadedUrlFor("image")}
             resource={resourceFor("image")}
             studioId={studioId}
           />
@@ -312,6 +331,7 @@ const PlacementContent = ({
           <ResourceVisual
             className={styles["mediaContent"]}
             fallback="Choose video"
+            preloadedUrl={preloadedUrlFor("media")}
             resource={resourceFor("media")}
             studioId={studioId}
           />
@@ -328,6 +348,7 @@ const PlacementContent = ({
           <ResourceVisual
             className={styles["imageContent"]}
             fallback={component.type === "logo" ? "Show logo" : "Choose image"}
+            preloadedUrl={preloadedUrlFor("image")}
             resource={resourceFor("image")}
             studioId={studioId}
             variant="thumbnail"
@@ -355,6 +376,7 @@ const PlacementContent = ({
             <ResourceVisual
               className={styles["lowerThirdImage"]}
               fallback=""
+              preloadedUrl={preloadedUrlFor("image")}
               resource={resourceFor("image")}
               studioId={studioId}
               variant="thumbnail"
@@ -385,7 +407,10 @@ export const ComponentPreview = ({
   showMetadata = {},
   episodeMetadata = {},
   resourceReplacements = [],
+  resourceUrls = {},
   studioId,
+  animationPhase,
+  reducedMotion = false,
 }: {
   readonly layout: LayoutDto;
   readonly components: readonly ComponentDto[];
@@ -399,7 +424,10 @@ export const ComponentPreview = ({
     readonly propertyKey: string;
     readonly resourceId: string;
   }[];
+  readonly resourceUrls?: Readonly<Record<string, string>>;
   readonly studioId?: string | undefined;
+  readonly animationPhase?: "enter" | "exit" | undefined;
+  readonly reducedMotion?: boolean;
 }) => {
   const context: BindingResolutionContext = {
     showMetadata: showMetadata as BindingResolutionContext["showMetadata"],
@@ -433,9 +461,30 @@ export const ComponentPreview = ({
             !placementDto.visibleByDefault
           )
             return null;
+          const animation =
+            animationPhase === undefined
+              ? undefined
+              : animationPhase === "enter"
+                ? (placementDto.enterAnimationOverride ??
+                  componentDto.defaultEnterAnimation)
+                : (placementDto.exitAnimationOverride ??
+                  componentDto.defaultExitAnimation);
+          const animationStyle =
+            animation === undefined
+              ? {}
+              : ({
+                  "--sf-preview-animation-delay": `${reducedMotion ? 0 : animation.delayMs}ms`,
+                  "--sf-preview-animation-duration": `${getAnimationCompletionMs(
+                    { ...animation, delayMs: 0 },
+                    reducedMotion,
+                  )}ms`,
+                  "--sf-preview-animation-easing": animation.easing,
+                } as CSSProperties);
           return (
             <div
               className={styles["placement"]}
+              data-animation-phase={animationPhase}
+              data-animation-preset={animation?.preset}
               data-component-type={componentDto.type}
               key={placementDto.id}
               style={{
@@ -444,6 +493,7 @@ export const ComponentPreview = ({
                 width: `${slot.bounds.width * 100}%`,
                 height: `${slot.bounds.height * 100}%`,
                 zIndex: placementDto.layerOverride ?? slot.layerOrder,
+                ...animationStyle,
               }}
             >
               <PlacementContent
@@ -463,6 +513,7 @@ export const ComponentPreview = ({
                   ),
                 }}
                 placement={domainPlacement(placementDto)}
+                resourceUrls={resourceUrls}
                 resources={resources}
                 studioId={studioId}
               />
