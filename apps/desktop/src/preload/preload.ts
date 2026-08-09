@@ -34,6 +34,7 @@ import {
   SEGMENTS_RESTORE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_DETAILS_CHANNEL,
   SEGMENTS_UPDATE_FIELD_CHANNEL,
+  SEGMENTS_UPDATE_LAYOUTS_CHANNEL,
   RESOURCES_GET_URL_CHANNEL,
   RESOURCES_IMPORT_CHANNEL,
   RESOURCES_IMPORT_PATHS_CHANNEL,
@@ -51,12 +52,24 @@ import {
   LAYOUTS_LIST_CHANNEL,
   LAYOUTS_RENAME_CHANNEL,
   LAYOUTS_UPDATE_CHANNEL,
+  COMPONENTS_ASSIGN_CHANNEL,
+  COMPONENTS_LIST_CHANNEL,
+  COMPONENTS_REMOVE_PLACEMENT_CHANNEL,
+  COMPONENTS_UPDATE_PLACEMENT_CHANNEL,
 } from "@showflow/contracts";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 import { createShowflowDesktopApi } from "./api.mjs";
 
 const showflowDesktopApi = createShowflowDesktopApi({
+  assignComponent: (request) =>
+    ipcRenderer.invoke(COMPONENTS_ASSIGN_CHANNEL, request),
+  listComponents: (request) =>
+    ipcRenderer.invoke(COMPONENTS_LIST_CHANNEL, request),
+  removeComponentPlacement: (request) =>
+    ipcRenderer.invoke(COMPONENTS_REMOVE_PLACEMENT_CHANNEL, request),
+  updateComponentPlacement: (request) =>
+    ipcRenderer.invoke(COMPONENTS_UPDATE_PLACEMENT_CHANNEL, request),
   archiveLayout: (request) =>
     ipcRenderer.invoke(LAYOUTS_ARCHIVE_CHANNEL, request),
   createLayout: (request) =>
@@ -91,6 +104,8 @@ const showflowDesktopApi = createShowflowDesktopApi({
     ipcRenderer.invoke(SEGMENTS_UPDATE_DETAILS_CHANNEL, request),
   updateSegmentField: (request) =>
     ipcRenderer.invoke(SEGMENTS_UPDATE_FIELD_CHANNEL, request),
+  updateSegmentLayouts: (request) =>
+    ipcRenderer.invoke(SEGMENTS_UPDATE_LAYOUTS_CHANNEL, request),
   duplicateBlueprintPlacement: (request) =>
     ipcRenderer.invoke(BLUEPRINTS_DUPLICATE_CHANNEL, request),
   deleteShow: (request) => ipcRenderer.invoke(SHOWS_DELETE_CHANNEL, request),

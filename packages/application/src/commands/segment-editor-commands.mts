@@ -10,6 +10,7 @@ import {
   type DomainFactoryDependencies,
   type JsonValue,
   type LifecycleAction,
+  type LayoutId,
   type SegmentDataField,
   type SegmentDataFieldId,
   type SegmentDataFieldType,
@@ -27,6 +28,7 @@ import {
 import { normalizeShowSegmentName } from "./catalog-commands.mjs";
 import { ApplicationError } from "../errors/application-error.mjs";
 import type {
+  LayoutRepository,
   SegmentDataFieldUsageRepository,
   ShowSegmentRepository,
 } from "../repositories/repositories.mjs";
@@ -224,6 +226,22 @@ export class DeleteSegmentDataFieldCommand {
       current.id,
       field.key,
     );
+    const bindingUsages = await this.repository.listLayoutBindingUsages(
+      current.id,
+      field.key,
+    );
+    if (bindingUsages.length > 0) {
+      const usages = bindingUsages
+        .map(
+          ({ componentName, layoutName, propertyKey }) =>
+            `${layoutName} — ${componentName} (${propertyKey})`,
+        )
+        .join(", ");
+      throw new ApplicationError(
+        "CONFLICT",
+        `The ${field.label} field is used by ${bindingUsages.length} Layout ${bindingUsages.length === 1 ? "binding" : "bindings"}: ${usages}. Remove those uses before deleting this field.`,
+      );
+    }
     if (usageCount > 0) {
       throw new ApplicationError(
         "CONFLICT",
@@ -342,6 +360,63 @@ export class UpdateSegmentLifecycleActionsCommand {
     return saveValidSegment(
       this.repository,
       touchEntity({ ...current, lifecycle }, this.dependencies),
+    );
+  }
+}
+
+export interface UpdateSegmentActiveLayoutsCommandInput extends SegmentMutationScope {
+  readonly defaultLayoutId?: LayoutId;
+  readonly availableLayoutIds: readonly LayoutId[];
+}
+
+export class UpdateSegmentActiveLayoutsCommand {
+  constructor(
+    readonly repositories: {
+      readonly segments: SegmentEditorRepository;
+      readonly layouts: LayoutRepository;
+    },
+    readonly dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
+  ) {}
+
+  async execute(
+    input: UpdateSegmentActiveLayoutsCommandInput,
+  ): Promise<ShowSegment> {
+    const current = await requireCurrentSegment(
+      this.repositories.segments,
+      input,
+    );
+    const ids = [
+      ...new Set([
+        ...input.availableLayoutIds,
+        ...(input.defaultLayoutId === undefined ? [] : [input.defaultLayoutId]),
+      ]),
+    ];
+    const layouts = await Promise.all(
+      ids.map(async (id) =>
+        requireEntity(await this.repositories.layouts.getById(id), "Layout"),
+      ),
+    );
+    if (layouts.some(({ showId }) => showId !== current.showId)) {
+      throw new ApplicationError(
+        "NOT_FOUND",
+        "One selected Layout was not found in this Show.",
+      );
+    }
+    const updatedAt = currentUtcTimestamp(this.dependencies.clock);
+    const lifecycle = defineSegmentLifecycle({
+      ...current.lifecycle,
+      active: {
+        availableLayoutIds: ids,
+        hostCueIds: current.lifecycle.active.hostCueIds,
+        ...(input.defaultLayoutId === undefined
+          ? {}
+          : { defaultLayoutId: input.defaultLayoutId }),
+      },
+      updatedAt,
+    });
+    return saveValidSegment(
+      this.repositories.segments,
+      touchEntity({ ...current, lifecycle, layoutIds: ids }, this.dependencies),
     );
   }
 }

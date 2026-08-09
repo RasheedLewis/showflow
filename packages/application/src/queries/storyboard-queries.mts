@@ -5,6 +5,8 @@ import {
   deriveEpisodeSegmentSummary,
   validateEpisodeSegmentContent,
   parseEntityId,
+  validateResolvedComponentPlacement,
+  assertComponentSlotCompatibility,
 } from "@showflow/domain";
 import type {
   BlueprintSegmentPlacement,
@@ -19,6 +21,7 @@ import type {
   ShowSegment,
   StudioId,
   Resource,
+  Component,
 } from "@showflow/domain";
 
 import { loadEntitiesById, requireQueryEntity } from "./query-support.mjs";
@@ -28,6 +31,8 @@ import type {
   ShowRepository,
   ShowSegmentRepository,
   ResourceRepository,
+  LayoutRepository,
+  ComponentRepository,
 } from "../repositories/repositories.mjs";
 import { ApplicationError } from "../errors/application-error.mjs";
 
@@ -121,7 +126,9 @@ export const calculateEpisodeProgress = (
 };
 
 type EpisodeStoryboardRepositories = {
+  readonly components?: ComponentRepository;
   readonly episodes: EpisodeRepository;
+  readonly layouts?: LayoutRepository;
   readonly resources?: ResourceRepository;
   readonly shows: ShowRepository;
   readonly segments: ShowSegmentRepository;
@@ -237,6 +244,123 @@ export class GetEpisodeStoryboardQuery {
               message: `${field.label} is not available to this Episode. Import it into this Episode or its Show.`,
               severity: "blocking",
             });
+          }
+        }
+        const activeLayoutId =
+          episodeSegment.defaultLayoutOverrideId ??
+          sourceSegment.lifecycle.active.defaultLayoutId;
+        if (
+          activeLayoutId !== undefined &&
+          this.#repositories.layouts !== undefined &&
+          this.#repositories.components !== undefined
+        ) {
+          const layout =
+            await this.#repositories.layouts.getById(activeLayoutId);
+          if (layout === null || layout.showId !== show.id) {
+            validationIssues.push({
+              code: "LAYOUT_MISSING",
+              fieldKey: "defaultLayout",
+              message: `The ${sourceSegment.name} Segment cannot find its default Layout. Choose an available Layout.`,
+              severity: "blocking",
+            });
+          } else {
+            const components = new Map<string, Component>();
+            const resourceIds = new Set<string>();
+            for (const placement of layout.componentPlacements) {
+              const component = await this.#repositories.components.getById(
+                placement.componentId,
+              );
+              if (component !== null) components.set(component.id, component);
+              for (const binding of Object.values(placement.bindings)) {
+                if (binding.kind === "resource")
+                  resourceIds.add(binding.resourceId);
+              }
+            }
+            for (const replacement of episodeSegment.fixedResourceReplacements)
+              resourceIds.add(replacement.resourceId);
+            const resources: Resource[] =
+              this.#repositories.resources === undefined
+                ? []
+                : (
+                    await Promise.all(
+                      [...resourceIds].map(async (id: string) =>
+                        this.#repositories.resources?.getById(
+                          parseEntityId<"resource">(id),
+                        ),
+                      ),
+                    )
+                  ).filter(
+                    (resource): resource is Resource =>
+                      resource !== null && resource !== undefined,
+                  );
+            for (const placement of layout.componentPlacements) {
+              if (!placement.visibleByDefault) continue;
+              const component = components.get(placement.componentId);
+              const slot = layout.slots.find(
+                ({ id }) => id === placement.slotId,
+              );
+              if (component === undefined || slot === undefined) {
+                validationIssues.push({
+                  code: "COMPONENT_PROPERTY_MISSING",
+                  fieldKey: "placement",
+                  message: `The ${layout.name} Layout has a Component Placement that is no longer available. Replace it before rehearsal.`,
+                  severity: "blocking",
+                });
+                continue;
+              }
+              try {
+                assertComponentSlotCompatibility(component, slot);
+              } catch {
+                validationIssues.push({
+                  code: "COMPONENT_RESOURCE_INVALID",
+                  fieldKey: "placement",
+                  message: `The ${component.name} Component cannot be used in the ${slot.name} Slot. Choose a compatible Component.`,
+                  severity: "blocking",
+                });
+                continue;
+              }
+              const replacements = Object.fromEntries(
+                episodeSegment.fixedResourceReplacements
+                  .filter(
+                    ({ componentPlacementId }) =>
+                      componentPlacementId === placement.id,
+                  )
+                  .map(({ propertyKey, resourceId }) => [
+                    propertyKey,
+                    resourceId,
+                  ]),
+              );
+              for (const issue of validateResolvedComponentPlacement(
+                component,
+                placement,
+                {
+                  showMetadata: {
+                    name: show.name,
+                    description: show.description ?? "",
+                  },
+                  episodeMetadata: {
+                    title: episode.title,
+                    subtitle: episode.subtitle ?? "",
+                    episodeNumber: episode.episodeNumber ?? 0,
+                  },
+                  segmentValues: episodeSegment.fieldValues,
+                  segmentFields: sourceSegment.dataFields,
+                  resources,
+                  resourceReplacements: replacements,
+                },
+              )) {
+                validationIssues.push({
+                  code: issue.code.startsWith("CAMERA_")
+                    ? "CAMERA_UNAVAILABLE"
+                    : issue.code === "BINDING_SOURCE_MISSING"
+                      ? "COMPONENT_PROPERTY_MISSING"
+                      : "COMPONENT_RESOURCE_INVALID",
+                  fieldKey: issue.propertyKey ?? "placement",
+                  message: `${component.name} in the ${layout.name} Layout: ${issue.message}`,
+                  severity: "blocking",
+                });
+              }
+            }
           }
         }
         return {

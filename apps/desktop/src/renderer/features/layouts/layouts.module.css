@@ -181,6 +181,31 @@
   display: grid;
   gap: var(--sf-space-2);
 }
+.componentGrid {
+  display: grid;
+  gap: var(--sf-space-3);
+}
+.componentTile {
+  display: grid;
+  gap: var(--sf-space-1);
+  width: 100%;
+  min-height: 5.5rem;
+  padding: var(--sf-space-3);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-lg);
+  background: var(--sf-bg-card);
+  color: var(--sf-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.componentTile span,
+.componentTile small {
+  color: var(--sf-text-secondary);
+}
+.componentTile:disabled {
+  cursor: not-allowed;
+  opacity: var(--sf-opacity-disabled);
+}
 .inspector {
   padding: 0 var(--sf-space-5) var(--sf-space-5);
 }

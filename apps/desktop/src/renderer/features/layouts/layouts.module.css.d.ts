@@ -23,5 +23,7 @@ declare const styles: Readonly<{
   resizeHandle: string;
   fitLabel: string;
   geometryGrid: string;
+  componentGrid: string;
+  componentTile: string;
 }>;
 export default styles;

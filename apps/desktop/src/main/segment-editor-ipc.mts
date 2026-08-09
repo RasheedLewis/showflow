@@ -6,6 +6,7 @@ import {
   SEGMENTS_RESTORE_FIELD_CHANNEL,
   SEGMENTS_UPDATE_DETAILS_CHANNEL,
   SEGMENTS_UPDATE_FIELD_CHANNEL,
+  SEGMENTS_UPDATE_LAYOUTS_CHANNEL,
   type ShowSegmentEditorResult,
 } from "@showflow/contracts";
 import { ipcMain, type BrowserWindow } from "electron";
@@ -18,6 +19,7 @@ import {
   handleRestoreSegmentFieldRequest,
   handleUpdateSegmentDetailsRequest,
   handleUpdateSegmentFieldRequest,
+  handleUpdateSegmentLayoutsRequest,
   type SegmentEditorOperations,
 } from "./segment-editor-handler.mjs";
 import { isTrustedIpcSender } from "./ipc-sender.mjs";
@@ -37,6 +39,7 @@ export const registerSegmentEditorIpc = (
     [SEGMENTS_DELETE_FIELD_CHANNEL, handleDeleteSegmentFieldRequest],
     [SEGMENTS_RESTORE_FIELD_CHANNEL, handleRestoreSegmentFieldRequest],
     [SEGMENTS_REORDER_FIELDS_CHANNEL, handleReorderSegmentFieldsRequest],
+    [SEGMENTS_UPDATE_LAYOUTS_CHANNEL, handleUpdateSegmentLayoutsRequest],
   ] as const;
   for (const [channel, handler] of handlers) {
     ipcMain.removeHandler(channel);

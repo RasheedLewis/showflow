@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ApiErrorSchema } from "./api-result.ts";
+import { ComponentPlacementDtoSchema } from "./component.ts";
 
 export const LAYOUTS_LIST_CHANNEL = "showflow:v1:layouts:list" as const;
 export const LAYOUTS_GET_CHANNEL = "showflow:v1:layouts:get" as const;
@@ -110,6 +111,7 @@ export const LayoutDtoSchema = z
       })
       .strict(),
     slots: z.array(SlotDtoSchema),
+    componentPlacements: z.array(ComponentPlacementDtoSchema),
     archivedAt: CanonicalUtcTimestampSchema.nullable(),
     createdAt: CanonicalUtcTimestampSchema,
     updatedAt: CanonicalUtcTimestampSchema,

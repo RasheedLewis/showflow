@@ -17,6 +17,8 @@ import type {
   EpisodeSegmentId,
   JsonObject,
   JsonValue,
+  FixedResourceReplacement,
+  LayoutId,
   ShowSegment,
   ShowSegmentId,
 } from "@showflow/domain";
@@ -429,6 +431,8 @@ export interface UpdateEpisodeSegmentContentCommandInput {
   readonly expectedUpdatedAt: EpisodeSegment["updatedAt"];
   readonly fieldValues: JsonObject;
   readonly notes: string;
+  readonly defaultLayoutOverrideId?: LayoutId | null;
+  readonly fixedResourceReplacements?: readonly FixedResourceReplacement[];
 }
 
 export class UpdateEpisodeSegmentContentCommand {
@@ -436,7 +440,7 @@ export class UpdateEpisodeSegmentContentCommand {
     readonly repositories: Pick<
       TransactionRepositories,
       "episodes" | "segments"
-    >,
+    > & { readonly layouts?: TransactionRepositories["layouts"] },
     readonly dependencies: DomainFactoryDependencies = DEFAULT_COMMAND_DEPENDENCIES,
   ) {}
 
@@ -482,13 +486,67 @@ export class UpdateEpisodeSegmentContentCommand {
     const { expectedDurationOverrideMs: previousDuration, ...withoutDuration } =
       current;
     void previousDuration;
+    const {
+      defaultLayoutOverrideId: previousLayoutOverride,
+      fixedResourceReplacements: previousResourceReplacements,
+      ...withoutLimitedOverrides
+    } = withoutDuration;
+    void previousLayoutOverride;
+    void previousResourceReplacements;
+    if (
+      input.defaultLayoutOverrideId !== undefined &&
+      input.defaultLayoutOverrideId !== null
+    ) {
+      if (
+        input.defaultLayoutOverrideId !== current.defaultLayoutOverrideId &&
+        ![
+          sourceSegment.lifecycle.active.defaultLayoutId,
+          ...sourceSegment.lifecycle.active.availableLayoutIds,
+        ].includes(input.defaultLayoutOverrideId)
+      ) {
+        throw new ApplicationError(
+          "VALIDATION_ERROR",
+          "Choose a Layout available to this Show Segment.",
+        );
+      }
+      if (this.repositories.layouts === undefined) {
+        throw new ApplicationError(
+          "VALIDATION_ERROR",
+          "Showflow could not verify the selected Layout.",
+        );
+      }
+      const layout = requireEntity(
+        await this.repositories.layouts.getById(input.defaultLayoutOverrideId),
+        "Layout",
+      );
+      if (layout.showId !== episode.showId)
+        throw new ApplicationError(
+          "NOT_FOUND",
+          "Layout was not found in this Show.",
+        );
+    }
     const updatedSegment: EpisodeSegment = {
-      ...withoutDuration,
+      ...withoutLimitedOverrides,
       fieldValues: cloneJsonObject(input.fieldValues),
       notes: input.notes,
       ...(duration === undefined
         ? {}
         : { expectedDurationOverrideMs: duration }),
+      ...(input.defaultLayoutOverrideId === undefined
+        ? current.defaultLayoutOverrideId === undefined
+          ? {}
+          : { defaultLayoutOverrideId: current.defaultLayoutOverrideId }
+        : input.defaultLayoutOverrideId === null
+          ? {}
+          : { defaultLayoutOverrideId: input.defaultLayoutOverrideId }),
+      fixedResourceReplacements:
+        input.fixedResourceReplacements === undefined
+          ? current.fixedResourceReplacements.map((replacement) => ({
+              ...replacement,
+            }))
+          : input.fixedResourceReplacements.map((replacement) => ({
+              ...replacement,
+            })),
       ...updateEntityMetadata(current, this.dependencies.clock),
     };
     const nextEpisode: Episode = {

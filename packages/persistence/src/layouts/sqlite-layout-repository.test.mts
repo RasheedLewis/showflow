@@ -13,6 +13,8 @@ import {
   createFixedClock,
   createShowSegment,
   type DomainFactoryDependencies,
+  type Component,
+  type ComponentPlacement,
   type EntityId,
   type EntityIdKind,
   type Layout,
@@ -31,6 +33,8 @@ import { SqliteShowSegmentRepository } from "../shows/sqlite-show-segment-reposi
 import { StoredLayoutError } from "./layout-storage.mjs";
 import { SqliteLayoutEpisodeCreationRepository } from "./sqlite-layout-episode-creation-repository.mjs";
 import { SqliteLayoutRepository } from "./sqlite-layout-repository.mjs";
+import { SqliteComponentPlacementRepository } from "./sqlite-component-placement-repository.mjs";
+import { SqliteComponentRepository } from "./sqlite-component-repository.mjs";
 
 const MIGRATIONS_DIRECTORY = path.resolve(
   import.meta.dirname,
@@ -54,6 +58,12 @@ const BACKGROUND_SLOT_ID = parseEntityId<"slot">(
 );
 const HOST_SLOT_ID = parseEntityId<"slot">(
   "01942c1f-ae8f-7e42-b900-000000000806",
+);
+const COMPONENT_ID = parseEntityId<"component">(
+  "01942c1f-ae8f-7e42-b900-000000000807",
+);
+const PLACEMENT_ID = parseEntityId<"componentPlacement">(
+  "01942c1f-ae8f-7e42-b900-000000000808",
 );
 const UNKNOWN_SHOW_ID = parseEntityId<"show">(
   "01942c1f-ae8f-7e42-b900-000000000899",
@@ -124,6 +134,59 @@ const layout = (): Layout => ({
   updatedAt: CREATED_AT,
 });
 
+const cameraComponent = (): Component => ({
+  id: COMPONENT_ID,
+  showId: SHOW_ID,
+  name: "Camera",
+  type: "camera",
+  propertySchema: [
+    {
+      key: "camera",
+      label: "Camera",
+      type: "cameraResource",
+      required: true,
+    },
+  ],
+  defaultProperties: {},
+  defaultEnterAnimation: {
+    preset: "fade",
+    durationMs: 180,
+    delayMs: 0,
+    easing: "ease-out",
+  },
+  defaultExitAnimation: {
+    preset: "fade",
+    durationMs: 140,
+    delayMs: 0,
+    easing: "ease-in",
+  },
+  supportedSlotRoles: ["hostCamera", "guestCamera", "pictureInPicture"],
+  validationRules: [],
+  createdAt: CREATED_AT,
+  updatedAt: CREATED_AT,
+});
+
+const cameraPlacement = (): ComponentPlacement => ({
+  id: PLACEMENT_ID,
+  layoutId: LAYOUT_ID,
+  componentId: COMPONENT_ID,
+  slotId: HOST_SLOT_ID,
+  fixedProperties: { crop: "cover" },
+  bindings: {
+    camera: { kind: "showMetadata", field: "defaultCameraResourceId" },
+  },
+  visibleByDefault: true,
+  layerOverride: 4,
+  enterAnimationOverride: {
+    preset: "scaleIn",
+    durationMs: 200,
+    delayMs: 25,
+    easing: "ease-out",
+  },
+  createdAt: CREATED_AT,
+  updatedAt: UPDATED_AT,
+});
+
 const openTestPersistence = async (temporaryDirectory: string) =>
   initializePersistence({
     backup: {
@@ -147,6 +210,62 @@ const seedShow = async (
 };
 
 describe("SqliteLayoutRepository", () => {
+  test("11.T1 round-trips Components and Component Placements without drift", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-component-round-trip-test-"),
+    );
+
+    try {
+      const firstPersistence = await openTestPersistence(temporaryDirectory);
+      await seedShow(firstPersistence);
+      const component = cameraComponent();
+      const placedLayout = {
+        ...layout(),
+        componentPlacements: [cameraPlacement()],
+        updatedAt: UPDATED_AT,
+      } satisfies Layout;
+      await new SqliteComponentPlacementRepository(
+        firstPersistence.database,
+      ).saveComponentAndLayout(component, placedLayout);
+      firstPersistence.database.close();
+
+      const reopenedPersistence = await openTestPersistence(temporaryDirectory);
+      try {
+        await expect(
+          new SqliteComponentRepository(reopenedPersistence.database).getById(
+            component.id,
+          ),
+        ).resolves.toEqual(component);
+        await expect(
+          new SqliteLayoutRepository(reopenedPersistence.database).getById(
+            placedLayout.id,
+          ),
+        ).resolves.toEqual(placedLayout);
+
+        const movedSlot = {
+          ...hostSlot(),
+          bounds: { x: 0.1, y: 0.1, width: 0.4, height: 0.7 },
+          updatedAt: UPDATED_AT,
+        } satisfies Slot;
+        await new SqliteLayoutRepository(reopenedPersistence.database).save({
+          ...placedLayout,
+          slots: [backgroundSlot(), movedSlot],
+        });
+        await expect(
+          new SqliteLayoutRepository(reopenedPersistence.database).getById(
+            placedLayout.id,
+          ),
+        ).resolves.toMatchObject({
+          componentPlacements: [cameraPlacement()],
+        });
+      } finally {
+        reopenedPersistence.database.close();
+      }
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
   test("10.T1 round-trips normalized Layout and Slot data without drift", async () => {
     const temporaryDirectory = await fs.mkdtemp(
       path.join(os.tmpdir(), "showflow-layout-round-trip-test-"),

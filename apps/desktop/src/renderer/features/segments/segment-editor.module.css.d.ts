@@ -27,6 +27,7 @@ declare const styles: Readonly<{
   scopeDetail: string;
   unavailable: string;
   usageWarning: string;
+  layoutChoices: string;
   workspace: string;
 }>;
 

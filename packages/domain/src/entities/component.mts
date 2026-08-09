@@ -22,6 +22,7 @@ export type ComponentPropertyType =
   | "string"
   | "number"
   | "boolean"
+  | "cameraResource"
   | "imageResource"
   | "videoResource"
   | "audioResource";

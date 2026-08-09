@@ -9,6 +9,8 @@ import {
   type EntityId,
   type EntityIdKind,
   type ShowId,
+  type Layout,
+  type LayoutId,
   type ShowSegment,
   type ShowSegmentId,
 } from "@showflow/domain";
@@ -19,10 +21,13 @@ import {
   ReorderSegmentDataFieldsCommand,
   UpdateSegmentDataFieldCommand,
   UpdateSegmentLifecycleActionsCommand,
+  UpdateSegmentActiveLayoutsCommand,
   UpdateShowSegmentDetailsCommand,
 } from "./segment-editor-commands.mjs";
 import type {
   SegmentDataFieldUsageRepository,
+  SegmentFieldBindingUsage,
+  LayoutRepository,
   ShowSegmentRepository,
 } from "../repositories/repositories.mjs";
 
@@ -46,6 +51,7 @@ class MemorySegmentEditorRepository
 {
   segment: ShowSegment;
   usageCount = 0;
+  bindingUsages: readonly SegmentFieldBindingUsage[] = [];
 
   constructor(segment: ShowSegment) {
     this.segment = segment;
@@ -53,6 +59,9 @@ class MemorySegmentEditorRepository
 
   async countEpisodeFieldValues(): Promise<number> {
     return this.usageCount;
+  }
+  async listLayoutBindingUsages() {
+    return this.bindingUsages;
   }
 
   async getById(id: ShowSegmentId): Promise<ShowSegment | null> {
@@ -212,6 +221,95 @@ describe("Segment editor commands", () => {
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(repository.segment.dataFields).toHaveLength(1);
+  });
+
+  it("11.T14 blocks bound field deletion and identifies every Layout usage", async () => {
+    await new CreateSegmentDataFieldCommand(repository, dependencies).execute({
+      ...scope(),
+      label: "Guest name",
+      type: "shortText",
+    });
+    const field = repository.segment.dataFields[0];
+    if (field === undefined) throw new Error("Expected a Segment field.");
+    repository.bindingUsages = [
+      {
+        componentName: "Lower Third",
+        layoutName: "Interview close",
+        placementId: entityId<"componentPlacement">(40),
+        propertyKey: "title",
+      },
+      {
+        componentName: "Title",
+        layoutName: "Guest full screen",
+        placementId: entityId<"componentPlacement">(41),
+        propertyKey: "text",
+      },
+    ];
+
+    await expect(
+      new DeleteSegmentDataFieldCommand(repository, dependencies).execute({
+        ...scope(),
+        fieldId: field.id,
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringContaining(
+        "Interview close — Lower Third (title), Guest full screen — Title (text)",
+      ),
+    });
+    expect(repository.segment.dataFields).toHaveLength(1);
+  });
+
+  it("11.T12 assigns one default Layout and a reusable available set", async () => {
+    const defaultLayout = {
+      id: entityId<"layout">(50),
+      showId: repository.segment.showId,
+      name: "Interview close",
+      aspectRatio: "16:9",
+      canvas: { width: 1920, height: 1080 },
+      slots: [],
+      componentPlacements: [],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    } satisfies Layout;
+    const alternateLayout = {
+      ...defaultLayout,
+      id: entityId<"layout">(51),
+      name: "Guest full screen",
+    } satisfies Layout;
+    const layouts = new Map<LayoutId, Layout>([
+      [defaultLayout.id, defaultLayout],
+      [alternateLayout.id, alternateLayout],
+    ]);
+    const layoutRepository: LayoutRepository = {
+      async getById(id) {
+        return layouts.get(id) ?? null;
+      },
+      async listByShowId() {
+        return [...layouts.values()];
+      },
+      async save(layout) {
+        layouts.set(layout.id, layout);
+      },
+    };
+
+    await new UpdateSegmentActiveLayoutsCommand(
+      { layouts: layoutRepository, segments: repository },
+      dependencies,
+    ).execute({
+      ...scope(),
+      defaultLayoutId: defaultLayout.id,
+      availableLayoutIds: [alternateLayout.id],
+    });
+
+    expect(repository.segment.lifecycle.active).toMatchObject({
+      defaultLayoutId: defaultLayout.id,
+      availableLayoutIds: [alternateLayout.id, defaultLayout.id],
+    });
+    expect(repository.segment.layoutIds).toEqual([
+      alternateLayout.id,
+      defaultLayout.id,
+    ]);
   });
 
   it("7.T9 rejects a stale autosave instead of overwriting a newer value", async () => {

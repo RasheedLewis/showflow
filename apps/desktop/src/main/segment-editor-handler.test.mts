@@ -59,6 +59,7 @@ const operations = (
   restoreField: { execute: vi.fn() },
   updateDetails: { execute: vi.fn().mockResolvedValue(editor.segment) },
   updateField: { execute: vi.fn() },
+  updateLayouts: { execute: vi.fn() },
   ...overrides,
 });
 

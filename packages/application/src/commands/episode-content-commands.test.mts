@@ -15,6 +15,8 @@ import {
   type EpisodeId,
   type ShowSegment,
   type ShowSegmentId,
+  type Layout,
+  type LayoutId,
 } from "@showflow/domain";
 
 import { UpdateEpisodeSegmentContentCommand } from "./episode-commands.mjs";
@@ -36,6 +38,7 @@ const dependencies = (time = initialTime): DomainFactoryDependencies => ({
 const createFixture = () => {
   const factory = dependencies();
   const showId = factory.createId("show");
+  const layoutId = factory.createId("layout");
   const base = createShowSegment(
     {
       expectedDurationMs: 60_000,
@@ -56,7 +59,19 @@ const createFixture = () => {
     },
     factory,
   );
-  const sourceSegment = { ...base, dataFields: [guestName] };
+  const sourceSegment = {
+    ...base,
+    dataFields: [guestName],
+    layoutIds: [layoutId],
+    lifecycle: {
+      ...base.lifecycle,
+      active: {
+        ...base.lifecycle.active,
+        availableLayoutIds: [layoutId],
+        defaultLayoutId: layoutId,
+      },
+    },
+  };
   const firstEpisode = createEpisode({ showId, title: "Episode 1" }, factory);
   const secondEpisode = createEpisode({ showId, title: "Episode 2" }, factory);
   const first = createEpisodeSegment(
@@ -96,6 +111,18 @@ const createFixture = () => {
   const segments = new Map<ShowSegmentId, ShowSegment>([
     [sourceSegment.id, sourceSegment],
   ]);
+  const layout = {
+    id: layoutId,
+    showId,
+    name: "Interview close",
+    aspectRatio: "16:9",
+    canvas: { width: 1920, height: 1080 },
+    slots: [],
+    componentPlacements: [],
+    createdAt: initialTime,
+    updatedAt: initialTime,
+  } satisfies Layout;
+  const layouts = new Map<LayoutId, Layout>([[layout.id, layout]]);
   const command = new UpdateEpisodeSegmentContentCommand(
     {
       episodes: {
@@ -114,6 +141,14 @@ const createFixture = () => {
           segments.set(segment.id, segment);
         },
       },
+      layouts: {
+        getById: async (id) => layouts.get(id) ?? null,
+        listByShowId: async (id) =>
+          [...layouts.values()].filter(({ showId: value }) => value === id),
+        save: async (value) => {
+          layouts.set(value.id, value);
+        },
+      },
     },
     dependencies(savedTime),
   );
@@ -123,6 +158,8 @@ const createFixture = () => {
     first,
     firstEpisode,
     guestName,
+    layout,
+    layouts,
     otherEpisodeSegment,
     secondOccurrence,
     sourceSegment,
@@ -175,6 +212,94 @@ describe("UpdateEpisodeSegmentContentCommand", () => {
       notes: "Introduce the guest.",
     });
     expect(fixture.sourceSegment.expectedDurationMs).toBe(60_000);
+  });
+
+  test("11.T13 persists and resets Episode Layout and fixed Resource overrides independently", async () => {
+    const fixture = createFixture();
+    const placementId = parseEntityId<"componentPlacement">(
+      "01942c1f-ae8f-7e42-b900-000000000091",
+    );
+    const resourceId = parseEntityId<"resource">(
+      "01942c1f-ae8f-7e42-b900-000000000092",
+    );
+    const overridden = await fixture.command.execute({
+      episodeId: fixture.firstEpisode.id,
+      episodeSegmentId: fixture.first.id,
+      expectedUpdatedAt: fixture.first.updatedAt,
+      fieldValues: fixture.first.fieldValues,
+      notes: fixture.first.notes,
+      defaultLayoutOverrideId: fixture.layout.id,
+      fixedResourceReplacements: [
+        {
+          componentPlacementId: placementId,
+          propertyKey: "image",
+          resourceId,
+        },
+      ],
+    });
+    expect(overridden.segments[0]).toMatchObject({
+      defaultLayoutOverrideId: fixture.layout.id,
+      fixedResourceReplacements: [
+        {
+          componentPlacementId: placementId,
+          propertyKey: "image",
+          resourceId,
+        },
+      ],
+    });
+
+    const saved = overridden.segments[0];
+    if (saved === undefined) throw new Error("Expected the saved Segment.");
+    const reset = await fixture.command.execute({
+      episodeId: fixture.firstEpisode.id,
+      episodeSegmentId: fixture.first.id,
+      expectedUpdatedAt: saved.updatedAt,
+      fieldValues: saved.fieldValues,
+      notes: saved.notes,
+      defaultLayoutOverrideId: null,
+      fixedResourceReplacements: [],
+    });
+    expect(reset.segments[0]).not.toHaveProperty("defaultLayoutOverrideId");
+    expect(reset.segments[0]?.fixedResourceReplacements).toEqual([]);
+    expect(reset.segments[1]).toBe(fixture.secondOccurrence);
+    expect(
+      [...fixture.episodes.values()].find(
+        ({ id }) => id !== fixture.firstEpisode.id,
+      )?.segments[0],
+    ).toBe(fixture.otherEpisodeSegment);
+    expect(fixture.layout.name).toBe("Interview close");
+  });
+
+  test("preserves a Layout created as the current Episode override on later content saves", async () => {
+    const fixture = createFixture();
+    const createdLayout = {
+      ...fixture.layout,
+      id: parseEntityId<"layout">("01942c1f-ae8f-7e42-b900-000000000093"),
+      name: "Episode interview",
+    } satisfies Layout;
+    fixture.layouts.set(createdLayout.id, createdLayout);
+    const current = {
+      ...fixture.first,
+      defaultLayoutOverrideId: createdLayout.id,
+    };
+    fixture.episodes.set(fixture.firstEpisode.id, {
+      ...fixture.firstEpisode,
+      segments: [current, fixture.secondOccurrence],
+    });
+
+    const result = await fixture.command.execute({
+      episodeId: fixture.firstEpisode.id,
+      episodeSegmentId: current.id,
+      expectedUpdatedAt: current.updatedAt,
+      fieldValues: { [fixture.guestName.key]: "Updated guest" },
+      notes: current.notes,
+      defaultLayoutOverrideId: createdLayout.id,
+    });
+
+    expect(result.segments[0]).toMatchObject({
+      defaultLayoutOverrideId: createdLayout.id,
+      fieldValues: { guestName: "Updated guest" },
+    });
   });
 
   test("rejects values that do not match the source schema", async () => {

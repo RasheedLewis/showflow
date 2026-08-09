@@ -73,6 +73,7 @@ describe("ApplicationShell", () => {
     );
 
     const main = screen.getByRole("main", { name: "Show Blueprint" });
+    expect(main).toHaveAttribute("tabindex", "0");
     main.focus();
     expect(main).toHaveFocus();
     expect(

@@ -1,5 +1,6 @@
 import type {
   Component,
+  ComponentPlacement,
   ComponentId,
   Episode,
   EpisodeId,
@@ -61,6 +62,17 @@ export interface SegmentDataFieldUsageRepository {
     showSegmentId: ShowSegmentId,
     fieldKey: string,
   ): Promise<number>;
+  listLayoutBindingUsages(
+    showSegmentId: ShowSegmentId,
+    fieldKey: string,
+  ): Promise<readonly SegmentFieldBindingUsage[]>;
+}
+
+export interface SegmentFieldBindingUsage {
+  readonly componentName: string;
+  readonly layoutName: string;
+  readonly placementId: ComponentPlacement["id"];
+  readonly propertyKey: string;
 }
 
 export interface SegmentBlueprintCreationRepository {
@@ -84,6 +96,10 @@ export interface ComponentRepository extends EntityRepository<
   ComponentId
 > {
   listByShowId(showId: ShowId): Promise<readonly Component[]>;
+}
+
+export interface ComponentPlacementAssignmentRepository {
+  saveComponentAndLayout(component: Component, layout: Layout): Promise<void>;
 }
 
 export interface ResourceRepository extends EntityRepository<

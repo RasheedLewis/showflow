@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   createFixedClock,
+  createLayout,
   createSegmentDataField,
   createShowSegment,
   defineSegmentLifecycle,
@@ -21,6 +22,7 @@ import {
 } from "@showflow/domain";
 
 import { initializePersistence } from "../migrations/initialize-persistence.mjs";
+import { SqliteLayoutRepository } from "../layouts/sqlite-layout-repository.mjs";
 import { SqliteStudioRepository } from "../studios/sqlite-studio-repository.mjs";
 import { SqliteSegmentBlueprintCreationRepository } from "./sqlite-segment-blueprint-creation-repository.mjs";
 import { SqliteShowBlueprintRepository } from "./sqlite-show-blueprint-repository.mjs";
@@ -45,6 +47,97 @@ const dependencies = (suffix: number): DomainFactoryDependencies => ({
 });
 
 describe("SQLite Segment and Blueprint persistence", () => {
+  test("11.T12 reloads the default Layout and reusable available Layouts", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-segment-layout-test-"),
+    );
+    try {
+      const databasePath = path.join(temporaryDirectory, "showflow.sqlite");
+      const persistenceOptions = {
+        backup: {
+          backupsDirectory: path.join(temporaryDirectory, "backups"),
+          retentionCount: 2,
+        },
+        databasePath,
+        logger: { log: () => undefined },
+        migrationsDirectory: MIGRATIONS_DIRECTORY,
+        now: () => timestamp,
+      };
+      const firstPersistence = await initializePersistence(persistenceOptions);
+      const studio = {
+        id: entityId<"studio">(31),
+        name: "Public Sphere",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies Studio;
+      const show = {
+        id: entityId<"show">(32),
+        studioId: studio.id,
+        name: "Artist Interviews",
+        styleDefaults: {},
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies Show;
+      const blueprint = {
+        id: entityId<"showBlueprint">(33),
+        showId: show.id,
+        placements: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies ShowBlueprint;
+      await new SqliteStudioRepository(firstPersistence.database).save(studio);
+      await new SqliteShowCreationRepository(firstPersistence.database).create(
+        show,
+        blueprint,
+      );
+      const defaultLayout = createLayout(
+        { showId: show.id, name: "Guest interview" },
+        dependencies(34),
+      );
+      const alternateLayout = createLayout(
+        { showId: show.id, name: "Guest full screen" },
+        dependencies(35),
+      );
+      const layouts = new SqliteLayoutRepository(firstPersistence.database);
+      await layouts.save(defaultLayout);
+      await layouts.save(alternateLayout);
+      const segment = createShowSegment(
+        { showId: show.id, name: "Interview" },
+        dependencies(36),
+      );
+      const configuredSegment = {
+        ...segment,
+        layoutIds: [defaultLayout.id, alternateLayout.id],
+        lifecycle: defineSegmentLifecycle({
+          ...segment.lifecycle,
+          active: {
+            ...segment.lifecycle.active,
+            availableLayoutIds: [defaultLayout.id, alternateLayout.id],
+            defaultLayoutId: defaultLayout.id,
+          },
+        }),
+      } satisfies typeof segment;
+      await new SqliteShowSegmentRepository(firstPersistence.database).save(
+        configuredSegment,
+      );
+      firstPersistence.database.close();
+
+      const reopenedPersistence =
+        await initializePersistence(persistenceOptions);
+      try {
+        await expect(
+          new SqliteShowSegmentRepository(reopenedPersistence.database).getById(
+            configuredSegment.id,
+          ),
+        ).resolves.toEqual(configuredSegment);
+      } finally {
+        reopenedPersistence.database.close();
+      }
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
   test("persists Catalog Segments and exact Blueprint order across reload", async () => {
     const temporaryDirectory = await fs.mkdtemp(
       path.join(os.tmpdir(), "showflow-blueprint-test-"),

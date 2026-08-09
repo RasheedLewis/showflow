@@ -37,6 +37,7 @@ import {
   RestoreSegmentDataFieldCommand,
   UpdateSegmentDataFieldCommand,
   UpdateShowSegmentDetailsCommand,
+  UpdateSegmentActiveLayoutsCommand,
   DeleteResourceCommand,
   GetResourceAccessQuery,
   ImportResourcesCommand,
@@ -51,6 +52,10 @@ import {
   ListLayoutCatalogQuery,
   RenameLayoutCommand,
   UpdateLayoutCommand,
+  AssignComponentPlacementCommand,
+  ListComponentsQuery,
+  RemoveComponentPlacementCommand,
+  UpdateComponentPlacementCommand,
 } from "@showflow/application";
 import {
   initializePersistence,
@@ -66,6 +71,8 @@ import {
   SqliteResourceRepository,
   SqliteLayoutRepository,
   SqliteLayoutEpisodeCreationRepository,
+  SqliteComponentRepository,
+  SqliteComponentPlacementRepository,
   type InitializedPersistence,
   type MigrationLogger,
 } from "@showflow/persistence";
@@ -95,6 +102,8 @@ import { registerResourceIpc } from "./resource-ipc.mjs";
 import type { ResourceOperations } from "./resource-handler.mjs";
 import { registerLayoutIpc } from "./layout-ipc.mjs";
 import type { LayoutOperations } from "./layout-handler.mjs";
+import { registerComponentIpc } from "./component-ipc.mjs";
+import type { ComponentOperations } from "./component-handler.mjs";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -124,6 +133,7 @@ interface DesktopServices {
   readonly segmentEditor: SegmentEditorOperations;
   readonly resources: ResourceOperations;
   readonly layouts: LayoutOperations;
+  readonly components: ComponentOperations;
   readonly resourceProtocol: ResourceProtocolService;
 }
 
@@ -190,6 +200,9 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
   );
   const episodeRepository = new SqliteEpisodeRepository(persistence.database);
   const layoutRepository = new SqliteLayoutRepository(persistence.database);
+  const componentRepository = new SqliteComponentRepository(
+    persistence.database,
+  );
   const resourceFiles = new DesktopResourceFileAdapter(
     path.join(userDataDirectory, "cache", "thumbnails"),
   );
@@ -213,7 +226,9 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     segments: segmentRepository,
   });
   const getEpisode = new GetEpisodeStoryboardQuery({
+    components: componentRepository,
     episodes: episodeRepository,
+    layouts: layoutRepository,
     resources: resourceRepository,
     segments: segmentRepository,
     shows: showRepository,
@@ -227,6 +242,26 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
     applicationSettings: new ApplicationSettingsService(settingsRepository),
     persistence,
     resourceProtocol,
+    components: {
+      assign: new AssignComponentPlacementCommand({
+        components: componentRepository,
+        layouts: layoutRepository,
+        assignments: new SqliteComponentPlacementRepository(
+          persistence.database,
+        ),
+      }),
+      list: new ListComponentsQuery({
+        components: componentRepository,
+        shows: showRepository,
+      }),
+      remove: new RemoveComponentPlacementCommand({
+        layouts: layoutRepository,
+      }),
+      update: new UpdateComponentPlacementCommand({
+        components: componentRepository,
+        layouts: layoutRepository,
+      }),
+    },
     layouts: {
       archive: new ArchiveLayoutCommand({ layouts: layoutRepository }),
       createEpisode: new CreateEpisodeLayoutCommand({
@@ -328,6 +363,7 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       }),
       updateSegment: new UpdateEpisodeSegmentContentCommand({
         episodes: episodeRepository,
+        layouts: layoutRepository,
         segments: segmentRepository,
       }),
     },
@@ -339,6 +375,10 @@ const initializeDesktopServices = async (): Promise<DesktopServices> => {
       restoreField: new RestoreSegmentDataFieldCommand(segmentRepository),
       updateDetails: new UpdateShowSegmentDetailsCommand(segmentRepository),
       updateField: new UpdateSegmentDataFieldCommand(segmentRepository),
+      updateLayouts: new UpdateSegmentActiveLayoutsCommand({
+        segments: segmentRepository,
+        layouts: layoutRepository,
+      }),
     },
     studios: {
       create: new CreateStudioCommand(studioRepository),
@@ -427,6 +467,7 @@ const createMainWindow = async (
   segmentEditor: SegmentEditorOperations,
   resources: ResourceOperations,
   layouts: LayoutOperations,
+  components: ComponentOperations,
   resourceProtocol: ResourceProtocolService,
 ): Promise<void> => {
   const content = getMainWindowContent();
@@ -457,6 +498,7 @@ const createMainWindow = async (
   registerEpisodeIpc(window, content.trustedUrl, episodes);
   registerSegmentEditorIpc(window, content.trustedUrl, segmentEditor);
   registerLayoutIpc(window, content.trustedUrl, layouts);
+  registerComponentIpc(window, content.trustedUrl, components);
   await resourceProtocol.register(window.webContents.session.protocol);
   registerResourceIpc(window, content.trustedUrl, resources);
 
@@ -510,6 +552,7 @@ app
       services.segmentEditor,
       services.resources,
       services.layouts,
+      services.components,
       services.resourceProtocol,
     );
 
@@ -524,6 +567,7 @@ app
           services.segmentEditor,
           services.resources,
           services.layouts,
+          services.components,
           services.resourceProtocol,
         ).catch((error: unknown) => {
           console.error("Showflow could not reopen its window.", error);

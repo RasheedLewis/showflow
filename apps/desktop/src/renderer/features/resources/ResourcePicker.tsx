@@ -404,8 +404,9 @@ export const ResourcePicker = ({
             <div className={styles.empty}>
               <h3>No Resources found</h3>
               <p>
-                Import media for this Episode, or adjust the search and type
-                filter.
+                Import media for this{" "}
+                {context.scope === "episode" ? "Episode" : "Show"}, or adjust
+                the search and type filter.
               </p>
             </div>
           ) : (

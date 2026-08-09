@@ -142,6 +142,35 @@ test("8.T12 completes Episode Segment content and returns a safe summary to the 
   await expect(
     page.getByRole("textbox", { name: "Episode notes" }),
   ).toHaveValue("Confirm pronunciation.");
+  const createLayout = page.getByRole("button", { name: "Create a Layout" });
+  await expect(createLayout).toBeVisible();
+  await expect(createLayout.locator("span")).toHaveCSS(
+    "color",
+    "rgb(17, 19, 21)",
+  );
+  await createLayout.click();
+  const layoutDialog = page.getByRole("dialog", { name: "New Layout" });
+  await layoutDialog
+    .getByRole("textbox", { name: "Layout name" })
+    .fill("Episode interview");
+  await layoutDialog.getByRole("button", { name: "Create Layout" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Episode interview" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Back to Episode Segment" }).click();
+  await expect(createLayout).toHaveCount(0);
+  const episodeInspector = page.getByRole("complementary", {
+    name: "Episode Segment inspector",
+  });
+  const activeLayout = episodeInspector.getByRole("combobox", {
+    name: "Layout",
+  });
+  await expect(activeLayout.locator("option:checked")).toHaveText(
+    "Episode interview",
+  );
+  await expect(
+    episodeInspector.getByText("Episode override", { exact: true }),
+  ).toBeVisible();
 
   const guest = page.getByRole("textbox", { name: /Guest name/u });
   await guest.fill("<script>Ada Lovelace</script>");

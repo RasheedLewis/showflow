@@ -3,6 +3,7 @@ import {
   ApplicationShell,
   Badge,
   Button,
+  Checkbox,
   IconButton,
   InspectorSection,
   NotesPanel,
@@ -11,6 +12,7 @@ import {
   Skeleton,
   Tabs,
   TextInput,
+  Select,
 } from "@showflow/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +20,10 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { getDesignShowLayoutRoute } from "../../app-routes.mts";
 import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
+import {
+  layoutCatalogQueryKey,
+  loadLayoutCatalog,
+} from "../layouts/layout-queries";
 
 import { ParentNavigation } from "../navigation/ParentNavigation";
 import {
@@ -174,9 +180,11 @@ const useSegmentDetailsDraft = (
 };
 
 const PhaseCanvas = ({
+  defaultLayoutName,
   editor,
   phase,
 }: {
+  readonly defaultLayoutName: string | undefined;
   readonly editor: ShowSegmentEditorDto;
   readonly phase: LifecyclePhase;
 }) => {
@@ -203,10 +211,11 @@ const PhaseCanvas = ({
         {phase === "active" ? (
           <div className={styles.framePlaceholder}>
             <p className={styles.frameLabel}>Audience preview</p>
-            <strong>Choose the default Layout in Sprint 10</strong>
+            <strong>{defaultLayoutName ?? "Choose a default Layout"}</strong>
             <span>
-              This canvas will render the stable audience view while the Segment
-              is Active.
+              {defaultLayoutName === undefined
+                ? "Select a reusable Show Layout for the stable Active view."
+                : "This reusable Layout is the stable audience view while the Segment is Active."}
             </span>
           </div>
         ) : phase === "prepare" ? (
@@ -288,6 +297,12 @@ export const ShowSegmentEditorDestination = () => {
       showId ?? "incomplete",
       segmentId ?? "incomplete",
     ),
+    retry: false,
+  });
+  const layoutsQuery = useQuery({
+    enabled: studioId !== undefined && showId !== undefined,
+    queryFn: () => loadLayoutCatalog(studioId ?? "", showId ?? ""),
+    queryKey: layoutCatalogQueryKey(studioId ?? "", showId ?? ""),
     retry: false,
   });
   const editor = editorQuery.data;
@@ -403,23 +418,64 @@ export const ShowSegmentEditorDestination = () => {
               onUpdate={mutations.updateField}
             />
             <InspectorSection
-              description="These reusable production controls depend on later MVP foundations."
+              description="Choose what the audience sees by default and which reusable Layouts are available during Active."
               heading="Active configuration"
             >
-              <dl className={styles.dependencyList}>
-                <div>
-                  <dt>Default Layout</dt>
-                  <dd>Available after Layouts arrive in Sprint 10.</dd>
-                </div>
-                <div>
-                  <dt>Available Layouts</dt>
-                  <dd>Available after Layouts arrive in Sprint 10.</dd>
-                </div>
-                <div>
-                  <dt>Host Cues</dt>
-                  <dd>Available after Host Cues arrive in Sprint 13.</dd>
-                </div>
-              </dl>
+              <Select
+                label="Default Layout"
+                onChange={(event) => {
+                  const defaultLayoutId = event.currentTarget.value || null;
+                  const available =
+                    defaultLayoutId === null
+                      ? editor.lifecycle.active.availableLayoutIds
+                      : [
+                          ...new Set([
+                            ...editor.lifecycle.active.availableLayoutIds,
+                            defaultLayoutId,
+                          ]),
+                        ];
+                  run(mutations.updateLayouts(defaultLayoutId, available));
+                }}
+                options={[
+                  { label: "Choose a Layout", value: "" },
+                  ...(layoutsQuery.data ?? []).map(({ layout }) => ({
+                    label: layout.name,
+                    value: layout.id,
+                  })),
+                ]}
+                value={editor.lifecycle.active.defaultLayoutId ?? ""}
+              />
+              <fieldset className={styles.layoutChoices}>
+                <legend>Available Layouts</legend>
+                {(layoutsQuery.data ?? []).map(({ layout }) => (
+                  <Checkbox
+                    checked={editor.lifecycle.active.availableLayoutIds.includes(
+                      layout.id,
+                    )}
+                    key={layout.id}
+                    label={layout.name}
+                    onChange={(event) => {
+                      const available = event.currentTarget.checked
+                        ? [
+                            ...editor.lifecycle.active.availableLayoutIds,
+                            layout.id,
+                          ]
+                        : editor.lifecycle.active.availableLayoutIds.filter(
+                            (id) => id !== layout.id,
+                          );
+                      const defaultLayoutId =
+                        editor.lifecycle.active.defaultLayoutId === layout.id &&
+                        !event.currentTarget.checked
+                          ? null
+                          : editor.lifecycle.active.defaultLayoutId;
+                      run(mutations.updateLayouts(defaultLayoutId, available));
+                    }}
+                  />
+                ))}
+              </fieldset>
+              <p className={styles.dependencyCopy}>
+                Host Cues arrive in Sprint 13.
+              </p>
             </InspectorSection>
           </>
         ) : (
@@ -574,7 +630,18 @@ export const ShowSegmentEditorDestination = () => {
               items={(
                 ["prepare", "enter", "active", "exit", "cleanup"] as const
               ).map((targetPhase) => ({
-                content: <PhaseCanvas editor={editor} phase={targetPhase} />,
+                content: (
+                  <PhaseCanvas
+                    defaultLayoutName={
+                      layoutsQuery.data?.find(
+                        ({ layout }) =>
+                          layout.id === editor.lifecycle.active.defaultLayoutId,
+                      )?.layout.name
+                    }
+                    editor={editor}
+                    phase={targetPhase}
+                  />
+                ),
                 label: PHASE_LABELS[targetPhase],
                 value: targetPhase,
               }))}

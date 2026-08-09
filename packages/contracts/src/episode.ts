@@ -105,6 +105,13 @@ export const EpisodeStoryboardItemDtoSchema = z
     ]),
     sourceSegment: ShowSegmentDtoSchema,
     sourceNotesTemplate: z.string(),
+    sourceActiveConfiguration: z
+      .object({
+        defaultLayoutId: z.string().uuid().nullable(),
+        availableLayoutIds: z.array(z.string().uuid()),
+      })
+      .strict()
+      .optional(),
     summary: z.string().nullable(),
     validationIssueCount: z.number().int().nonnegative(),
     validationIssues: z.array(
@@ -118,6 +125,10 @@ export const EpisodeStoryboardItemDtoSchema = z
             "EPISODE_RESOURCE_UNSUPPORTED",
             "EPISODE_RESOURCE_WRONG_TYPE",
             "EPISODE_RESOURCE_OUT_OF_SCOPE",
+            "COMPONENT_PROPERTY_MISSING",
+            "COMPONENT_RESOURCE_INVALID",
+            "CAMERA_UNAVAILABLE",
+            "LAYOUT_MISSING",
           ]),
           fieldKey: z.string().min(1),
           message: z.string().min(1),
@@ -200,6 +211,10 @@ export const UpdateEpisodeSegmentRequestSchema =
     expectedUpdatedAt: CanonicalUtcTimestampSchema,
     fieldValues: JsonValueObjectSchema,
     notes: z.string(),
+    defaultLayoutOverrideId: z.string().uuid().nullable().optional(),
+    fixedResourceReplacements: z
+      .array(FixedResourceReplacementDtoSchema)
+      .optional(),
   }).strict();
 
 export const EpisodeStoryboardResultSchema = z.discriminatedUnion("ok", [

@@ -148,6 +148,13 @@ const storyboardSuccess = (
             updatedAt: sourceSegment.updatedAt,
           },
           sourceNotesTemplate: sourceSegment.notesTemplate,
+          sourceActiveConfiguration: {
+            defaultLayoutId:
+              sourceSegment.lifecycle.active.defaultLayoutId ?? null,
+            availableLayoutIds: [
+              ...sourceSegment.lifecycle.active.availableLayoutIds,
+            ],
+          },
           summary: summary ?? null,
           validationIssueCount: validationIssues.length,
           validationIssues,
@@ -477,6 +484,28 @@ export const handleEpisodeMutationRequest = async (
         expectedUpdatedAt: parseUtcTimestamp(updateRequest.expectedUpdatedAt),
         fieldValues: updateRequest.fieldValues as JsonObject,
         notes: updateRequest.notes,
+        ...(updateRequest.defaultLayoutOverrideId === undefined
+          ? {}
+          : {
+              defaultLayoutOverrideId:
+                updateRequest.defaultLayoutOverrideId === null
+                  ? null
+                  : parseEntityId<"layout">(
+                      updateRequest.defaultLayoutOverrideId,
+                    ),
+            }),
+        ...(updateRequest.fixedResourceReplacements === undefined
+          ? {}
+          : {
+              fixedResourceReplacements:
+                updateRequest.fixedResourceReplacements.map((replacement) => ({
+                  componentPlacementId: parseEntityId<"componentPlacement">(
+                    replacement.componentPlacementId,
+                  ),
+                  propertyKey: replacement.propertyKey,
+                  resourceId: parseEntityId<"resource">(replacement.resourceId),
+                })),
+            }),
         ...(updateRequest.expectedDurationOverrideMs === null
           ? {}
           : {

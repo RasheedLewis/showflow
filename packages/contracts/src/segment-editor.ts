@@ -10,6 +10,8 @@ export const SEGMENTS_CREATE_FIELD_CHANNEL =
   "showflow:v1:segments:create-field" as const;
 export const SEGMENTS_UPDATE_FIELD_CHANNEL =
   "showflow:v1:segments:update-field" as const;
+export const SEGMENTS_UPDATE_LAYOUTS_CHANNEL =
+  "showflow:v1:segments:update-layouts" as const;
 export const SEGMENTS_DELETE_FIELD_CHANNEL =
   "showflow:v1:segments:delete-field" as const;
 export const SEGMENTS_RESTORE_FIELD_CHANNEL =
@@ -180,6 +182,11 @@ export const ReorderSegmentFieldsRequestSchema =
   SegmentMutationScopeSchema.extend({
     orderedFieldIds: z.array(z.string().uuid()),
   }).strict();
+export const UpdateSegmentLayoutsRequestSchema =
+  SegmentMutationScopeSchema.extend({
+    defaultLayoutId: z.string().uuid().nullable(),
+    availableLayoutIds: z.array(z.string().uuid()),
+  }).strict();
 
 export const ShowSegmentEditorResultSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), data: ShowSegmentEditorDtoSchema }).strict(),
@@ -214,4 +221,7 @@ export type RestoreSegmentFieldRequest = z.infer<
 >;
 export type ReorderSegmentFieldsRequest = z.infer<
   typeof ReorderSegmentFieldsRequestSchema
+>;
+export type UpdateSegmentLayoutsRequest = z.infer<
+  typeof UpdateSegmentLayoutsRequestSchema
 >;

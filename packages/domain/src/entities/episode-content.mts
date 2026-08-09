@@ -13,7 +13,11 @@ export type EpisodeSegmentContentIssueCode =
   | "EPISODE_RESOURCE_MISSING"
   | "EPISODE_RESOURCE_UNSUPPORTED"
   | "EPISODE_RESOURCE_WRONG_TYPE"
-  | "EPISODE_RESOURCE_OUT_OF_SCOPE";
+  | "EPISODE_RESOURCE_OUT_OF_SCOPE"
+  | "COMPONENT_PROPERTY_MISSING"
+  | "COMPONENT_RESOURCE_INVALID"
+  | "CAMERA_UNAVAILABLE"
+  | "LAYOUT_MISSING";
 
 export interface EpisodeSegmentContentIssue {
   readonly code: EpisodeSegmentContentIssueCode;

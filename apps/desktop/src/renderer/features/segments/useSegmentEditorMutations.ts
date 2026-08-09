@@ -35,7 +35,12 @@ type HistoryInstruction =
       readonly field: SegmentDataFieldDto;
     }
   | { readonly kind: "update-field"; readonly field: SegmentDataFieldDto }
-  | { readonly kind: "reorder-fields"; readonly fieldIds: readonly string[] };
+  | { readonly kind: "reorder-fields"; readonly fieldIds: readonly string[] }
+  | {
+      readonly kind: "layouts";
+      readonly defaultLayoutId: string | null;
+      readonly availableLayoutIds: readonly string[];
+    };
 type HistoryCommand = () => Promise<HistoryCommand>;
 type ApplyHistoryInstruction = (
   instruction: HistoryInstruction,
@@ -67,6 +72,10 @@ export interface SegmentEditorMutations {
   readonly updateField: (
     fieldId: string,
     value: SegmentFieldDraft,
+  ) => Promise<void>;
+  readonly updateLayouts: (
+    defaultLayoutId: string | null,
+    availableLayoutIds: readonly string[],
   ) => Promise<void>;
 }
 
@@ -292,6 +301,21 @@ export const useSegmentEditorMutations = (
           );
           return { kind: "reorder-fields", fieldIds: inverse };
         }
+        case "layouts": {
+          const inverse = {
+            kind: "layouts",
+            defaultLayoutId: current.lifecycle.active.defaultLayoutId,
+            availableLayoutIds: current.lifecycle.active.availableLayoutIds,
+          } as const;
+          await applyResult((latest, studioId) =>
+            window.showflow.segments.updateLayouts({
+              ...scope(latest, studioId),
+              defaultLayoutId: instruction.defaultLayoutId,
+              availableLayoutIds: [...instruction.availableLayoutIds],
+            }),
+          );
+          return inverse;
+        }
       }
     },
     [applyResult, findCurrentEntry, scope],
@@ -394,6 +418,33 @@ export const useSegmentEditorMutations = (
     },
     [applyInstruction, findCurrentEntry, record],
   );
+  const updateLayouts = useCallback(
+    async (
+      defaultLayoutId: string | null,
+      availableLayoutIds: readonly string[],
+    ): Promise<void> => {
+      const before = findCurrentEntry().editor.lifecycle.active;
+      if (
+        before.defaultLayoutId === defaultLayoutId &&
+        before.availableLayoutIds.length === availableLayoutIds.length &&
+        before.availableLayoutIds.every(
+          (id, index) => id === availableLayoutIds[index],
+        )
+      )
+        return;
+      await applyInstruction({
+        kind: "layouts",
+        defaultLayoutId,
+        availableLayoutIds,
+      });
+      record({
+        kind: "layouts",
+        defaultLayoutId: before.defaultLayoutId,
+        availableLayoutIds: before.availableLayoutIds,
+      });
+    },
+    [applyInstruction, findCurrentEntry, record],
+  );
 
   const runHistory = useCallback(
     async (
@@ -427,5 +478,6 @@ export const useSegmentEditorMutations = (
     undo: () => runHistory(undoStack, redoStack),
     updateDetails,
     updateField,
+    updateLayouts,
   };
 };

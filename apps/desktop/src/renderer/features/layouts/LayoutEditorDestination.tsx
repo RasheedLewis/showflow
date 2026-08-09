@@ -24,9 +24,26 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import type { LayoutDto, SlotDraftDto } from "@showflow/contracts";
+import type {
+  BindingDto,
+  ComponentDto,
+  ComponentPlacementDto,
+  LayoutDto,
+  SlotDraftDto,
+} from "@showflow/contracts";
+import {
+  BUILT_IN_COMPONENT_TYPES,
+  BUILT_IN_COMPONENT_REGISTRY,
+  type BuiltInComponentType,
+} from "@showflow/domain";
 
 import { getDesignShowLayoutRoute } from "../../app-routes.mts";
+import { ComponentPreview } from "../components/ComponentPreview";
+import { PlacementInspector } from "../components/PlacementInspector";
+import {
+  componentQueryKey,
+  loadComponents,
+} from "../components/component-queries";
 import { ParentNavigation } from "../navigation/ParentNavigation";
 import {
   createNavigationFocusState,
@@ -53,6 +70,24 @@ type Snapshot = {
   readonly name: string;
   readonly slots: readonly SlotDraftDto[];
 };
+type PlacementState = {
+  readonly bindings: Readonly<Record<string, BindingDto>>;
+  readonly componentType: BuiltInComponentType;
+  readonly fixedProperties: ComponentPlacementDto["fixedProperties"];
+  readonly visibleByDefault: boolean;
+};
+type HistoryEntry =
+  | {
+      readonly kind: "layout";
+      readonly before: Snapshot;
+      readonly after: Snapshot;
+    }
+  | {
+      readonly kind: "placement";
+      readonly slotId: string;
+      readonly before: PlacementState | null;
+      readonly after: PlacementState | null;
+    };
 type ComponentType = SlotDraftDto["allowedComponentTypes"][number];
 const COMPONENT_TYPES: readonly ComponentType[] = [
   "camera",
@@ -99,6 +134,20 @@ const snapshot = (layout: LayoutDto): Snapshot => ({
     allowedComponentTypes: [...slot.allowedComponentTypes],
   })),
 });
+const placementState = (
+  placement: ComponentPlacementDto | undefined,
+  component: ComponentDto | undefined,
+): PlacementState | null =>
+  placement === undefined ||
+  component === undefined ||
+  !BUILT_IN_COMPONENT_TYPES.includes(component.type)
+    ? null
+    : {
+        bindings: { ...placement.bindings },
+        componentType: component.type,
+        fixedProperties: { ...placement.fixedProperties },
+        visibleByDefault: placement.visibleByDefault,
+      };
 
 export const LayoutEditorDestination = () => {
   const { studioId, showId, layoutId } = useParams<{
@@ -138,6 +187,12 @@ export const LayoutEditorDestination = () => {
     }),
     retry: false,
   });
+  const componentsQuery = useQuery({
+    enabled: complete,
+    queryFn: () => loadComponents(studioId ?? "", showId ?? ""),
+    queryKey: componentQueryKey(studioId ?? "", showId ?? ""),
+    retry: false,
+  });
   const [layout, setLayout] = useState<LayoutDto>();
   const [selectedId, setSelectedId] = useState<string>();
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -146,8 +201,8 @@ export const LayoutEditorDestination = () => {
     "saved",
   );
   const [error, setError] = useState<string>();
-  const [past, setPast] = useState<readonly Snapshot[]>([]);
-  const [future, setFuture] = useState<readonly Snapshot[]>([]);
+  const [past, setPast] = useState<readonly HistoryEntry[]>([]);
+  const [future, setFuture] = useState<readonly HistoryEntry[]>([]);
   const saved = useRef<LayoutDto | undefined>(undefined);
   const drag = useRef<
     | {
@@ -171,6 +226,12 @@ export const LayoutEditorDestination = () => {
     return () => window.clearTimeout(timeout);
   }, [layout, query.data]);
   const selected = layout?.slots.find(({ id }) => id === selectedId);
+  const selectedPlacement = layout?.componentPlacements.find(
+    ({ slotId }) => slotId === selectedId,
+  );
+  const selectedComponent = componentsQuery.data?.find(
+    ({ id }) => id === selectedPlacement?.componentId,
+  );
   const origin = complete
     ? resolveLayoutOrigin(location.state, studioId, showId)
     : { label: "Layouts", returnTo: "/" };
@@ -181,13 +242,22 @@ export const LayoutEditorDestination = () => {
     studioId,
   });
 
-  const persist = async (next: Snapshot, record = true): Promise<void> => {
+  const cacheLayout = async (next: LayoutDto): Promise<void> => {
+    if (!complete) return;
+    saved.current = next;
+    setLayout(next);
+    client.setQueryData(layoutQueryKey(studioId, showId, layoutId), next);
+    await client.invalidateQueries({
+      queryKey: layoutCatalogQueryKey(studioId, showId),
+    });
+  };
+  const recordHistory = (entry: HistoryEntry): void => {
+    setPast((entries) => [...entries, entry]);
+    setFuture([]);
+  };
+  const persist = async (next: Snapshot, record = true): Promise<boolean> => {
     const current = saved.current;
-    if (current === undefined || !complete) return;
-    if (record) {
-      setPast((entries) => [...entries, snapshot(current)]);
-      setFuture([]);
-    }
+    if (current === undefined || !complete) return false;
     setSaveState("saving");
     const result = await window.showflow.layouts.update({
       studioId,
@@ -223,14 +293,17 @@ export const LayoutEditorDestination = () => {
       setError(result.error.message);
       setSaveState("error");
       setLayout(current);
-      return;
+      return false;
     }
-    saved.current = result.data;
-    setLayout(result.data);
+    if (record)
+      recordHistory({
+        kind: "layout",
+        before: snapshot(current),
+        after: snapshot(result.data),
+      });
+    await cacheLayout(result.data);
     setSaveState("saved");
-    await client.invalidateQueries({
-      queryKey: layoutCatalogQueryKey(studioId, showId),
-    });
+    return true;
   };
   const commitSlots = (slots: readonly SlotDraftDto[], record = true) =>
     persist({ name: layout?.name ?? "Layout", slots }, record);
@@ -255,22 +328,6 @@ export const LayoutEditorDestination = () => {
     void commitSlots(
       reordered.map((slot, index) => ({ ...slot, layerOrder: index })),
     );
-  };
-  const undo = (): void => {
-    const previous = past.at(-1);
-    const current = saved.current;
-    if (previous === undefined || current === undefined) return;
-    setPast((entries) => entries.slice(0, -1));
-    setFuture((entries) => [...entries, snapshot(current)]);
-    void persist(previous, false);
-  };
-  const redo = (): void => {
-    const next = future.at(-1);
-    const current = saved.current;
-    if (next === undefined || current === undefined) return;
-    setFuture((entries) => entries.slice(0, -1));
-    setPast((entries) => [...entries, snapshot(current)]);
-    void persist(next, false);
   };
   const addSlot = async (): Promise<void> => {
     if (layout === undefined) return;
@@ -328,6 +385,216 @@ export const LayoutEditorDestination = () => {
     drag.current = undefined;
     void commitSlots(layout.slots);
   };
+  const assignComponent = async (type: BuiltInComponentType): Promise<void> => {
+    if (selected === undefined || layout === undefined) {
+      setError("Select a compatible Slot before adding a Component.");
+      return;
+    }
+    const before = placementState(selectedPlacement, selectedComponent);
+    setSaveState("saving");
+    const result = await window.showflow.components.assign({
+      studioId: studioId ?? "",
+      showId: showId ?? "",
+      layoutId: layoutId ?? "",
+      expectedUpdatedAt: layout.updatedAt,
+      slotId: selected.id,
+      componentType: type,
+    });
+    if (!result.ok) {
+      setError(result.error.message);
+      setSaveState("error");
+      return;
+    }
+    const assignedPlacement = result.data.componentPlacements.find(
+      (placement) => placement.slotId === selected.id,
+    );
+    if (assignedPlacement === undefined) {
+      setError("Showflow could not confirm the Component Placement.");
+      setSaveState("error");
+      return;
+    }
+    recordHistory({
+      kind: "placement",
+      slotId: selected.id,
+      before,
+      after: {
+        bindings: { ...assignedPlacement.bindings },
+        componentType: type,
+        fixedProperties: { ...assignedPlacement.fixedProperties },
+        visibleByDefault: assignedPlacement.visibleByDefault,
+      },
+    });
+    await cacheLayout(result.data);
+    setError(undefined);
+    setSaveState("saved");
+    await client.invalidateQueries({
+      queryKey: componentQueryKey(studioId ?? "", showId ?? ""),
+    });
+  };
+  const updatePlacement = async (
+    bindings: Readonly<Record<string, BindingDto>>,
+    visibleByDefault: boolean,
+  ): Promise<void> => {
+    if (selectedPlacement === undefined || layout === undefined) return;
+    const before = placementState(selectedPlacement, selectedComponent);
+    if (before === null) return;
+    setSaveState("saving");
+    const result = await window.showflow.components.updatePlacement({
+      studioId: studioId ?? "",
+      showId: showId ?? "",
+      layoutId: layoutId ?? "",
+      expectedUpdatedAt: layout.updatedAt,
+      placementId: selectedPlacement.id,
+      bindings,
+      fixedProperties: selectedPlacement.fixedProperties,
+      visibleByDefault,
+    });
+    if (!result.ok) {
+      setError(result.error.message);
+      setSaveState("error");
+      return;
+    }
+    recordHistory({
+      kind: "placement",
+      slotId: selectedPlacement.slotId,
+      before,
+      after: {
+        ...before,
+        bindings: { ...bindings },
+        visibleByDefault,
+      },
+    });
+    await cacheLayout(result.data);
+    setError(undefined);
+    setSaveState("saved");
+  };
+  const removePlacement = async (): Promise<void> => {
+    if (selectedPlacement === undefined || layout === undefined) return;
+    const before = placementState(selectedPlacement, selectedComponent);
+    if (before === null) return;
+    setSaveState("saving");
+    const result = await window.showflow.components.removePlacement({
+      studioId: studioId ?? "",
+      showId: showId ?? "",
+      layoutId: layoutId ?? "",
+      expectedUpdatedAt: layout.updatedAt,
+      placementId: selectedPlacement.id,
+    });
+    if (!result.ok) {
+      setError(result.error.message);
+      setSaveState("error");
+      return;
+    }
+    recordHistory({
+      kind: "placement",
+      slotId: selectedPlacement.slotId,
+      before,
+      after: null,
+    });
+    await cacheLayout(result.data);
+    setError(undefined);
+    setSaveState("saved");
+  };
+
+  const applyPlacementState = async (
+    slotId: string,
+    target: PlacementState | null,
+  ): Promise<boolean> => {
+    const current = saved.current;
+    if (current === undefined || !complete) return false;
+    const currentPlacement = current.componentPlacements.find(
+      (placement) => placement.slotId === slotId,
+    );
+    setSaveState("saving");
+    if (target === null) {
+      if (currentPlacement === undefined) {
+        setSaveState("saved");
+        return true;
+      }
+      const removed = await window.showflow.components.removePlacement({
+        studioId,
+        showId,
+        layoutId,
+        expectedUpdatedAt: current.updatedAt,
+        placementId: currentPlacement.id,
+      });
+      if (!removed.ok) {
+        setError(removed.error.message);
+        setSaveState("error");
+        return false;
+      }
+      await cacheLayout(removed.data);
+      setError(undefined);
+      setSaveState("saved");
+      return true;
+    }
+    const assigned = await window.showflow.components.assign({
+      studioId,
+      showId,
+      layoutId,
+      expectedUpdatedAt: current.updatedAt,
+      slotId,
+      componentType: target.componentType,
+    });
+    if (!assigned.ok) {
+      setError(assigned.error.message);
+      setSaveState("error");
+      return false;
+    }
+    const assignedPlacement = assigned.data.componentPlacements.find(
+      (placement) => placement.slotId === slotId,
+    );
+    if (assignedPlacement === undefined) {
+      setError("Showflow could not restore the Component Placement.");
+      setSaveState("error");
+      return false;
+    }
+    const updated = await window.showflow.components.updatePlacement({
+      studioId,
+      showId,
+      layoutId,
+      expectedUpdatedAt: assigned.data.updatedAt,
+      placementId: assignedPlacement.id,
+      bindings: target.bindings,
+      fixedProperties: target.fixedProperties,
+      visibleByDefault: target.visibleByDefault,
+    });
+    if (!updated.ok) {
+      await cacheLayout(assigned.data);
+      setError(updated.error.message);
+      setSaveState("error");
+      return false;
+    }
+    await cacheLayout(updated.data);
+    setError(undefined);
+    setSaveState("saved");
+    await client.invalidateQueries({
+      queryKey: componentQueryKey(studioId, showId),
+    });
+    return true;
+  };
+  const applyHistory = async (
+    entry: HistoryEntry,
+    direction: "undo" | "redo",
+  ): Promise<boolean> =>
+    entry.kind === "layout"
+      ? persist(direction === "undo" ? entry.before : entry.after, false)
+      : applyPlacementState(
+          entry.slotId,
+          direction === "undo" ? entry.before : entry.after,
+        );
+  const undo = async (): Promise<void> => {
+    const entry = past.at(-1);
+    if (entry === undefined || !(await applyHistory(entry, "undo"))) return;
+    setPast((entries) => entries.slice(0, -1));
+    setFuture((entries) => [...entries, entry]);
+  };
+  const redo = async (): Promise<void> => {
+    const entry = future.at(-1);
+    if (entry === undefined || !(await applyHistory(entry, "redo"))) return;
+    setFuture((entries) => entries.slice(0, -1));
+    setPast((entries) => [...entries, entry]);
+  };
 
   if (!complete) return <Navigate replace to="/" />;
   if (query.isPending || studioQuery.isPending)
@@ -361,9 +628,58 @@ export const LayoutEditorDestination = () => {
       </ApplicationShell>
     );
 
+  const segmentFieldSamples = [
+    ...new Map(
+      layout.componentPlacements.flatMap((placement) =>
+        Object.values(placement.bindings).flatMap((binding) =>
+          binding.kind === "segmentField"
+            ? [
+                [
+                  binding.fieldKey,
+                  {
+                    id: placement.id,
+                    showSegmentId: layout.id,
+                    key: binding.fieldKey,
+                    label: binding.fieldKey.replace(/([A-Z])/gu, " $1"),
+                    type: "shortText" as const,
+                    required: false,
+                    defaultValue: null,
+                    helpText: null,
+                    position: 0,
+                    createdAt: placement.createdAt,
+                    updatedAt: placement.updatedAt,
+                  },
+                ] as const,
+              ]
+            : [],
+        ),
+      ),
+    ).values(),
+  ];
+
   const inspector =
     mode === "preview" ? null : (
       <div className={styles.inspector}>
+        {selectedPlacement !== undefined && selectedComponent !== undefined ? (
+          <InspectorSection
+            description="Set fixed values and Resources once, or use production data when this Layout is active."
+            heading="Component"
+          >
+            <PlacementInspector
+              component={selectedComponent}
+              key={`${selectedPlacement.id}-${selectedPlacement.updatedAt}`}
+              onRemove={removePlacement}
+              onSave={updatePlacement}
+              placement={selectedPlacement}
+              resourceContext={{
+                scope: "show",
+                studioId: studioId ?? "",
+                showId: showId ?? "",
+              }}
+              resources={resourcesQuery.data ?? []}
+            />
+          </InspectorSection>
+        ) : null}
         <InspectorSection
           description="Normalized percentages keep every composition deterministic."
           heading={selected === undefined ? "Layout" : "Slot geometry"}
@@ -504,7 +820,42 @@ export const LayoutEditorDestination = () => {
         <section>
           <p className={styles.eyebrow}>Components</p>
           <h2>Component Catalog</h2>
-          <p>Component placement arrives in Sprint 11.</p>
+          <p>
+            Select a compatible Slot, then add or drag a built-in Component.
+          </p>
+          <div className={styles.componentGrid}>
+            {BUILT_IN_COMPONENT_TYPES.map((type) => {
+              const definition = BUILT_IN_COMPONENT_REGISTRY[type];
+              const compatible =
+                selected !== undefined &&
+                selected.allowedComponentTypes.includes(type) &&
+                definition.supportedSlotRoles.includes(selected.role);
+              return (
+                <button
+                  className={styles.componentTile}
+                  disabled={!compatible}
+                  draggable={compatible}
+                  key={type}
+                  onClick={() => void assignComponent(type)}
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData(
+                      "application/x-showflow-component",
+                      type,
+                    );
+                  }}
+                  type="button"
+                >
+                  <strong>{definition.name}</strong>
+                  <span>{definition.description}</span>
+                  <small>
+                    {compatible
+                      ? "Add to selected Slot"
+                      : "Select a compatible Slot"}
+                  </small>
+                </button>
+              );
+            })}
+          </div>
         </section>
         <section>
           <p className={styles.eyebrow}>Resources</p>
@@ -533,14 +884,14 @@ export const LayoutEditorDestination = () => {
             disabled={past.length === 0 || saveState === "saving"}
             icon="undo"
             label="Undo Layout change"
-            onClick={undo}
+            onClick={() => void undo()}
             tooltip="Undo"
           />
           <IconButton
             disabled={future.length === 0 || saveState === "saving"}
             icon="redo"
             label="Redo Layout change"
-            onClick={redo}
+            onClick={() => void redo()}
             tooltip="Redo"
           />
         </>
@@ -635,9 +986,42 @@ export const LayoutEditorDestination = () => {
             className={styles.audienceFrame}
             data-layout-frame
             data-ratio={layout.aspectRatio}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              const type = event.dataTransfer.getData(
+                "application/x-showflow-component",
+              );
+              if (
+                (BUILT_IN_COMPONENT_TYPES as readonly string[]).includes(type)
+              )
+                void assignComponent(type as BuiltInComponentType);
+            }}
             onClick={() => setSelectedId(undefined)}
             style={{ aspectRatio: layout.aspectRatio.replace(":", " / ") }}
           >
+            <ComponentPreview
+              components={componentsQuery.data ?? []}
+              layout={layout}
+              resources={resourcesQuery.data ?? []}
+              studioId={studioId}
+              segmentFields={segmentFieldSamples}
+              segmentValues={Object.fromEntries(
+                layout.componentPlacements.flatMap((placement) =>
+                  Object.values(placement.bindings).flatMap((binding) =>
+                    binding.kind === "segmentField"
+                      ? [
+                          [
+                            binding.fieldKey,
+                            binding.fieldKey
+                              .replace(/([A-Z])/gu, " $1")
+                              .replace(/^./u, (letter) => letter.toUpperCase()),
+                          ],
+                        ]
+                      : [],
+                  ),
+                ),
+              )}
+            />
             {mode === "edit" && safeArea ? (
               <div aria-hidden="true" className={styles.safeArea} />
             ) : null}

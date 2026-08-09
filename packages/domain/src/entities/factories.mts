@@ -288,6 +288,7 @@ export interface CreateResourceInput {
   readonly category: ResourceCategory;
   readonly mimeType: string;
   readonly availability?: ResourceAvailability;
+  readonly deviceState?: Resource["deviceState"];
   readonly originalFilename?: string;
   readonly localPath?: string;
   readonly fileSizeBytes?: number;
@@ -319,6 +320,9 @@ export const createResource = (
   if (input.durationMs !== undefined && input.durationMs < 0) {
     throw new RangeError("Resource duration cannot be negative.");
   }
+  if (input.deviceState !== undefined && input.category !== "cameraInput") {
+    throw new TypeError("Only camera Resources may store a device state.");
+  }
 
   return {
     id: dependencies.createId("resource"),
@@ -327,6 +331,9 @@ export const createResource = (
     category: input.category,
     mimeType: input.mimeType,
     availability: input.availability ?? "available",
+    ...(input.deviceState === undefined
+      ? {}
+      : { deviceState: input.deviceState }),
     ...(input.originalFilename === undefined
       ? {}
       : { originalFilename: input.originalFilename }),

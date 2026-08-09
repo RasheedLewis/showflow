@@ -50,6 +50,7 @@ import type {
   ShowSegmentEditorResult,
   UpdateSegmentDetailsRequest,
   UpdateSegmentFieldRequest,
+  UpdateSegmentLayoutsRequest,
 } from "./segment-editor.ts";
 import type {
   DroppedResourceFile,
@@ -73,6 +74,13 @@ import type {
   RenameLayoutRequest,
   UpdateLayoutRequest,
 } from "./layout.ts";
+import type {
+  AssignComponentRequest,
+  ComponentListResult,
+  ListComponentsRequest,
+  RemoveComponentPlacementRequest,
+  UpdateComponentPlacementRequest,
+} from "./component.ts";
 
 export interface ShowflowDesktopApi {
   readonly apiVersion: typeof DESKTOP_API_VERSION;
@@ -120,6 +128,9 @@ export interface ShowflowDesktopApi {
     updateField: (
       request: UpdateSegmentFieldRequest,
     ) => Promise<ShowSegmentEditorResult>;
+    updateLayouts: (
+      request: UpdateSegmentLayoutsRequest,
+    ) => Promise<ShowSegmentEditorResult>;
   }>;
   readonly blueprints: Readonly<{
     addSegment: (
@@ -141,6 +152,16 @@ export interface ShowflowDesktopApi {
     list: (request: ListLayoutsRequest) => Promise<LayoutCatalogResult>;
     rename: (request: RenameLayoutRequest) => Promise<LayoutResult>;
     update: (request: UpdateLayoutRequest) => Promise<LayoutResult>;
+  }>;
+  readonly components: Readonly<{
+    assign: (request: AssignComponentRequest) => Promise<LayoutResult>;
+    list: (request: ListComponentsRequest) => Promise<ComponentListResult>;
+    removePlacement: (
+      request: RemoveComponentPlacementRequest,
+    ) => Promise<LayoutResult>;
+    updatePlacement: (
+      request: UpdateComponentPlacementRequest,
+    ) => Promise<LayoutResult>;
   }>;
   readonly episodes: Readonly<{
     create: (request: CreateEpisodeRequest) => Promise<EpisodeStoryboardResult>;

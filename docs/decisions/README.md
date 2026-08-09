@@ -102,4 +102,6 @@ No product decision requests are currently recorded.
 
 ## Open Specification Issue register
 
-No open specification issues are currently recorded.
+|                                              OSI | Status | Issue                        |
+| -----------------------------------------------: | ------ | ---------------------------- |
+| [0001](osi-0001-bound-segment-field-deletion.md) | Open   | Bound Segment field deletion |

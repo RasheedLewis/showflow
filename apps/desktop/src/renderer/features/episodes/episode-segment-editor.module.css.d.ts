@@ -1,6 +1,7 @@
 declare const styles: {
   readonly audienceFrame: string;
   readonly canvasStage: string;
+  readonly canvasEmpty: string;
   readonly contentPanel: string;
   readonly durationControls: string;
   readonly editorHeader: string;

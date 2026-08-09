@@ -7,6 +7,7 @@ import {
   type RestoreSegmentDataFieldCommand,
   type UpdateSegmentDataFieldCommand,
   type UpdateShowSegmentDetailsCommand,
+  type UpdateSegmentActiveLayoutsCommand,
 } from "@showflow/application";
 import {
   CreateSegmentFieldRequestSchema,
@@ -16,6 +17,7 @@ import {
   RestoreSegmentFieldRequestSchema,
   UpdateSegmentDetailsRequestSchema,
   UpdateSegmentFieldRequestSchema,
+  UpdateSegmentLayoutsRequestSchema,
   type ApiErrorCode,
   type SegmentDataFieldDto,
   type ShowSegmentEditorDto,
@@ -35,6 +37,7 @@ export interface SegmentEditorOperations {
   readonly restoreField: Pick<RestoreSegmentDataFieldCommand, "execute">;
   readonly updateDetails: Pick<UpdateShowSegmentDetailsCommand, "execute">;
   readonly updateField: Pick<UpdateSegmentDataFieldCommand, "execute">;
+  readonly updateLayouts: Pick<UpdateSegmentActiveLayoutsCommand, "execute">;
 }
 
 const errorResult = (
@@ -371,6 +374,42 @@ export const handleReorderSegmentFieldsRequest = async (
       orderedFieldIds: valid.data.orderedFieldIds.map((id) =>
         parseEntityId<"segmentDataField">(id),
       ),
+    });
+    return finishMutation(valid.data, operations.get);
+  } catch (error) {
+    return mutationFailure(error);
+  }
+};
+
+export const handleUpdateSegmentLayoutsRequest = async (
+  request: unknown,
+  senderIsTrusted: boolean,
+  operations: SegmentEditorOperations,
+): Promise<ShowSegmentEditorResult> => {
+  if (!senderIsTrusted)
+    return errorResult(
+      "IPC_UNTRUSTED_SENDER",
+      "The Layout selection request did not come from Showflow.",
+    );
+  const valid = UpdateSegmentLayoutsRequestSchema.safeParse(request);
+  if (!valid.success)
+    return errorResult(
+      "IPC_INVALID_REQUEST",
+      "Choose a default Layout and available Layouts from this Show.",
+    );
+  try {
+    await operations.updateLayouts.execute({
+      ...scope(valid.data),
+      availableLayoutIds: valid.data.availableLayoutIds.map((id) =>
+        parseEntityId<"layout">(id),
+      ),
+      ...(valid.data.defaultLayoutId === null
+        ? {}
+        : {
+            defaultLayoutId: parseEntityId<"layout">(
+              valid.data.defaultLayoutId,
+            ),
+          }),
     });
     return finishMutation(valid.data, operations.get);
   } catch (error) {

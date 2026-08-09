@@ -42,7 +42,7 @@ export interface LayoutOperations {
 const errorCode = (error: unknown): ApiErrorCode =>
   error instanceof ApplicationError ? error.code : "INTERNAL_ERROR";
 
-const layoutDto = (layout: Layout) => ({
+export const layoutDto = (layout: Layout) => ({
   id: layout.id,
   showId: layout.showId,
   name: layout.name,
@@ -61,6 +61,20 @@ const layoutDto = (layout: Layout) => ({
     allowedComponentTypes: [...slot.allowedComponentTypes],
     createdAt: slot.createdAt,
     updatedAt: slot.updatedAt,
+  })),
+  componentPlacements: layout.componentPlacements.map((placement) => ({
+    id: placement.id,
+    layoutId: placement.layoutId,
+    componentId: placement.componentId,
+    slotId: placement.slotId,
+    fixedProperties: placement.fixedProperties,
+    bindings: placement.bindings,
+    visibleByDefault: placement.visibleByDefault,
+    layerOverride: placement.layerOverride ?? null,
+    enterAnimationOverride: placement.enterAnimationOverride ?? null,
+    exitAnimationOverride: placement.exitAnimationOverride ?? null,
+    createdAt: placement.createdAt,
+    updatedAt: placement.updatedAt,
   })),
   archivedAt: layout.archivedAt ?? null,
   createdAt: layout.createdAt,

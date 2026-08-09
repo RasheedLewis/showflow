@@ -3,6 +3,8 @@
  */
 export * from "./entities/blueprint.mjs";
 export * from "./entities/component.mjs";
+export * from "./entities/component-registry.mjs";
+export * from "./entities/binding-resolution.mjs";
 export * from "./entities/composition.mjs";
 export * from "./entities/core.mjs";
 export * from "./entities/entity-metadata.mjs";

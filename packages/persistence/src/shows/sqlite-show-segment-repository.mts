@@ -1,4 +1,7 @@
-import type { ShowSegmentRepository } from "@showflow/application";
+import type {
+  SegmentFieldBindingUsage,
+  ShowSegmentRepository,
+} from "@showflow/application";
 import type { ShowId, ShowSegment, ShowSegmentId } from "@showflow/domain";
 import { z } from "zod";
 
@@ -76,6 +79,57 @@ export class SqliteShowSegmentRepository implements ShowSegmentRepository {
         [showSegmentId, `$."${fieldKey}"`],
       );
       return row;
+    } catch (error) {
+      throw mapPersistenceError(error, "read");
+    }
+  }
+
+  async listLayoutBindingUsages(
+    showSegmentId: ShowSegmentId,
+    fieldKey: string,
+  ): Promise<readonly SegmentFieldBindingUsage[]> {
+    try {
+      return this.database.queryAll(
+        `SELECT
+           c.name AS componentName,
+           l.name AS layoutName,
+           cp.id AS placementId,
+           binding.key AS propertyKey
+         FROM segment_lifecycle_configs lifecycle
+         JOIN layouts l ON (
+           l.id = json_extract(lifecycle.active_configuration_json, '$.defaultLayoutId')
+           OR l.id IN (
+             SELECT value
+             FROM json_each(lifecycle.active_configuration_json, '$.availableLayoutIds')
+           )
+         )
+         JOIN component_placements cp ON cp.layout_id = l.id
+         JOIN components c ON c.id = cp.component_id
+         JOIN json_each(cp.bindings_json) binding
+         WHERE lifecycle.show_segment_id = ?
+           AND json_extract(binding.value, '$.kind') = 'segmentField'
+           AND json_extract(binding.value, '$.fieldKey') = ?
+         ORDER BY l.name, c.name, cp.id, binding.key`,
+        {
+          parse(value: unknown): SegmentFieldBindingUsage {
+            const row = z
+              .object({
+                componentName: z.string(),
+                layoutName: z.string(),
+                placementId: z.string(),
+                propertyKey: z.string(),
+              })
+              .strict()
+              .parse(value);
+            return {
+              ...row,
+              placementId:
+                row.placementId as SegmentFieldBindingUsage["placementId"],
+            };
+          },
+        },
+        [showSegmentId, fieldKey],
+      );
     } catch (error) {
       throw mapPersistenceError(error, "read");
     }

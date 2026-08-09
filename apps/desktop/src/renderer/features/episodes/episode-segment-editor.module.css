@@ -72,23 +72,38 @@
   aspect-ratio: 16 / 9;
   background: var(--sf-bg-base);
   border: 1px solid var(--sf-border-default);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sf-space-3);
-  justify-content: center;
+  display: block;
   max-width: 64rem;
   padding: var(--sf-space-8);
   text-align: center;
   width: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
-.audienceFrame strong {
+.canvasEmpty {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sf-space-3);
+  height: 100%;
+  justify-content: center;
+}
+
+.frameLabel {
+  left: var(--sf-space-3);
+  position: absolute;
+  top: var(--sf-space-3);
+  z-index: 100;
+}
+
+.canvasEmpty strong {
   color: var(--sf-text-primary);
   font-size: var(--sf-font-size-heading-sm);
   line-height: var(--sf-line-height-heading-sm);
 }
 
-.audienceFrame span {
+.canvasEmpty > span {
   color: var(--sf-text-secondary);
   font-size: var(--sf-font-size-body-md);
   line-height: var(--sf-line-height-body-md);

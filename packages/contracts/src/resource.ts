@@ -71,6 +71,9 @@ export const ResourceDtoSchema = z
       "animatedGraphic",
     ]),
     contentHash: z.string().nullable(),
+    deviceState: z
+      .enum(["available", "permissionRequired", "unavailable", "disconnected"])
+      .nullable(),
     createdAt: CanonicalUtcTimestampSchema,
     dimensions: z
       .object({

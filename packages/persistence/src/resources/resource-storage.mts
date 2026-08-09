@@ -29,6 +29,9 @@ const ResourceRowSchema = z
       "animatedGraphic",
     ]),
     contentHash: z.string().nullable(),
+    deviceState: z
+      .enum(["available", "permissionRequired", "unavailable", "disconnected"])
+      .nullable(),
     createdAt: z.string(),
     displayName: z.string().min(1).max(255),
     durationMs: z.number().int().nonnegative().nullable(),
@@ -93,6 +96,7 @@ const parseResourceRow = (value: unknown): Resource => {
       category: row.category,
       mimeType: row.mimeType,
       availability: row.availability,
+      ...(row.deviceState === null ? {} : { deviceState: row.deviceState }),
       ...(row.originalFilename === null
         ? {}
         : { originalFilename: row.originalFilename }),
@@ -134,6 +138,7 @@ export const RESOURCE_COLUMNS = `
   file_size_bytes AS fileSizeBytes,
   source_modified_at AS sourceModifiedAt,
   content_hash AS contentHash,
+  device_state AS deviceState,
   width,
   height,
   duration_ms AS durationMs,
@@ -156,6 +161,7 @@ export const writeResource = (
     availability: resource.availability,
     category: resource.category,
     contentHash: resource.contentHash ?? null,
+    deviceState: resource.deviceState ?? null,
     createdAt: resource.createdAt,
     displayName: resource.displayName,
     durationMs: resource.durationMs ?? null,
@@ -179,8 +185,8 @@ export const writeResource = (
        id, owner_scope, studio_id, show_id, episode_id, display_name,
        original_filename, local_path, mime_type, category, file_size_bytes,
        source_modified_at, content_hash, width, height, duration_ms,
-       availability, thumbnail_cache_key, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       availability, device_state, thumbnail_cache_key, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        owner_scope = excluded.owner_scope,
        studio_id = excluded.studio_id,
@@ -198,6 +204,7 @@ export const writeResource = (
        height = excluded.height,
        duration_ms = excluded.duration_ms,
        availability = excluded.availability,
+       device_state = excluded.device_state,
        thumbnail_cache_key = excluded.thumbnail_cache_key,
        updated_at = excluded.updated_at`,
     [
@@ -218,6 +225,7 @@ export const writeResource = (
       valid.dimensions?.height ?? null,
       valid.durationMs ?? null,
       valid.availability,
+      valid.deviceState ?? null,
       valid.thumbnailCacheKey ?? null,
       valid.createdAt,
       valid.updatedAt,

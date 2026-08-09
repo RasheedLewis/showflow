@@ -6,11 +6,12 @@ import {
   NotesPanel,
   SaveStateIndicator,
   ScopeLabel,
+  Select,
   Skeleton,
   StatusBadge,
   TextInput,
 } from "@showflow/ui";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -33,6 +34,16 @@ import { episodeQueryKey, loadEpisode } from "./episode-queries";
 import styles from "./episode-segment-editor.module.css";
 import { useEpisodeSegmentContent } from "./useEpisodeSegmentContent";
 import { NewLayoutDialog } from "../layouts/NewLayoutDialog";
+import {
+  layoutCatalogQueryKey,
+  loadLayoutCatalog,
+} from "../layouts/layout-queries";
+import {
+  componentQueryKey,
+  loadComponents,
+} from "../components/component-queries";
+import { ComponentPreview } from "../components/ComponentPreview";
+import { loadResources, resourceQueryKey } from "../resources/resource-queries";
 
 const durationParts = (
   durationMs: number | null,
@@ -46,6 +57,7 @@ const durationParts = (
 
 export const EpisodeSegmentEditorDestination = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { studioId, showId, episodeId, episodeSegmentId } = useParams<{
     studioId: string;
     showId: string;
@@ -73,6 +85,24 @@ export const EpisodeSegmentEditorDestination = () => {
       studioId ?? "incomplete",
       showId ?? "incomplete",
       episodeId ?? "incomplete",
+    ),
+    retry: false,
+  });
+  const layoutsQuery = useQuery({
+    enabled: routeIsComplete,
+    queryFn: () => loadLayoutCatalog(studioId ?? "", showId ?? ""),
+    queryKey: layoutCatalogQueryKey(
+      studioId ?? "incomplete",
+      showId ?? "incomplete",
+    ),
+    retry: false,
+  });
+  const componentsQuery = useQuery({
+    enabled: routeIsComplete,
+    queryFn: () => loadComponents(studioId ?? "", showId ?? ""),
+    queryKey: componentQueryKey(
+      studioId ?? "incomplete",
+      showId ?? "incomplete",
     ),
     retry: false,
   });
@@ -169,6 +199,41 @@ export const EpisodeSegmentEditorDestination = () => {
         episodeId,
       }
     : undefined;
+  const resourcesQuery = useQuery({
+    enabled: resourceContext !== undefined,
+    queryFn: () => {
+      if (resourceContext === undefined)
+        throw new Error("Episode Resources are unavailable.");
+      return loadResources(resourceContext);
+    },
+    queryKey:
+      resourceContext === undefined
+        ? ["resources", "incomplete"]
+        : resourceQueryKey(resourceContext),
+    retry: false,
+  });
+  const effectiveLayoutId =
+    draft?.defaultLayoutOverrideId ??
+    item?.sourceActiveConfiguration?.defaultLayoutId ??
+    null;
+  const effectiveLayout = layoutsQuery.data?.find(
+    ({ layout }) => layout.id === effectiveLayoutId,
+  )?.layout;
+  const replacementResources = (propertyType: string) => {
+    const category =
+      propertyType === "cameraResource"
+        ? "cameraInput"
+        : propertyType === "imageResource"
+          ? "image"
+          : propertyType === "videoResource"
+            ? "video"
+            : propertyType === "audioResource"
+              ? "audio"
+              : undefined;
+    return (resourcesQuery.data ?? []).filter(
+      (resource) => category !== undefined && resource.category === category,
+    );
+  };
 
   const catalog =
     item === undefined ||
@@ -287,6 +352,106 @@ export const EpisodeSegmentEditorDestination = () => {
           </div>
         </InspectorSection>
         <InspectorSection
+          description="Choose an allowed Show Layout for this Episode Segment. Reset returns to the Show default."
+          heading="Active Layout"
+        >
+          <Select
+            label="Layout"
+            onChange={(event) =>
+              content.update({
+                ...draft,
+                defaultLayoutOverrideId: event.currentTarget.value || null,
+              })
+            }
+            options={[
+              {
+                label: "Show default",
+                value: "",
+              },
+              ...(layoutsQuery.data ?? [])
+                .filter(
+                  ({ layout }) =>
+                    item.sourceActiveConfiguration?.availableLayoutIds.includes(
+                      layout.id,
+                    ) === true || layout.id === draft.defaultLayoutOverrideId,
+                )
+                .map(({ layout }) => ({
+                  label: layout.name,
+                  value: layout.id,
+                })),
+            ]}
+            value={draft.defaultLayoutOverrideId ?? ""}
+          />
+          {draft.defaultLayoutOverrideId === null ? (
+            <Badge tone="neutral">Show default</Badge>
+          ) : (
+            <div className={styles.sourceRow}>
+              <Badge tone="accent">Episode override</Badge>
+              <Button
+                onClick={() =>
+                  content.update({ ...draft, defaultLayoutOverrideId: null })
+                }
+                size="small"
+                variant="ghost"
+              >
+                Reset to Show default
+              </Button>
+            </div>
+          )}
+          {effectiveLayout?.componentPlacements.flatMap((placement) => {
+            const component = componentsQuery.data?.find(
+              ({ id }) => id === placement.componentId,
+            );
+            if (component === undefined) return [];
+            return component.propertySchema.flatMap((property) => {
+              const binding = placement.bindings[property.key];
+              if (binding?.kind !== "resource") return [];
+              const options = replacementResources(property.type);
+              const replacement = draft.fixedResourceReplacements.find(
+                (entry) =>
+                  entry.componentPlacementId === placement.id &&
+                  entry.propertyKey === property.key,
+              );
+              return [
+                <Select
+                  key={`${placement.id}-${property.key}`}
+                  label={`${component.name} · ${property.label}`}
+                  onChange={(event) => {
+                    const withoutCurrent =
+                      draft.fixedResourceReplacements.filter(
+                        (entry) =>
+                          entry.componentPlacementId !== placement.id ||
+                          entry.propertyKey !== property.key,
+                      );
+                    content.update({
+                      ...draft,
+                      fixedResourceReplacements:
+                        event.currentTarget.value === ""
+                          ? withoutCurrent
+                          : [
+                              ...withoutCurrent,
+                              {
+                                componentPlacementId: placement.id,
+                                propertyKey: property.key,
+                                resourceId: event.currentTarget.value,
+                              },
+                            ],
+                    });
+                  }}
+                  options={[
+                    { label: "Use Layout Resource", value: "" },
+                    ...options.map((resource) => ({
+                      label: resource.displayName,
+                      value: resource.id,
+                    })),
+                  ]}
+                  value={replacement?.resourceId ?? ""}
+                />,
+              ];
+            });
+          })}
+        </InspectorSection>
+        <InspectorSection
           description="Choose an issue to move focus to its content field."
           heading="Validation"
         >
@@ -390,7 +555,7 @@ export const EpisodeSegmentEditorDestination = () => {
         ) : null}
         {episodeQuery.isPending || studioQuery.isPending ? (
           <Skeleton label="Loading Episode Segment" />
-        ) : item === undefined ? (
+        ) : item === undefined || draft === undefined ? (
           <section className={styles.unavailable}>
             <p className={styles.eyebrow}>Episode Segment unavailable</p>
             <h2>Showflow could not open this Segment</h2>
@@ -410,24 +575,47 @@ export const EpisodeSegmentEditorDestination = () => {
               <StatusBadge status={item.readiness} />
             </header>
             <section
-              aria-label="Audience canvas placeholder"
+              aria-label="Audience preview"
               className={styles.canvasStage}
             >
               <div className={styles.audienceFrame}>
                 <p className={styles.frameLabel}>Audience preview</p>
-                <strong>Episode content is ready for a Layout.</strong>
-                <span>
-                  Create a reusable Show Layout here, then return to this
-                  Episode Segment with it assigned.
-                </span>
-                <Button
-                  id={`navigation-origin-layout-${item.episodeSegment.id}`}
-                  leadingIcon="plus"
-                  onClick={() => setLayoutDialogOpen(true)}
-                  variant="primary"
-                >
-                  Create a Layout
-                </Button>
+                {effectiveLayout === undefined ? (
+                  <div className={styles.canvasEmpty}>
+                    <strong>Choose a default Layout for this Segment.</strong>
+                    <span>
+                      Layouts are reusable Show designs and stay owned by the
+                      Show.
+                    </span>
+                    <Button
+                      id={`navigation-origin-layout-${item.episodeSegment.id}`}
+                      leadingIcon="plus"
+                      onClick={() => setLayoutDialogOpen(true)}
+                      variant="primary"
+                    >
+                      Create a Layout
+                    </Button>
+                  </div>
+                ) : (
+                  <ComponentPreview
+                    components={componentsQuery.data ?? []}
+                    episodeMetadata={{
+                      episodeNumber: storyboard?.episode.episodeNumber ?? 0,
+                      subtitle: storyboard?.episode.subtitle ?? "",
+                      title: storyboard?.episode.title ?? "",
+                    }}
+                    layout={effectiveLayout}
+                    resourceReplacements={draft.fixedResourceReplacements}
+                    resources={resourcesQuery.data ?? []}
+                    studioId={studioId}
+                    segmentFields={item.dataFields}
+                    segmentValues={draft.fieldValues}
+                    showMetadata={{
+                      description: storyboard?.show.description ?? "",
+                      name: storyboard?.show.name ?? "",
+                    }}
+                  />
+                )}
               </div>
             </section>
             <nav
@@ -496,7 +684,14 @@ export const EpisodeSegmentEditorDestination = () => {
             episodeId: storyboard.episode.id,
             episodeSegmentId: item.episodeSegment.id,
           }}
-          onCreated={(layout) =>
+          onCreated={async (layout) => {
+            await queryClient.invalidateQueries({
+              queryKey: episodeQueryKey(
+                storyboard.show.studioId,
+                storyboard.show.id,
+                storyboard.episode.id,
+              ),
+            });
             navigate(
               getDesignShowLayoutRoute(
                 storyboard.show.studioId,
@@ -510,8 +705,8 @@ export const EpisodeSegmentEditorDestination = () => {
                   returnTo: route,
                 }),
               },
-            )
-          }
+            );
+          }}
           onOpenChange={setLayoutDialogOpen}
           open={layoutDialogOpen}
         />

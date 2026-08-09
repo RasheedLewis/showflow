@@ -71,6 +71,7 @@ const resourceDto = (
   availability: detail.resource.availability,
   category: detail.resource.category,
   contentHash: detail.resource.contentHash ?? null,
+  deviceState: detail.resource.deviceState ?? null,
   createdAt: detail.resource.createdAt,
   dimensions: detail.resource.dimensions ?? null,
   displayName: detail.resource.displayName,

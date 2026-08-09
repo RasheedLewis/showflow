@@ -129,6 +129,7 @@ const validLayoutResult = {
     aspectRatio: "16:9",
     canvas: { width: 1920, height: 1080 },
     slots: [],
+    componentPlacements: [],
     archivedAt: null,
     createdAt: "2026-08-06T14:30:00.000Z",
     updatedAt: "2026-08-06T14:30:00.000Z",
@@ -136,6 +137,10 @@ const validLayoutResult = {
 } as const;
 
 const createValidTransports = () => ({
+  assignComponent: async () => validLayoutResult,
+  listComponents: async () => ({ ok: true as const, data: [] }),
+  removeComponentPlacement: async () => validLayoutResult,
+  updateComponentPlacement: async () => validLayoutResult,
   archiveLayout: async () => validLayoutResult,
   createLayout: async () => validLayoutResult,
   duplicateLayout: async () => validLayoutResult,
@@ -201,6 +206,7 @@ const createValidTransports = () => ({
   updateResourceMetadata: async () => validResourceListResult,
   updateSegmentDetails: async () => validSegmentEditorResult,
   updateSegmentField: async () => validSegmentEditorResult,
+  updateSegmentLayouts: async () => validSegmentEditorResult,
 });
 
 test("the preload validates Show creation and Design Show responses", async () => {
@@ -341,6 +347,7 @@ test("the preload exposes no generic invocation surface", () => {
     "segments",
     "blueprints",
     "episodes",
+    "components",
     "layouts",
     "resources",
   ]);

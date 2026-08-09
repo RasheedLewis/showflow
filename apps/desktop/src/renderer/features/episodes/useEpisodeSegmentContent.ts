@@ -9,17 +9,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { episodeListQueryKey, episodeQueryKey } from "./episode-queries";
 
 export interface EpisodeSegmentContentDraft {
+  readonly defaultLayoutOverrideId: string | null;
   readonly expectedDurationOverrideMs: number | null;
   readonly fieldValues: UpdateEpisodeSegmentRequest["fieldValues"];
+  readonly fixedResourceReplacements: NonNullable<
+    UpdateEpisodeSegmentRequest["fixedResourceReplacements"]
+  >;
   readonly notes: string;
 }
 
 const draftOf = (
   item: EpisodeStoryboardDto["items"][number],
 ): EpisodeSegmentContentDraft => ({
+  defaultLayoutOverrideId: item.episodeSegment.defaultLayoutOverrideId,
   expectedDurationOverrideMs: item.episodeSegment.expectedDurationOverrideMs,
   fieldValues: item.episodeSegment
     .fieldValues as UpdateEpisodeSegmentRequest["fieldValues"],
+  fixedResourceReplacements: item.episodeSegment.fixedResourceReplacements,
   notes: item.episodeSegment.notes,
 });
 
@@ -27,8 +33,11 @@ const sameDraft = (
   left: EpisodeSegmentContentDraft,
   right: EpisodeSegmentContentDraft,
 ): boolean =>
+  left.defaultLayoutOverrideId === right.defaultLayoutOverrideId &&
   left.expectedDurationOverrideMs === right.expectedDurationOverrideMs &&
   left.notes === right.notes &&
+  JSON.stringify(left.fixedResourceReplacements) ===
+    JSON.stringify(right.fixedResourceReplacements) &&
   JSON.stringify(left.fieldValues) === JSON.stringify(right.fieldValues);
 
 export const useEpisodeSegmentContent = (
@@ -95,9 +104,11 @@ export const useEpisodeSegmentContent = (
           const result = await window.showflow.episodes.updateSegment({
             ...scope,
             episodeSegmentId: item.episodeSegment.id,
+            defaultLayoutOverrideId: snapshot.defaultLayoutOverrideId,
             expectedDurationOverrideMs: snapshot.expectedDurationOverrideMs,
             expectedUpdatedAt,
             fieldValues: snapshot.fieldValues,
+            fixedResourceReplacements: snapshot.fixedResourceReplacements,
             notes: snapshot.notes,
           });
           if (!result.ok) throw new Error(result.error.message);

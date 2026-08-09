@@ -27,12 +27,16 @@ export type ResourceOwner =
 export type ResourceAvailability =
   "available" | "missing" | "unavailable" | "unsupported";
 
+export type CameraDeviceState =
+  "available" | "permissionRequired" | "unavailable" | "disconnected";
+
 export interface Resource extends DomainEntity<ResourceId> {
   readonly owner: ResourceOwner;
   readonly displayName: string;
   readonly category: ResourceCategory;
   readonly mimeType: string;
   readonly availability: ResourceAvailability;
+  readonly deviceState?: CameraDeviceState;
   readonly originalFilename?: string;
   readonly localPath?: string;
   readonly fileSizeBytes?: number;

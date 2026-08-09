@@ -8,6 +8,7 @@ import {
   createEpisode,
   createEpisodeSegment,
   createFixedClock,
+  createLayout,
   createShowSegment,
   parseEntityId,
   parseUtcTimestamp,
@@ -20,6 +21,7 @@ import {
 } from "@showflow/domain";
 
 import { initializePersistence } from "../migrations/initialize-persistence.mjs";
+import { SqliteLayoutRepository } from "../layouts/sqlite-layout-repository.mjs";
 import { SqliteShowCreationRepository } from "../shows/sqlite-show-creation-repository.mjs";
 import { SqliteShowSegmentRepository } from "../shows/sqlite-show-segment-repository.mjs";
 import { SqliteStudioRepository } from "../studios/sqlite-studio-repository.mjs";
@@ -49,6 +51,154 @@ const dependencies = (firstSuffix: number): DomainFactoryDependencies => {
 };
 
 describe("SQLite Episode persistence", () => {
+  test("11.T13 reloads one Episode Segment override without changing sibling instances", async () => {
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), "showflow-episode-layout-override-test-"),
+    );
+    try {
+      const persistenceOptions = {
+        backup: {
+          backupsDirectory: path.join(temporaryDirectory, "backups"),
+          retentionCount: 2,
+        },
+        databasePath: path.join(temporaryDirectory, "showflow.sqlite"),
+        logger: { log: () => undefined },
+        migrationsDirectory: MIGRATIONS_DIRECTORY,
+        now: () => timestamp,
+      };
+      const firstPersistence = await initializePersistence(persistenceOptions);
+      const studio = {
+        id: entityId<"studio">(70),
+        name: "Public Sphere",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies Studio;
+      const show = {
+        id: entityId<"show">(71),
+        studioId: studio.id,
+        name: "Artist Interviews",
+        styleDefaults: {},
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies Show;
+      const blueprint = {
+        id: entityId<"showBlueprint">(72),
+        showId: show.id,
+        placements: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      } satisfies ShowBlueprint;
+      await new SqliteStudioRepository(firstPersistence.database).save(studio);
+      await new SqliteShowCreationRepository(firstPersistence.database).create(
+        show,
+        blueprint,
+      );
+      const layout = createLayout(
+        { showId: show.id, name: "Guest interview" },
+        dependencies(73),
+      );
+      await new SqliteLayoutRepository(firstPersistence.database).save(layout);
+      const sourceSegment = createShowSegment(
+        { showId: show.id, name: "Interview" },
+        dependencies(74),
+      );
+      await new SqliteShowSegmentRepository(firstPersistence.database).save(
+        sourceSegment,
+      );
+      const firstEpisode = createEpisode(
+        { showId: show.id, title: "Episode 24" },
+        dependencies(75),
+      );
+      const target = {
+        ...createEpisodeSegment(
+          {
+            episode: firstEpisode,
+            sourceSegment,
+            position: 0,
+          },
+          dependencies(76),
+        ),
+        defaultLayoutOverrideId: layout.id,
+        fixedResourceReplacements: [
+          {
+            componentPlacementId: entityId<"componentPlacement">(77),
+            propertyKey: "image",
+            resourceId: entityId<"resource">(78),
+          },
+        ],
+      };
+      const sibling = createEpisodeSegment(
+        { episode: firstEpisode, sourceSegment, position: 1 },
+        dependencies(79),
+      );
+      const secondEpisode = createEpisode(
+        { showId: show.id, title: "Episode 25" },
+        dependencies(80),
+      );
+      const otherEpisodeSegment = createEpisodeSegment(
+        { episode: secondEpisode, sourceSegment, position: 0 },
+        dependencies(81),
+      );
+      const episodes = new SqliteEpisodeRepository(firstPersistence.database);
+      await episodes.save({
+        ...firstEpisode,
+        segments: [target, sibling],
+      });
+      await episodes.save({
+        ...secondEpisode,
+        segments: [otherEpisodeSegment],
+      });
+      firstPersistence.database.close();
+
+      const reopenedPersistence =
+        await initializePersistence(persistenceOptions);
+      try {
+        const reopenedEpisodes = new SqliteEpisodeRepository(
+          reopenedPersistence.database,
+        );
+        await expect(
+          reopenedEpisodes.getById(firstEpisode.id),
+        ).resolves.toEqual({ ...firstEpisode, segments: [target, sibling] });
+        await expect(
+          reopenedEpisodes.getById(secondEpisode.id),
+        ).resolves.toEqual({
+          ...secondEpisode,
+          segments: [otherEpisodeSegment],
+        });
+
+        const { defaultLayoutOverrideId: ignored, ...withoutLayoutOverride } =
+          target;
+        void ignored;
+        await reopenedEpisodes.save({
+          ...firstEpisode,
+          segments: [
+            {
+              ...withoutLayoutOverride,
+              fixedResourceReplacements: [],
+            },
+            sibling,
+          ],
+        });
+        await expect(
+          reopenedEpisodes.getById(firstEpisode.id),
+        ).resolves.toEqual({
+          ...firstEpisode,
+          segments: [
+            {
+              ...withoutLayoutOverride,
+              fixedResourceReplacements: [],
+            },
+            sibling,
+          ],
+        });
+      } finally {
+        reopenedPersistence.database.close();
+      }
+    } finally {
+      await fs.rm(temporaryDirectory, { force: true, recursive: true });
+    }
+  });
+
   test("6.T1 and 8.1 persist Episode metadata, ordered Segments, and content atomically", async () => {
     const temporaryDirectory = await fs.mkdtemp(
       path.join(os.tmpdir(), "showflow-episode-test-"),

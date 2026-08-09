@@ -41,6 +41,7 @@ import {
   ShowSegmentEditorResultSchema,
   UpdateSegmentDetailsRequestSchema,
   UpdateSegmentFieldRequestSchema,
+  UpdateSegmentLayoutsRequestSchema,
   GetResourceUrlRequestSchema,
   ImportResourcesRequestSchema,
   ListResourcesRequestSchema,
@@ -59,6 +60,11 @@ import {
   ListLayoutsRequestSchema,
   RenameLayoutRequestSchema,
   UpdateLayoutRequestSchema,
+  AssignComponentRequestSchema,
+  ComponentListResultSchema,
+  ListComponentsRequestSchema,
+  RemoveComponentPlacementRequestSchema,
+  UpdateComponentPlacementRequestSchema,
 } from "@showflow/contracts";
 
 export interface DesktopApiTransports {
@@ -83,6 +89,7 @@ export interface DesktopApiTransports {
   readonly restoreSegmentField: (request: unknown) => Promise<unknown>;
   readonly updateSegmentDetails: (request: unknown) => Promise<unknown>;
   readonly updateSegmentField: (request: unknown) => Promise<unknown>;
+  readonly updateSegmentLayouts: (request: unknown) => Promise<unknown>;
   readonly addBlueprintSegment: (request: unknown) => Promise<unknown>;
   readonly duplicateBlueprintPlacement: (request: unknown) => Promise<unknown>;
   readonly removeBlueprintPlacement: (request: unknown) => Promise<unknown>;
@@ -116,6 +123,10 @@ export interface DesktopApiTransports {
   readonly listLayouts: (request: unknown) => Promise<unknown>;
   readonly renameLayout: (request: unknown) => Promise<unknown>;
   readonly updateLayout: (request: unknown) => Promise<unknown>;
+  readonly assignComponent: (request: unknown) => Promise<unknown>;
+  readonly listComponents: (request: unknown) => Promise<unknown>;
+  readonly removeComponentPlacement: (request: unknown) => Promise<unknown>;
+  readonly updateComponentPlacement: (request: unknown) => Promise<unknown>;
 }
 
 export const createShowflowDesktopApi = (
@@ -236,6 +247,12 @@ export const createShowflowDesktopApi = (
       const validRequest = UpdateSegmentFieldRequestSchema.parse(request);
       return ShowSegmentEditorResultSchema.parse(
         await transports.updateSegmentField(validRequest),
+      );
+    },
+    updateLayouts: async (request: unknown) => {
+      const validRequest = UpdateSegmentLayoutsRequestSchema.parse(request);
+      return ShowSegmentEditorResultSchema.parse(
+        await transports.updateSegmentLayouts(validRequest),
       );
     },
   });
@@ -430,6 +447,32 @@ export const createShowflowDesktopApi = (
       );
     },
   });
+  const componentsApi = Object.freeze({
+    assign: async (request: unknown) => {
+      const validRequest = AssignComponentRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.assignComponent(validRequest),
+      );
+    },
+    list: async (request: unknown) => {
+      const validRequest = ListComponentsRequestSchema.parse(request);
+      return ComponentListResultSchema.parse(
+        await transports.listComponents(validRequest),
+      );
+    },
+    removePlacement: async (request: unknown) => {
+      const validRequest = RemoveComponentPlacementRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.removeComponentPlacement(validRequest),
+      );
+    },
+    updatePlacement: async (request: unknown) => {
+      const validRequest = UpdateComponentPlacementRequestSchema.parse(request);
+      return LayoutResultSchema.parse(
+        await transports.updateComponentPlacement(validRequest),
+      );
+    },
+  });
 
   return Object.freeze({
     apiVersion: DESKTOP_API_VERSION,
@@ -439,6 +482,7 @@ export const createShowflowDesktopApi = (
     segments: segmentsApi,
     blueprints: blueprintsApi,
     episodes: episodesApi,
+    components: componentsApi,
     layouts: layoutsApi,
     resources: resourcesApi,
   });

@@ -44,6 +44,7 @@ import {
   type ShowSegmentEditorDto,
   type UpdateSegmentDetailsRequest,
   type UpdateSegmentFieldRequest,
+  type UpdateSegmentLayoutsRequest,
   type ResourceContext,
   type ResourceDto,
   type UpdateResourceMetadataRequest,
@@ -54,6 +55,11 @@ import {
   type ListLayoutsRequest,
   type RenameLayoutRequest,
   type UpdateLayoutRequest,
+  type ComponentDto,
+  type AssignComponentRequest,
+  type ListComponentsRequest,
+  type RemoveComponentPlacementRequest,
+  type UpdateComponentPlacementRequest,
 } from "@showflow/contracts";
 import type { Page } from "@playwright/test";
 
@@ -94,6 +100,7 @@ export const createMockDesktopApi = (
   const segmentEditors = new Map<string, ShowSegmentEditorDto>();
   const resources = new Map<string, ResourceDto>();
   const layouts = new Map<string, LayoutDto>();
+  const components = new Map<string, ComponentDto>();
   const visibleResources = (context: ResourceContext): ResourceDto[] =>
     [...resources.values()].filter((resource) => {
       if (resource.owner.scope === "studio") {
@@ -133,6 +140,7 @@ export const createMockDesktopApi = (
       availability: "available",
       category,
       contentHash: null,
+      deviceState: null,
       createdAt: DEFAULT_TIMESTAMP,
       dimensions: category === "image" ? { height: 1080, width: 1920 } : null,
       displayName: fileName.replace(/\.[^.]+$/u, ""),
@@ -715,6 +723,24 @@ export const createMockDesktopApi = (
           }),
         );
       },
+      updateLayouts: async (request: UpdateSegmentLayoutsRequest) => {
+        const editor = getScopedSegmentEditor(request);
+        if (editor === undefined) return segmentEditorNotFound();
+        return segmentEditorSuccess(
+          updateSegmentEditor({
+            ...editor,
+            lifecycle: {
+              ...editor.lifecycle,
+              active: {
+                ...editor.lifecycle.active,
+                defaultLayoutId: request.defaultLayoutId,
+                availableLayoutIds: request.availableLayoutIds,
+              },
+            },
+            updatedAt: DEFAULT_TIMESTAMP,
+          }),
+        );
+      },
     }),
     blueprints: Object.freeze({
       addSegment: async (request: AddBlueprintSegmentRequest) => {
@@ -813,6 +839,7 @@ export const createMockDesktopApi = (
               ? { width: 1920, height: 1080 }
               : { width: 1080, height: 1920 },
           slots: [],
+          componentPlacements: [],
           archivedAt: null,
           createdAt: DEFAULT_TIMESTAMP,
           updatedAt: DEFAULT_TIMESTAMP,
@@ -837,6 +864,7 @@ export const createMockDesktopApi = (
             id: crypto.randomUUID(),
             layoutId: id,
           })),
+          componentPlacements: [],
         };
         layouts.set(id, duplicate);
         return { ok: true as const, data: duplicate };
@@ -896,6 +924,179 @@ export const createMockDesktopApi = (
           })),
           updatedAt: DEFAULT_TIMESTAMP,
         } satisfies LayoutDto;
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+    }),
+    components: Object.freeze({
+      assign: async (request: AssignComponentRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        let component = [...components.values()].find(
+          ({ showId, type }) =>
+            showId === request.showId && type === request.componentType,
+        );
+        if (component === undefined) {
+          const resourceType =
+            request.componentType === "camera"
+              ? "cameraResource"
+              : request.componentType === "video"
+                ? "videoResource"
+                : request.componentType === "image" ||
+                    request.componentType === "logo" ||
+                    request.componentType === "background"
+                  ? "imageResource"
+                  : "string";
+          component = {
+            id: crypto.randomUUID(),
+            showId: request.showId,
+            name:
+              request.componentType === "lowerThird"
+                ? "Lower Third"
+                : request.componentType.slice(0, 1).toUpperCase() +
+                  request.componentType.slice(1),
+            type: request.componentType,
+            propertySchema:
+              request.componentType === "lowerThird"
+                ? [
+                    {
+                      key: "title",
+                      label: "Title text",
+                      type: "string",
+                      required: true,
+                      defaultValue: "Guest name",
+                    },
+                    {
+                      key: "subtitle",
+                      label: "Subtitle text",
+                      type: "string",
+                      required: false,
+                      defaultValue: "Role or topic",
+                    },
+                    {
+                      key: "image",
+                      label: "Optional image or logo",
+                      type: "imageResource",
+                      required: false,
+                    },
+                    {
+                      key: "stylePreset",
+                      label: "Style preset",
+                      type: "string",
+                      required: true,
+                      defaultValue: "quietGold",
+                    },
+                  ]
+                : [
+                    {
+                      key:
+                        resourceType === "string"
+                          ? "text"
+                          : request.componentType === "video"
+                            ? "media"
+                            : request.componentType === "camera"
+                              ? "camera"
+                              : "image",
+                      label: "Content",
+                      type: resourceType,
+                      required: request.componentType !== "background",
+                    },
+                  ],
+            defaultProperties: {},
+            defaultEnterAnimation: {
+              preset: "none",
+              durationMs: 0,
+              delayMs: 0,
+              easing: "linear",
+            },
+            defaultExitAnimation: {
+              preset: "none",
+              durationMs: 0,
+              delayMs: 0,
+              easing: "linear",
+            },
+            supportedSlotRoles: [
+              layout.slots.find(({ id }) => id === request.slotId)?.role ??
+                "center",
+            ],
+            archivedAt: null,
+            createdAt: DEFAULT_TIMESTAMP,
+            updatedAt: DEFAULT_TIMESTAMP,
+          };
+          components.set(component.id, component);
+        }
+        const placement = {
+          id: crypto.randomUUID(),
+          layoutId: layout.id,
+          componentId: component.id,
+          slotId: request.slotId,
+          fixedProperties: {},
+          bindings: {},
+          visibleByDefault: true,
+          layerOverride: null,
+          enterAnimationOverride: null,
+          exitAnimationOverride: null,
+          createdAt: DEFAULT_TIMESTAMP,
+          updatedAt: DEFAULT_TIMESTAMP,
+        };
+        const updated = {
+          ...layout,
+          componentPlacements: [
+            ...layout.componentPlacements.filter(
+              ({ slotId }) => slotId !== request.slotId,
+            ),
+            placement,
+          ],
+        };
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+      list: async (request: ListComponentsRequest) => ({
+        ok: true as const,
+        data: [...components.values()].filter(
+          ({ showId }) => showId === request.showId,
+        ),
+      }),
+      removePlacement: async (request: RemoveComponentPlacementRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        const updated = {
+          ...layout,
+          componentPlacements: layout.componentPlacements.filter(
+            ({ id }) => id !== request.placementId,
+          ),
+        };
+        layouts.set(layout.id, updated);
+        return { ok: true as const, data: updated };
+      },
+      updatePlacement: async (request: UpdateComponentPlacementRequest) => {
+        const layout = layouts.get(request.layoutId);
+        if (layout === undefined)
+          return {
+            ok: false as const,
+            error: { code: "NOT_FOUND" as const, message: "Layout not found." },
+          };
+        const updated = {
+          ...layout,
+          componentPlacements: layout.componentPlacements.map((placement) =>
+            placement.id === request.placementId
+              ? {
+                  ...placement,
+                  bindings: request.bindings,
+                  fixedProperties: request.fixedProperties,
+                  visibleByDefault: request.visibleByDefault,
+                }
+              : placement,
+          ),
+        };
         layouts.set(layout.id, updated);
         return { ok: true as const, data: updated };
       },
@@ -1422,6 +1623,10 @@ export const installMockDesktopApi = async (
         readiness:
           "ready" | "needs-content" | "has-warnings" | "blocking-issue";
         sourceNotesTemplate: string;
+        sourceActiveConfiguration: {
+          availableLayoutIds: string[];
+          defaultLayoutId: string | null;
+        };
         sourceSegment: BrowserSegment;
         summary: string | null;
         validationIssueCount: number;
@@ -1484,7 +1689,64 @@ export const installMockDesktopApi = async (
         aspectRatio: "16:9" | "9:16";
         canvas: { width: number; height: number };
         slots: BrowserSlot[];
+        componentPlacements: BrowserComponentPlacement[];
         archivedAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+      };
+      type BrowserBinding =
+        | { kind: "literal"; value: unknown }
+        | { kind: "resource"; resourceId: string }
+        | { kind: "segmentField"; fieldKey: string }
+        | { kind: "episodeMetadata" | "showMetadata"; field: string };
+      type BrowserComponentPlacement = {
+        id: string;
+        layoutId: string;
+        componentId: string;
+        slotId: string;
+        fixedProperties: Record<string, unknown>;
+        bindings: Record<string, BrowserBinding>;
+        visibleByDefault: boolean;
+        layerOverride: number | null;
+        enterAnimationOverride: null;
+        exitAnimationOverride: null;
+        createdAt: string;
+        updatedAt: string;
+      };
+      type BrowserComponent = {
+        id: string;
+        showId: string;
+        name: string;
+        type:
+          | "camera"
+          | "video"
+          | "image"
+          | "text"
+          | "background"
+          | "logo"
+          | "lowerThird";
+        propertySchema: Array<{
+          key: string;
+          label: string;
+          type: "string" | "cameraResource" | "imageResource" | "videoResource";
+          required: boolean;
+          defaultValue?: unknown;
+        }>;
+        defaultProperties: Record<string, unknown>;
+        defaultEnterAnimation: {
+          preset: "none" | "slideUp";
+          durationMs: number;
+          delayMs: number;
+          easing: string;
+        };
+        defaultExitAnimation: {
+          preset: "none" | "slideDown";
+          durationMs: number;
+          delayMs: number;
+          easing: string;
+        };
+        supportedSlotRoles: string[];
+        archivedAt: null;
         createdAt: string;
         updatedAt: string;
       };
@@ -1492,6 +1754,7 @@ export const installMockDesktopApi = async (
       const episodes = new Map<string, BrowserStoryboard>();
       const segmentEditors = new Map<string, BrowserSegmentEditor>();
       const layouts = new Map<string, BrowserLayout>();
+      const components = new Map<string, BrowserComponent>();
       type BrowserResourceContext =
         | { scope: "studio"; studioId: string }
         | { scope: "show"; studioId: string; showId: string }
@@ -1503,8 +1766,14 @@ export const installMockDesktopApi = async (
           };
       type BrowserResource = {
         availability: "available" | "missing" | "unavailable" | "unsupported";
-        category: "image" | "video" | "audio";
+        category: "image" | "video" | "audio" | "cameraInput";
         contentHash: string | null;
+        deviceState:
+          | "available"
+          | "permissionRequired"
+          | "unavailable"
+          | "disconnected"
+          | null;
         createdAt: string;
         dimensions: { height: number; width: number } | null;
         displayName: string;
@@ -1557,6 +1826,7 @@ export const installMockDesktopApi = async (
           availability: "available",
           category,
           contentHash: null,
+          deviceState: null,
           createdAt: timestamp,
           dimensions:
             category === "image" ? { height: 1080, width: 1920 } : null,
@@ -1742,6 +2012,11 @@ export const installMockDesktopApi = async (
             sourceSegment.expectedDurationMs,
           readiness: validationIssues.length === 0 ? "ready" : "needs-content",
           sourceNotesTemplate: editor?.notesTemplate ?? "",
+          sourceActiveConfiguration: {
+            availableLayoutIds:
+              editor?.lifecycle.active.availableLayoutIds ?? [],
+            defaultLayoutId: editor?.lifecycle.active.defaultLayoutId ?? null,
+          },
           sourceSegment,
           summary:
             typeof summary === "string" ? summary.trim().slice(0, 160) : null,
@@ -2165,6 +2440,28 @@ export const installMockDesktopApi = async (
               updatedAt: timestamp,
             });
           },
+          updateLayouts: async (request: {
+            availableLayoutIds: string[];
+            defaultLayoutId: string | null;
+            showId: string;
+            showSegmentId: string;
+            studioId: string;
+          }) => {
+            const editor = scopedEditor(request);
+            if (editor === undefined) return editorNotFound();
+            return setEditor({
+              ...editor,
+              lifecycle: {
+                ...editor.lifecycle,
+                active: {
+                  ...editor.lifecycle.active,
+                  availableLayoutIds: request.availableLayoutIds,
+                  defaultLayoutId: request.defaultLayoutId,
+                },
+              },
+              updatedAt: nextTimestamp(),
+            });
+          },
           updateField: async (request: {
             defaultValue: unknown;
             fieldId: string;
@@ -2354,6 +2651,21 @@ export const installMockDesktopApi = async (
                   : request.presetId === "host"
                     ? [
                         {
+                          name: "Background",
+                          role: "background",
+                          bounds: {
+                            x: 0,
+                            y: 0,
+                            width: 1,
+                            height: 1,
+                          },
+                          allowedComponentTypes: [
+                            "background",
+                            "image",
+                            "video",
+                          ],
+                        },
+                        {
                           name: "Host camera",
                           role: "hostCamera",
                           bounds: {
@@ -2363,6 +2675,17 @@ export const installMockDesktopApi = async (
                             height: 0.84,
                           },
                           allowedComponentTypes: ["camera"],
+                        },
+                        {
+                          name: "Logo",
+                          role: "logo",
+                          bounds: {
+                            x: 0.78,
+                            y: 0.06,
+                            width: 0.16,
+                            height: 0.16,
+                          },
+                          allowedComponentTypes: ["logo", "image"],
                         },
                         {
                           name: "Lower third",
@@ -2400,6 +2723,7 @@ export const installMockDesktopApi = async (
                   ? { width: 1920, height: 1080 }
                   : { width: 1080, height: 1920 },
               slots,
+              componentPlacements: [],
               archivedAt: null,
               createdAt: timestamp,
               updatedAt: nextTimestamp(),
@@ -2446,6 +2770,7 @@ export const installMockDesktopApi = async (
                 id: crypto.randomUUID(),
                 layoutId: id,
               })),
+              componentPlacements: [],
               updatedAt: nextTimestamp(),
             };
             layouts.set(id, duplicate);
@@ -2508,6 +2833,214 @@ export const installMockDesktopApi = async (
                 createdAt: timestamp,
                 updatedAt: nextTimestamp(),
               })),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
+            return { ok: true, data: updated };
+          },
+        }),
+        components: Object.freeze({
+          assign: async (request: {
+            componentType: BrowserComponent["type"];
+            layoutId: string;
+            showId: string;
+            slotId: string;
+          }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            let component = [...components.values()].find(
+              (candidate) =>
+                candidate.showId === request.showId &&
+                candidate.type === request.componentType,
+            );
+            if (component === undefined) {
+              const resourceType =
+                request.componentType === "camera"
+                  ? "cameraResource"
+                  : request.componentType === "video"
+                    ? "videoResource"
+                    : request.componentType === "image" ||
+                        request.componentType === "logo" ||
+                        request.componentType === "background"
+                      ? "imageResource"
+                      : "string";
+              component = {
+                id: crypto.randomUUID(),
+                showId: request.showId,
+                name:
+                  request.componentType === "lowerThird"
+                    ? "Lower Third"
+                    : request.componentType,
+                type: request.componentType,
+                propertySchema:
+                  request.componentType === "lowerThird"
+                    ? [
+                        {
+                          key: "title",
+                          label: "Title text",
+                          type: "string",
+                          required: true,
+                          defaultValue: "Guest name",
+                        },
+                        {
+                          key: "subtitle",
+                          label: "Subtitle text",
+                          type: "string",
+                          required: false,
+                          defaultValue: "Role or topic",
+                        },
+                        {
+                          key: "image",
+                          label: "Optional image or logo",
+                          type: "imageResource",
+                          required: false,
+                        },
+                        {
+                          key: "stylePreset",
+                          label: "Style preset",
+                          type: "string",
+                          required: true,
+                          defaultValue: "quietGold",
+                        },
+                      ]
+                    : [
+                        {
+                          key:
+                            request.componentType === "video"
+                              ? "media"
+                              : request.componentType === "camera"
+                                ? "camera"
+                                : resourceType === "string"
+                                  ? "text"
+                                  : "image",
+                          label: "Content",
+                          type: resourceType,
+                          required: request.componentType !== "background",
+                        },
+                      ],
+                defaultProperties: {},
+                defaultEnterAnimation:
+                  request.componentType === "lowerThird"
+                    ? {
+                        preset: "slideUp",
+                        durationMs: 220,
+                        delayMs: 0,
+                        easing: "ease-out",
+                      }
+                    : {
+                        preset: "none",
+                        durationMs: 0,
+                        delayMs: 0,
+                        easing: "linear",
+                      },
+                defaultExitAnimation:
+                  request.componentType === "lowerThird"
+                    ? {
+                        preset: "slideDown",
+                        durationMs: 180,
+                        delayMs: 0,
+                        easing: "ease-in",
+                      }
+                    : {
+                        preset: "none",
+                        durationMs: 0,
+                        delayMs: 0,
+                        easing: "linear",
+                      },
+                supportedSlotRoles: [
+                  layout.slots.find(({ id }) => id === request.slotId)?.role ??
+                    "center",
+                ],
+                archivedAt: null,
+                createdAt: timestamp,
+                updatedAt: timestamp,
+              };
+              components.set(component.id, component);
+            }
+            const placement: BrowserComponentPlacement = {
+              id: crypto.randomUUID(),
+              layoutId: layout.id,
+              componentId: component.id,
+              slotId: request.slotId,
+              fixedProperties: {},
+              bindings: {},
+              visibleByDefault: true,
+              layerOverride: null,
+              enterAnimationOverride: null,
+              exitAnimationOverride: null,
+              createdAt: timestamp,
+              updatedAt: nextTimestamp(),
+            };
+            const updated = {
+              ...layout,
+              componentPlacements: [
+                ...layout.componentPlacements.filter(
+                  ({ slotId }) => slotId !== request.slotId,
+                ),
+                placement,
+              ],
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
+            return { ok: true, data: updated };
+          },
+          list: async (request: { showId: string }) => ({
+            ok: true,
+            data: [...components.values()].filter(
+              ({ showId }) => showId === request.showId,
+            ),
+          }),
+          removePlacement: async (request: {
+            layoutId: string;
+            placementId: string;
+          }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const updated = {
+              ...layout,
+              componentPlacements: layout.componentPlacements.filter(
+                ({ id }) => id !== request.placementId,
+              ),
+              updatedAt: nextTimestamp(),
+            };
+            layouts.set(layout.id, updated);
+            return { ok: true, data: updated };
+          },
+          updatePlacement: async (request: {
+            bindings: Record<string, BrowserBinding>;
+            fixedProperties: Record<string, unknown>;
+            layoutId: string;
+            placementId: string;
+            visibleByDefault: boolean;
+          }) => {
+            const layout = layouts.get(request.layoutId);
+            if (layout === undefined)
+              return {
+                ok: false,
+                error: { code: "NOT_FOUND", message: "Layout not found." },
+              };
+            const updated = {
+              ...layout,
+              componentPlacements: layout.componentPlacements.map(
+                (placement) =>
+                  placement.id === request.placementId
+                    ? {
+                        ...placement,
+                        bindings: request.bindings,
+                        fixedProperties: request.fixedProperties,
+                        visibleByDefault: request.visibleByDefault,
+                        updatedAt: nextTimestamp(),
+                      }
+                    : placement,
+              ),
               updatedAt: nextTimestamp(),
             };
             layouts.set(layout.id, updated);
@@ -2804,11 +3337,13 @@ export const installMockDesktopApi = async (
             return { ok: true, data: updated };
           },
           updateSegment: async (request: {
+            defaultLayoutOverrideId?: string | null;
             episodeId: string;
             episodeSegmentId: string;
             expectedDurationOverrideMs: number | null;
             expectedUpdatedAt: string;
             fieldValues: Record<string, unknown>;
+            fixedResourceReplacements?: BrowserEpisodeSegment["fixedResourceReplacements"];
             notes: string;
             showId: string;
             studioId: string;
@@ -2843,6 +3378,13 @@ export const installMockDesktopApi = async (
                         expectedDurationOverrideMs:
                           request.expectedDurationOverrideMs,
                         fieldValues: request.fieldValues,
+                        defaultLayoutOverrideId:
+                          request.defaultLayoutOverrideId === undefined
+                            ? candidate.episodeSegment.defaultLayoutOverrideId
+                            : request.defaultLayoutOverrideId,
+                        fixedResourceReplacements:
+                          request.fixedResourceReplacements ??
+                          candidate.episodeSegment.fixedResourceReplacements,
                         notes: request.notes,
                         updatedAt: nextTimestamp(),
                       },

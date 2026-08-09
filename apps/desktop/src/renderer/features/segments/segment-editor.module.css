@@ -139,6 +139,17 @@
   gap: var(--sf-space-4);
   margin: 0;
 }
+.layoutChoices {
+  display: grid;
+  gap: var(--sf-space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.layoutChoices legend {
+  margin-bottom: var(--sf-space-3);
+  font-weight: var(--sf-font-weight-label-md);
+}
 
 .dependencyList div {
   display: grid;

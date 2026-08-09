@@ -343,8 +343,8 @@ Development is divided into gated vertical slices. Each Sprint must ship a
 coherent increment, tests, documentation updates, and no regressions before the
 next Sprint begins.
 
-**Current milestone:** Sprints 0–9 are complete. Sprint 10—Layout Catalog and
-constrained Layout editor—is next.
+**Current milestone:** Sprints 0–11 are complete. Sprint 12—Preview runtime and
+Segment lifecycle—is next.
 
 | Phase              | Sprints | Outcome                                                                     |
 | ------------------ | ------: | --------------------------------------------------------------------------- |
@@ -367,8 +367,8 @@ constrained Layout editor—is next.
 - [x] **Sprint 7:** Show Segment schema and behavior editor
 - [x] **Sprint 8:** Episode Segment content editor
 - [x] **Sprint 9:** Resource system
-- [ ] **Sprint 10:** Layout Catalog and constrained Layout editor
-- [ ] **Sprint 11:** Components, Placements, and bindings
+- [x] **Sprint 10:** Layout Catalog and constrained Layout editor
+- [x] **Sprint 11:** Components, Placements, and bindings
 - [ ] **Sprint 12:** Preview runtime and Segment lifecycle
 - [ ] **Sprint 13:** Host Cues
 - [ ] **Sprint 14:** Episode rehearsal

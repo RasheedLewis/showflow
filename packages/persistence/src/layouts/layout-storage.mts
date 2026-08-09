@@ -5,6 +5,9 @@ import {
   parseUtcTimestamp,
   MINIMUM_SLOT_SIZE,
   type Layout,
+  type ComponentPlacement,
+  type Binding,
+  type JsonObject,
   type Slot,
 } from "@showflow/domain";
 
@@ -55,6 +58,54 @@ const ComponentTypeSchema = z.enum([
 const AllowedComponentTypesSchema = z
   .array(ComponentTypeSchema)
   .refine((values) => new Set(values).size === values.length);
+const AnimationSchema = z
+  .object({
+    preset: z.enum([
+      "none",
+      "fade",
+      "slideUp",
+      "slideDown",
+      "slideLeft",
+      "slideRight",
+      "scaleIn",
+      "scaleOut",
+      "pop",
+      "wipe",
+    ]),
+    durationMs: z.number().int().nonnegative(),
+    delayMs: z.number().int().nonnegative(),
+    easing: z.string().min(1),
+  })
+  .strict();
+const BindingSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("literal"), value: z.json() }).strict(),
+  z.object({ kind: z.literal("resource"), resourceId: z.string() }).strict(),
+  z
+    .object({ kind: z.literal("segmentField"), fieldKey: z.string().min(1) })
+    .strict(),
+  z
+    .object({ kind: z.literal("episodeMetadata"), field: z.string().min(1) })
+    .strict(),
+  z
+    .object({ kind: z.literal("showMetadata"), field: z.string().min(1) })
+    .strict(),
+]);
+const PlacementRowSchema = z
+  .object({
+    id: z.string(),
+    layoutId: z.string(),
+    componentId: z.string(),
+    slotId: z.string(),
+    fixedPropertiesJson: z.string(),
+    bindingsJson: z.string(),
+    visibleByDefault: z.union([z.literal(0), z.literal(1)]),
+    layerOverride: z.number().int().nonnegative().nullable(),
+    enterAnimationOverrideJson: z.string().nullable(),
+    exitAnimationOverrideJson: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .strict();
 
 const LayoutRowSchema = z
   .object({
@@ -180,8 +231,68 @@ const parseSlotRow = (value: unknown): Slot => {
   }
 };
 
+const parsePlacementRow = (value: unknown): ComponentPlacement => {
+  try {
+    const row = PlacementRowSchema.parse(value);
+    const createdAt = parseUtcTimestamp(row.createdAt);
+    const updatedAt = parseUtcTimestamp(row.updatedAt);
+    if (updatedAt < createdAt)
+      throw new RangeError("Invalid Component Placement timestamps.");
+    const fixedProperties = z
+      .record(z.string(), z.json())
+      .parse(JSON.parse(row.fixedPropertiesJson) as unknown) as JsonObject;
+    const storedBindings = z
+      .record(z.string(), BindingSchema)
+      .parse(JSON.parse(row.bindingsJson) as unknown);
+    const bindings: Readonly<Record<string, Binding>> = Object.fromEntries(
+      Object.entries(storedBindings).map(([key, binding]) => {
+        if (binding.kind === "resource")
+          return [
+            key,
+            {
+              kind: binding.kind,
+              resourceId: parseEntityId<"resource">(binding.resourceId),
+            },
+          ];
+        return [key, binding];
+      }),
+    ) as Readonly<Record<string, Binding>>;
+    return {
+      id: parseEntityId<"componentPlacement">(row.id),
+      layoutId: parseEntityId<"layout">(row.layoutId),
+      componentId: parseEntityId<"component">(row.componentId),
+      slotId: parseEntityId<"slot">(row.slotId),
+      fixedProperties,
+      bindings,
+      visibleByDefault: row.visibleByDefault === 1,
+      ...(row.layerOverride === null
+        ? {}
+        : { layerOverride: row.layerOverride }),
+      ...(row.enterAnimationOverrideJson === null
+        ? {}
+        : {
+            enterAnimationOverride: AnimationSchema.parse(
+              JSON.parse(row.enterAnimationOverrideJson) as unknown,
+            ),
+          }),
+      ...(row.exitAnimationOverrideJson === null
+        ? {}
+        : {
+            exitAnimationOverride: AnimationSchema.parse(
+              JSON.parse(row.exitAnimationOverrideJson) as unknown,
+            ),
+          }),
+      createdAt,
+      updatedAt,
+    };
+  } catch (error) {
+    throw new StoredLayoutError(error);
+  }
+};
+
 export const LayoutRowParser = { parse: parseLayoutRow };
 export const SlotRowParser = { parse: parseSlotRow };
+export const ComponentPlacementRowParser = { parse: parsePlacementRow };
 
 export const LAYOUT_COLUMNS = `
   id,
@@ -216,20 +327,43 @@ export const SLOT_COLUMNS = `
   updated_at AS updatedAt
 `;
 
+export const COMPONENT_PLACEMENT_COLUMNS = `
+  id,
+  layout_id AS layoutId,
+  component_id AS componentId,
+  slot_id AS slotId,
+  fixed_properties_json AS fixedPropertiesJson,
+  bindings_json AS bindingsJson,
+  visible_by_default AS visibleByDefault,
+  layer_override AS layerOverride,
+  enter_animation_override_json AS enterAnimationOverrideJson,
+  exit_animation_override_json AS exitAnimationOverrideJson,
+  created_at AS createdAt,
+  updated_at AS updatedAt
+`;
+
 export const readLayoutDetails = (
   database: DatabaseExecutor,
   layout: Layout,
-): Layout => ({
-  ...layout,
-  slots: database.queryAll(
+): Layout => {
+  const slots = database.queryAll(
     `SELECT ${SLOT_COLUMNS}
      FROM slots
      WHERE layout_id = ?
      ORDER BY layer_order, id`,
     SlotRowParser,
     [layout.id],
-  ),
-});
+  );
+  const componentPlacements = database.queryAll(
+    `SELECT ${COMPONENT_PLACEMENT_COLUMNS}
+     FROM component_placements
+     WHERE layout_id = ?
+     ORDER BY COALESCE(layer_override, 2147483647), id`,
+    ComponentPlacementRowParser,
+    [layout.id],
+  );
+  return { ...layout, slots, componentPlacements };
+};
 
 const validateSlotForLayout = (slot: Slot, layoutId: Layout["id"]): Slot => {
   if (slot.layoutId !== layoutId) {
@@ -267,7 +401,24 @@ const writeSlot = (database: DatabaseExecutor, slot: Slot): void => {
        safe_margin_top, safe_margin_right, safe_margin_bottom, safe_margin_left,
        layer_order, clip_content, allowed_component_types_json,
        created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       layout_id = excluded.layout_id,
+       name = excluded.name,
+       role = excluded.role,
+       x = excluded.x,
+       y = excluded.y,
+       width = excluded.width,
+       height = excluded.height,
+       alignment = excluded.alignment,
+       safe_margin_top = excluded.safe_margin_top,
+       safe_margin_right = excluded.safe_margin_right,
+       safe_margin_bottom = excluded.safe_margin_bottom,
+       safe_margin_left = excluded.safe_margin_left,
+       layer_order = excluded.layer_order,
+       clip_content = excluded.clip_content,
+       allowed_component_types_json = excluded.allowed_component_types_json,
+       updated_at = excluded.updated_at`,
     [
       slot.id,
       slot.layoutId,
@@ -291,18 +442,73 @@ const writeSlot = (database: DatabaseExecutor, slot: Slot): void => {
   );
 };
 
+const writePlacement = (
+  database: DatabaseExecutor,
+  placement: ComponentPlacement,
+): void => {
+  const valid = parsePlacementRow({
+    id: placement.id,
+    layoutId: placement.layoutId,
+    componentId: placement.componentId,
+    slotId: placement.slotId,
+    fixedPropertiesJson: JSON.stringify(placement.fixedProperties),
+    bindingsJson: JSON.stringify(placement.bindings),
+    visibleByDefault: placement.visibleByDefault ? 1 : 0,
+    layerOverride: placement.layerOverride ?? null,
+    enterAnimationOverrideJson:
+      placement.enterAnimationOverride === undefined
+        ? null
+        : JSON.stringify(placement.enterAnimationOverride),
+    exitAnimationOverrideJson:
+      placement.exitAnimationOverride === undefined
+        ? null
+        : JSON.stringify(placement.exitAnimationOverride),
+    createdAt: placement.createdAt,
+    updatedAt: placement.updatedAt,
+  });
+  database.run(
+    `INSERT INTO component_placements (
+       id, layout_id, component_id, slot_id, fixed_properties_json,
+       bindings_json, visible_by_default, layer_override,
+       enter_animation_override_json, exit_animation_override_json,
+       created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       layout_id = excluded.layout_id,
+       component_id = excluded.component_id,
+       slot_id = excluded.slot_id,
+       fixed_properties_json = excluded.fixed_properties_json,
+       bindings_json = excluded.bindings_json,
+       visible_by_default = excluded.visible_by_default,
+       layer_override = excluded.layer_override,
+       enter_animation_override_json = excluded.enter_animation_override_json,
+       exit_animation_override_json = excluded.exit_animation_override_json,
+       updated_at = excluded.updated_at`,
+    [
+      valid.id,
+      valid.layoutId,
+      valid.componentId,
+      valid.slotId,
+      JSON.stringify(valid.fixedProperties),
+      JSON.stringify(valid.bindings),
+      valid.visibleByDefault ? 1 : 0,
+      valid.layerOverride ?? null,
+      valid.enterAnimationOverride === undefined
+        ? null
+        : JSON.stringify(valid.enterAnimationOverride),
+      valid.exitAnimationOverride === undefined
+        ? null
+        : JSON.stringify(valid.exitAnimationOverride),
+      valid.createdAt,
+      valid.updatedAt,
+    ],
+  );
+};
+
 export const writeLayout = (
   database: DatabaseExecutor,
   layout: Layout,
 ): void => {
-  if (layout.componentPlacements.length > 0) {
-    throw new StoredLayoutError(
-      new Error(
-        "Component Placements are not supported by this schema version.",
-      ),
-    );
-  }
-
   const validLayout = parseLayoutRow({
     archivedAt: layout.archivedAt ?? null,
     aspectRatio: layout.aspectRatio,
@@ -343,8 +549,38 @@ export const writeLayout = (
       validLayout.updatedAt,
     ],
   );
-  database.run("DELETE FROM slots WHERE layout_id = ?", [validLayout.id]);
+  const slotIds = new Set(validSlots.map(({ id }) => id));
+  const storedSlotIds = database.queryAll(
+    "SELECT id FROM slots WHERE layout_id = ?",
+    { parse: (value: unknown) => z.object({ id: z.string() }).parse(value) },
+    [validLayout.id],
+  );
+  for (const { id } of storedSlotIds) {
+    if (!slotIds.has(id as Slot["id"]))
+      database.run("DELETE FROM slots WHERE id = ?", [id]);
+  }
   for (const slot of validSlots) {
     writeSlot(database, slot);
+  }
+  const placementIds = new Set(layout.componentPlacements.map(({ id }) => id));
+  const storedPlacementIds = database.queryAll(
+    "SELECT id FROM component_placements WHERE layout_id = ?",
+    { parse: (value: unknown) => z.object({ id: z.string() }).parse(value) },
+    [validLayout.id],
+  );
+  for (const { id } of storedPlacementIds) {
+    if (!placementIds.has(id as ComponentPlacement["id"]))
+      database.run("DELETE FROM component_placements WHERE id = ?", [id]);
+  }
+  for (const placement of layout.componentPlacements) {
+    if (
+      placement.layoutId !== validLayout.id ||
+      !slotIds.has(placement.slotId)
+    ) {
+      throw new StoredLayoutError(
+        new Error("A Component Placement must reference a Slot in its Layout."),
+      );
+    }
+    writePlacement(database, placement);
   }
 };

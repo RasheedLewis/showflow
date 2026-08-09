@@ -235,7 +235,7 @@ export const ApplicationShell = ({
           aria-label={title}
           className={styles.mainContent}
           id={mainId}
-          tabIndex={-1}
+          tabIndex={0}
         >
           {children}
         </main>

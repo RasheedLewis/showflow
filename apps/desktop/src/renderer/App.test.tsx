@@ -1349,6 +1349,79 @@ describe("App", () => {
     ).toBeVisible();
   });
 
+  it("shows placement save failures without adding an undo entry", async () => {
+    const baseApi = createMockDesktopApi();
+    await baseApi.studios.create({ name: "Public Sphere" });
+    await baseApi.shows.create({
+      name: "Artist Interviews",
+      studioId: DEFAULT_STUDIO_ID,
+    });
+    const created = await baseApi.layouts.create({
+      context: {
+        scope: "show",
+        studioId: DEFAULT_STUDIO_ID,
+        showId: DEFAULT_SHOW_ID,
+      },
+      name: "Guest interview",
+      aspectRatio: "16:9",
+      presetId: "blank",
+    });
+    if (!created.ok) throw new Error(created.error.message);
+    const withSlot = await baseApi.layouts.update({
+      studioId: DEFAULT_STUDIO_ID,
+      showId: DEFAULT_SHOW_ID,
+      layoutId: created.data.id,
+      expectedUpdatedAt: created.data.updatedAt,
+      name: created.data.name,
+      slots: [
+        {
+          name: "Lower third",
+          role: "lowerThird",
+          bounds: { x: 0.08, y: 0.72, width: 0.52, height: 0.18 },
+          alignment: "stretch",
+          safeMargins: { top: 0, right: 0, bottom: 0, left: 0 },
+          layerOrder: 0,
+          clipContent: true,
+          allowedComponentTypes: ["lowerThird"],
+        },
+      ],
+    });
+    if (!withSlot.ok) throw new Error(withSlot.error.message);
+    const api = Object.freeze({
+      ...baseApi,
+      components: Object.freeze({
+        ...baseApi.components,
+        assign: async () => ({
+          ok: false as const,
+          error: {
+            code: "PERSISTENCE_FAILURE" as const,
+            message: "The Component Placement could not be saved.",
+          },
+        }),
+      }),
+    }) satisfies ShowflowDesktopApi;
+    renderApp(
+      `/studio/${DEFAULT_STUDIO_ID}/show/${DEFAULT_SHOW_ID}/design/layouts/${created.data.id}`,
+      api,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Lower third Slot" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open Layout assets" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Lower Third/u }),
+    );
+
+    expect(await screen.findByText("Could not save")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The Component Placement could not be saved.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Undo Layout change" }),
+    ).toBeDisabled();
+  });
+
   it("validates the required Studio name without crossing the desktop API", async () => {
     renderApp("/studio/new");
 
@@ -1653,9 +1726,7 @@ describe("App", () => {
       "aria-selected",
       "true",
     );
-    expect(
-      screen.getByText("Choose the default Layout in Sprint 10"),
-    ).toBeVisible();
+    expect(screen.getByText("Choose a default Layout")).toBeVisible();
 
     expect(screen.getByRole("tab", { name: "Prepare" })).not.toHaveAttribute(
       "aria-disabled",

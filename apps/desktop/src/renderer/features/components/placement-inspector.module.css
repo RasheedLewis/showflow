@@ -1,0 +1,17 @@
+.inspector,
+.property {
+  display: grid;
+  gap: var(--sf-space-3);
+}
+.inspector h3,
+.scope {
+  margin: 0;
+}
+.scope {
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-sm);
+}
+.property {
+  padding-block: var(--sf-space-3);
+  border-top: var(--sf-border-width-default) solid var(--sf-border-default);
+}

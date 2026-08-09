@@ -1,8 +1,10 @@
 import { Button, Dialog, Select, TextInput } from "@showflow/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CreateLayoutRequest, LayoutDto } from "@showflow/contracts";
 
 import styles from "./layouts.module.css";
+import { layoutCatalogQueryKey, layoutQueryKey } from "./layout-queries";
 
 const PRESETS = [
   {
@@ -29,7 +31,7 @@ const PRESETS = [
 
 interface NewLayoutDialogProps {
   readonly context: CreateLayoutRequest["context"];
-  readonly onCreated: (layout: LayoutDto) => void;
+  readonly onCreated: (layout: LayoutDto) => Promise<void> | void;
   readonly onOpenChange: (open: boolean) => void;
   readonly open: boolean;
 }
@@ -40,6 +42,7 @@ export const NewLayoutDialog = ({
   onOpenChange,
   open,
 }: NewLayoutDialogProps) => {
+  const queryClient = useQueryClient();
   const [presetId, setPresetId] =
     useState<CreateLayoutRequest["presetId"]>("blank");
   const [aspectRatio, setAspectRatio] =
@@ -59,7 +62,14 @@ export const NewLayoutDialog = ({
         presetId,
       });
       if (!result.ok) throw new Error(result.error.message);
-      onCreated(result.data);
+      queryClient.setQueryData(
+        layoutQueryKey(context.studioId, context.showId, result.data.id),
+        result.data,
+      );
+      await queryClient.invalidateQueries({
+        queryKey: layoutCatalogQueryKey(context.studioId, context.showId),
+      });
+      await onCreated(result.data);
       onOpenChange(false);
     } catch (cause) {
       setError(
