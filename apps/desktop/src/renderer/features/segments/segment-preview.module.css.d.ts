@@ -11,5 +11,8 @@ declare const styles: {
   readonly layoutControls: string;
   readonly placeholder: string;
   readonly preview: string;
+  readonly srOnly: string;
+  readonly status: string;
+  readonly statusGrid: string;
 };
 export default styles;

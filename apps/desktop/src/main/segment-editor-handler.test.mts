@@ -147,6 +147,7 @@ describe("Segment editor handlers", () => {
         ...request,
         actions: [
           { kind: "activateLayout", layoutId },
+          { kind: "waitForDuration", durationMs: 3_000 },
           { kind: "waitForAnimationCompletion" },
           { kind: "startMedia", resourceId },
         ],
@@ -160,6 +161,7 @@ describe("Segment editor handlers", () => {
     expect(updateActions.execute).toHaveBeenCalledWith({
       actions: [
         { kind: "activateLayout", layoutId },
+        { kind: "waitForDuration", durationMs: 3_000 },
         { kind: "waitForAnimationCompletion" },
         { kind: "startMedia", resourceId },
       ],
@@ -169,6 +171,29 @@ describe("Segment editor handlers", () => {
       showSegmentId: segment.id,
     });
     expect(result.ok).toBe(true);
+  });
+
+  it("12A.T1 rejects a malformed hold at the IPC boundary", async () => {
+    const updateActions = { execute: vi.fn() };
+    const result = await handleUpdateSegmentActionsRequest(
+      {
+        ...request,
+        actions: [{ kind: "waitForDuration", durationMs: 0 }],
+        expectedUpdatedAt: timestamp,
+        phase: "enter",
+      },
+      true,
+      operations({ updateActions }),
+    );
+
+    expect(updateActions.execute).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "IPC_INVALID_REQUEST",
+        message: expect.stringContaining("greater than zero seconds"),
+      },
+    });
   });
 
   it("preserves production-language stale-save copy", async () => {

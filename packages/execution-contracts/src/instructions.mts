@@ -20,6 +20,7 @@ export const EXECUTION_INSTRUCTION_KINDS = Object.freeze([
   "playResource",
   "stopResource",
   "waitForAnimationCompletion",
+  "waitForDuration",
   "waitForMediaCompletion",
   "setActiveDefaults",
   "clearTemporaryState",
@@ -51,6 +52,10 @@ export type ExecutionInstruction =
       readonly layout?: LayoutExecutionTarget;
     }
   | {
+      readonly durationMs: number;
+      readonly kind: "waitForDuration";
+    }
+  | {
       readonly kind: "waitForMediaCompletion";
       readonly resource?: ResourceExecutionTarget;
     }
@@ -60,6 +65,18 @@ export type ExecutionInstruction =
       readonly kind: "setActiveDefaults";
     }
   | { readonly kind: "clearTemporaryState" };
+
+export const assertExecutionDurationMs = (durationMs: number): void => {
+  if (
+    !Number.isFinite(durationMs) ||
+    !Number.isInteger(durationMs) ||
+    durationMs <= 0
+  ) {
+    throw new RangeError(
+      "A duration instruction must use a positive whole number of milliseconds.",
+    );
+  }
+};
 
 export interface SegmentExecutionPlan {
   readonly segment: SegmentExecutionTarget;

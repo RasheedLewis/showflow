@@ -79,7 +79,7 @@ describe("Sprint 10 Layout editing invariants", () => {
       "Blank",
       "Host",
       "Host + Video",
-      "Fullscreen Video",
+      "Fullscreen Media",
     ]);
     for (const preset of LAYOUT_PRESETS) {
       const layout = createLayoutFromPreset(

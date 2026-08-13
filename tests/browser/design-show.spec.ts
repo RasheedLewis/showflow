@@ -103,7 +103,18 @@ test("reorders the Storyboard with keyboard and pointer input", async ({
   const openingHandle = page.getByRole("button", { name: "Reorder Opening" });
   await openingHandle.focus();
   await openingHandle.press("Space");
+  await expect(openingHandle).toHaveAttribute("aria-pressed", "true");
+  // dnd-kit attaches its keyboard listener on the next event-loop turn. Wait
+  // for its initial collision announcement before sending the movement key.
+  const dragStatus = page.getByRole("status").filter({
+    hasText: /Draggable item/u,
+  });
+  await expect(dragStatus).toContainText(/was moved over droppable area/u);
+  const initialDragAnnouncement = await dragStatus.textContent();
   await openingHandle.press("ArrowRight");
+  await expect
+    .poll(() => dragStatus.textContent())
+    .not.toBe(initialDragAnnouncement);
   await openingHandle.press("Space");
   await expect
     .poll(() => storyboardNames(page))

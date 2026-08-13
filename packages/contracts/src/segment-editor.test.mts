@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  LifecycleActionDtoSchema,
   ShowSegmentEditorDtoSchema,
+  UpdateSegmentActionsRequestSchema,
   UpdateSegmentFieldRequestSchema,
 } from "./segment-editor.ts";
 
@@ -66,6 +68,46 @@ describe("Segment editor contracts", () => {
         showSegmentId: id,
         studioId: id,
         type: "number",
+      }),
+    ).toThrow();
+  });
+
+  it("12A.T1 accepts only positive whole-millisecond duration actions", () => {
+    expect(
+      LifecycleActionDtoSchema.parse({
+        durationMs: 3_000,
+        kind: "waitForDuration",
+      }),
+    ).toEqual({ durationMs: 3_000, kind: "waitForDuration" });
+
+    for (const durationMs of [
+      0,
+      -1,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+    ]) {
+      expect(() =>
+        LifecycleActionDtoSchema.parse({
+          durationMs,
+          kind: "waitForDuration",
+        }),
+      ).toThrow();
+    }
+    expect(() =>
+      LifecycleActionDtoSchema.parse({
+        durationMs: "3000",
+        kind: "waitForDuration",
+      }),
+    ).toThrow();
+    expect(() =>
+      UpdateSegmentActionsRequestSchema.parse({
+        actions: [{ durationMs: 0, kind: "waitForDuration" }],
+        expectedUpdatedAt: timestamp,
+        phase: "enter",
+        showId: id,
+        showSegmentId: id,
+        studioId: id,
       }),
     ).toThrow();
   });

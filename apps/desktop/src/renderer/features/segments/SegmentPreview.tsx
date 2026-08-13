@@ -6,6 +6,7 @@ import type {
 } from "@showflow/contracts";
 import {
   ProductionExecutionError,
+  EMPTY_RUNTIME_PROGRESS,
   SegmentRuntime,
   createSystemExecutionClock,
   generateSegmentInstructions,
@@ -17,7 +18,7 @@ import {
   type RuntimeSnapshot,
 } from "@showflow/execution-contracts";
 import { Badge, Button } from "@showflow/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ComponentPreview } from "../components/ComponentPreview";
 import styles from "./segment-preview.module.css";
@@ -28,6 +29,38 @@ const stateLabel = (state: RuntimeSnapshot["state"]): string => {
       return "Cleaning Up";
     default:
       return state.slice(0, 1).toUpperCase() + state.slice(1);
+  }
+};
+
+const phaseLabel = (phase: RuntimeSnapshot["progress"]["phase"]): string =>
+  phase === null
+    ? "Not started"
+    : phase.slice(0, 1).toUpperCase() + phase.slice(1);
+
+const actionLabel = (
+  actionKind: RuntimeSnapshot["progress"]["actionKind"],
+): string => {
+  switch (actionKind) {
+    case "activateLayout":
+      return "Show Layout";
+    case "waitForAnimationCompletion":
+      return "Wait for animation";
+    case "waitForDuration":
+      return "Hold for duration";
+    case "playResource":
+      return "Start media";
+    case "stopResource":
+      return "Stop media";
+    case "preloadResource":
+      return "Prepare Resource";
+    case "waitForMediaCompletion":
+      return "Wait for media";
+    case "setActiveDefaults":
+      return "Set Active defaults";
+    case "clearTemporaryState":
+      return "Clear temporary output";
+    case null:
+      return "No action running";
   }
 };
 
@@ -166,13 +199,17 @@ export const SegmentPreview = ({
   readonly startAt?: "enter" | "exit" | undefined;
   readonly studioId: string;
 }) => {
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const reducedMotion = useReducedMotion();
   const [activeLayoutId, setActiveLayoutId] = useState<string>();
   const [animationPhase, setAnimationPhase] = useState<"enter" | "exit">();
   const [resourceUrls, setResourceUrls] = useState<
     Readonly<Record<string, string>>
   >({});
-  const [snapshot, setSnapshot] = useState<RuntimeSnapshot>({ state: "idle" });
+  const [snapshot, setSnapshot] = useState<RuntimeSnapshot>({
+    progress: EMPTY_RUNTIME_PROGRESS,
+    state: "idle",
+  });
   const layoutsById = useMemo(
     () => new Map(layouts.map((layout) => [layout.id, layout])),
     [layouts],
@@ -264,6 +301,7 @@ export const SegmentPreview = ({
             layout,
           );
         }
+        if (context.signal.aborted) throw cancellationError();
         setAnimationPhase("enter");
         setActiveLayoutId(layout.id);
         await context.clock.wait(0, context.signal);
@@ -283,12 +321,17 @@ export const SegmentPreview = ({
       deactivateLayout: async (layout, context) => {
         const value = layoutsById.get(layout.id);
         if (value === undefined) return;
+        if (context.signal.aborted) throw cancellationError();
         setAnimationPhase("exit");
-        await context.clock.wait(0, context.signal);
-        await context.clock.wait(
-          layoutCompletionMs(value, components, "exit", reducedMotion),
-          context.signal,
+        const durationMs = layoutCompletionMs(
+          value,
+          components,
+          "exit",
+          reducedMotion,
         );
+        if (durationMs > 0) {
+          await context.clock.wait(durationMs, context.signal);
+        }
         setActiveLayoutId(undefined);
       },
       playResource: async (resource, context) => {
@@ -376,10 +419,10 @@ export const SegmentPreview = ({
         if (element !== undefined) element.currentTime = 0;
       },
       waitForAnimation: async (instruction, context) => {
-        await context.clock.wait(
-          reducedMotion ? 0 : instruction.durationMs,
-          context.signal,
-        );
+        const durationMs = reducedMotion ? 0 : instruction.durationMs;
+        if (durationMs > 0) {
+          await context.clock.wait(durationMs, context.signal);
+        }
         setAnimationPhase(undefined);
       },
       waitForMedia: async (resource, context) => {
@@ -403,6 +446,10 @@ export const SegmentPreview = ({
   );
 
   useEffect(() => runtime.subscribe(setSnapshot), [runtime]);
+  useEffect(() => {
+    headingRef.current?.scrollIntoView?.({ block: "start" });
+    headingRef.current?.focus();
+  }, []);
   useEffect(() => {
     if (startAt === undefined) return;
     const previewPhase = async (): Promise<void> => {
@@ -443,6 +490,23 @@ export const SegmentPreview = ({
     snapshot.state === "entering" ||
     snapshot.state === "exiting" ||
     snapshot.state === "cleaningUp";
+  const progressLayout =
+    snapshot.progress.activeLayoutId === null
+      ? undefined
+      : layoutsById.get(snapshot.progress.activeLayoutId);
+  const remainingHold =
+    snapshot.progress.remainingDurationMs === null
+      ? "Not holding"
+      : `${(snapshot.progress.remainingDurationMs / 1_000).toFixed(1)} seconds`;
+  const announcedRemainingHold =
+    snapshot.progress.remainingDurationMs === null
+      ? "Not holding"
+      : `${Math.ceil(snapshot.progress.remainingDurationMs / 1_000)} seconds`;
+  const progressAnnouncement = `${phaseLabel(snapshot.progress.phase)} phase. ${
+    snapshot.progress.actionIndex === null
+      ? actionLabel(snapshot.progress.actionKind)
+      : `Action ${snapshot.progress.actionIndex + 1}: ${actionLabel(snapshot.progress.actionKind)}`
+  }. Current Layout: ${progressLayout?.name ?? "none"}. Remaining hold: ${announcedRemainingHold}.`;
 
   return (
     <section
@@ -454,7 +518,9 @@ export const SegmentPreview = ({
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Audience preview</p>
-          <h2 id="segment-preview-heading">Preview {editor.name}</h2>
+          <h2 id="segment-preview-heading" ref={headingRef} tabIndex={-1}>
+            Preview {editor.name}
+          </h2>
           <p>Controls stay outside the audience frame.</p>
         </div>
         <div className={styles.headerActions}>
@@ -472,6 +538,98 @@ export const SegmentPreview = ({
           </Button>
         </div>
       </header>
+
+      <section aria-label="Preview progress" className={styles.status}>
+        <span aria-live="polite" className={styles.srOnly} role="status">
+          {progressAnnouncement}
+        </span>
+        <dl className={styles.statusGrid}>
+          <div>
+            <dt>Phase</dt>
+            <dd>{phaseLabel(snapshot.progress.phase)}</dd>
+          </div>
+          <div>
+            <dt>Action</dt>
+            <dd>
+              {snapshot.progress.actionIndex === null
+                ? actionLabel(snapshot.progress.actionKind)
+                : `${snapshot.progress.actionIndex + 1}. ${actionLabel(snapshot.progress.actionKind)}`}
+            </dd>
+          </div>
+          <div>
+            <dt>Current Layout</dt>
+            <dd>{progressLayout?.name ?? "None"}</dd>
+          </div>
+          <div>
+            <dt>Remaining hold</dt>
+            <dd>{remainingHold}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div
+        aria-label="Segment preview controls"
+        className={styles.controls}
+        role="group"
+      >
+        <Button
+          disabled={isRunning}
+          onClick={() =>
+            run(
+              snapshot.state === "idle"
+                ? runtime.enter(plan)
+                : runtime.restart(),
+            )
+          }
+        >
+          Restart
+        </Button>
+        <Button
+          disabled={snapshot.state !== "idle" && snapshot.state !== "stopped"}
+          onClick={() => run(runtime.enter(plan))}
+          variant="primary"
+        >
+          Enter
+        </Button>
+        <Button
+          disabled={
+            snapshot.state !== "active" ||
+            editor.lifecycle.active.defaultLayoutId === null
+          }
+          onClick={() => {
+            const layoutId = editor.lifecycle.active.defaultLayoutId;
+            const layout =
+              layoutId === null ? undefined : layoutsById.get(layoutId);
+            if (layout !== undefined)
+              run(
+                runtime.switchLayout(
+                  { id: layout.id, name: layout.name },
+                  layoutCompletionMs(
+                    layout,
+                    components,
+                    "enter",
+                    reducedMotion,
+                  ),
+                ),
+              );
+          }}
+        >
+          Active
+        </Button>
+        <Button
+          disabled={snapshot.state !== "active"}
+          onClick={() => run(runtime.exit())}
+        >
+          Exit
+        </Button>
+        <Button
+          disabled={snapshot.state === "idle" || snapshot.state === "stopped"}
+          onClick={() => run(runtime.stop())}
+          variant="ghost"
+        >
+          Stop
+        </Button>
+      </div>
 
       <div className={styles.audienceSurround}>
         <div
@@ -537,70 +695,6 @@ export const SegmentPreview = ({
           </div>
         </section>
       )}
-
-      <div
-        aria-label="Segment preview controls"
-        className={styles.controls}
-        role="group"
-      >
-        <Button
-          disabled={isRunning}
-          onClick={() =>
-            run(
-              snapshot.state === "idle"
-                ? runtime.enter(plan)
-                : runtime.restart(),
-            )
-          }
-        >
-          Restart
-        </Button>
-        <Button
-          disabled={snapshot.state !== "idle" && snapshot.state !== "stopped"}
-          onClick={() => run(runtime.enter(plan))}
-          variant="primary"
-        >
-          Enter
-        </Button>
-        <Button
-          disabled={
-            snapshot.state !== "active" ||
-            editor.lifecycle.active.defaultLayoutId === null
-          }
-          onClick={() => {
-            const layoutId = editor.lifecycle.active.defaultLayoutId;
-            const layout =
-              layoutId === null ? undefined : layoutsById.get(layoutId);
-            if (layout !== undefined)
-              run(
-                runtime.switchLayout(
-                  { id: layout.id, name: layout.name },
-                  layoutCompletionMs(
-                    layout,
-                    components,
-                    "enter",
-                    reducedMotion,
-                  ),
-                ),
-              );
-          }}
-        >
-          Active
-        </Button>
-        <Button
-          disabled={snapshot.state !== "active"}
-          onClick={() => run(runtime.exit())}
-        >
-          Exit
-        </Button>
-        <Button
-          disabled={snapshot.state === "idle" || snapshot.state === "stopped"}
-          onClick={() => run(runtime.stop())}
-          variant="ghost"
-        >
-          Stop
-        </Button>
-      </div>
 
       {editor.lifecycle.active.availableLayoutIds.length === 0 ? null : (
         <div className={styles.layoutControls}>

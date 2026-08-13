@@ -10,6 +10,7 @@ import type {
   ResourceExecutionTarget,
   SegmentExecutionPlan,
 } from "./instructions.mjs";
+import { assertExecutionDurationMs } from "./instructions.mjs";
 
 export type LifecycleActionSource =
   | { readonly kind: "preloadResource"; readonly resourceId: string }
@@ -18,6 +19,7 @@ export type LifecycleActionSource =
   | { readonly kind: "startMedia"; readonly resourceId: string }
   | { readonly kind: "stopMedia"; readonly resourceId: string }
   | { readonly kind: "waitForAnimationCompletion" }
+  | { readonly kind: "waitForDuration"; readonly durationMs: number }
   | {
       readonly kind: "waitForMediaCompletion";
       readonly resourceId?: string | undefined;
@@ -71,6 +73,28 @@ export interface SegmentInstructionSource {
   readonly segment: InstructionSegmentSource;
 }
 
+export const getLayoutAnimationCompletionMs = (
+  layout: InstructionLayoutSource,
+  components: readonly InstructionComponentSource[],
+  phase: "enter" | "exit",
+  reducedMotion = false,
+): number => {
+  const componentsById = new Map(
+    components.map((component) => [component.id, component]),
+  );
+  return layout.componentPlacements.reduce((maximum, placement) => {
+    const component = componentsById.get(placement.componentId);
+    if (component === undefined) return maximum;
+    return Math.max(
+      maximum,
+      getAnimationCompletionMs(
+        resolvePlacementAnimation(component, placement, phase),
+        reducedMotion,
+      ),
+    );
+  }, 0);
+};
+
 const unavailableLayout = (id: string): LayoutExecutionTarget => ({
   id,
   name: "Unavailable Layout",
@@ -87,9 +111,6 @@ export const generateSegmentInstructions = ({
   segment,
 }: SegmentInstructionSource): SegmentExecutionPlan => {
   const layoutsById = new Map(layouts.map((layout) => [layout.id, layout]));
-  const componentsById = new Map(
-    components.map((component) => [component.id, component]),
-  );
   const resourcesById = new Map(
     resources.map((resource) => [resource.id, resource]),
   );
@@ -115,17 +136,7 @@ export const generateSegmentInstructions = ({
   ): number => {
     const layout = id === undefined ? undefined : layoutsById.get(id);
     if (layout === undefined) return 0;
-    return layout.componentPlacements.reduce((maximum, placement) => {
-      const component = componentsById.get(placement.componentId);
-      if (component === undefined) return maximum;
-      return Math.max(
-        maximum,
-        getAnimationCompletionMs(
-          resolvePlacementAnimation(component, placement, phase),
-          false,
-        ),
-      );
-    }, 0);
+    return getLayoutAnimationCompletionMs(layout, components, phase);
   };
   const normalizeActions = (
     actions: readonly LifecycleActionSource[],
@@ -170,6 +181,9 @@ export const generateSegmentInstructions = ({
                 : { layout: layoutTarget(currentLayoutId) }),
             },
           ];
+        case "waitForDuration":
+          assertExecutionDurationMs(action.durationMs);
+          return [{ kind: "waitForDuration", durationMs: action.durationMs }];
         case "waitForMediaCompletion":
           return [
             {

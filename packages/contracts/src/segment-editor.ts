@@ -78,6 +78,12 @@ export const LifecycleActionDtoSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("waitForAnimationCompletion") }).strict(),
   z
     .object({
+      durationMs: z.number().finite().int().positive(),
+      kind: z.literal("waitForDuration"),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("waitForMediaCompletion"),
       resourceId: z.string().uuid().optional(),
     })

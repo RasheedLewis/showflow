@@ -177,6 +177,11 @@
   gap: var(--sf-space-4);
 }
 
+.actionEditor,
+.actionCard {
+  gap: var(--sf-space-3);
+}
+
 .fieldList {
   display: grid;
   gap: var(--sf-space-4);
@@ -187,7 +192,7 @@
 
 .actionList {
   display: grid;
-  gap: var(--sf-space-4);
+  gap: var(--sf-space-3);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -197,7 +202,45 @@
   background: var(--sf-bg-card);
   border: var(--sf-border-width-default) solid var(--sf-border-default);
   border-radius: var(--sf-radius-md);
-  padding: var(--sf-space-4);
+  padding: var(--sf-space-3);
+}
+
+.pendingAction,
+.phaseTiming,
+.actionTimingDetail {
+  display: grid;
+  gap: var(--sf-space-2);
+}
+
+.pendingAction,
+.phaseTiming {
+  background: var(--sf-bg-panel);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-md);
+  padding: var(--sf-space-3);
+}
+
+.pendingAction {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.phaseTiming strong {
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-md);
+  line-height: var(--sf-line-height-body-md);
+}
+
+.phaseTiming p,
+.actionTimingDetail p {
+  color: var(--sf-text-secondary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+  margin: 0;
+}
+
+.actionTimingDetail .timingWarning {
+  color: var(--sf-warning);
 }
 
 .actionInstruction {
@@ -225,6 +268,16 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sf-space-2);
+}
+
+.actionCard .actionButtons {
+  flex-wrap: nowrap;
+  gap: var(--sf-space-1);
+}
+
+.actionCard .actionButtons > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .fieldCard {

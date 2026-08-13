@@ -20,7 +20,7 @@ import {
 
 const segment = { id: "segment-opening", name: "Opening" };
 const hostLayout = { id: "layout-host", name: "Host Layout" };
-const videoLayout = { id: "layout-video", name: "Fullscreen Video" };
+const videoLayout = { id: "layout-video", name: "Fullscreen Media" };
 const clip = { id: "resource-clip", name: "Opening clip", category: "video" };
 
 const productionTypeScriptFiles = (directory: string): readonly string[] =>
@@ -125,16 +125,14 @@ describe("Sprint 12 execution contracts", () => {
     await runtime.enter(plan());
     await runtime.exit();
 
-    expect(states).toEqual([
-      "idle",
+    expect(
+      states.filter((state, index) => state !== states[index - 1]),
+    ).toEqual([
       "idle",
       "preparing",
       "entering",
-      "entering",
       "active",
       "exiting",
-      "exiting",
-      "cleaningUp",
       "cleaningUp",
       "stopped",
     ]);
@@ -268,7 +266,7 @@ describe("Sprint 12 execution contracts", () => {
       "active-defaults",
       "activate:Host Layout",
       "deactivate:Host Layout",
-      "activate:Fullscreen Video",
+      "activate:Fullscreen Media",
       "wait-animation:0",
     ]);
   });
@@ -298,7 +296,7 @@ describe("Sprint 12 execution contracts", () => {
     });
     expect(clock.pendingWaitCount()).toBe(0);
     expect(harness.events.slice(-3)).toEqual([
-      "deactivate:Fullscreen Video",
+      "deactivate:Fullscreen Media",
       "activate:Host Layout",
       "wait-animation:0",
     ]);
@@ -524,6 +522,7 @@ describe("Sprint 12 execution contracts", () => {
       "playResource",
       "stopResource",
       "waitForAnimationCompletion",
+      "waitForDuration",
       "waitForMediaCompletion",
       "setActiveDefaults",
       "clearTemporaryState",
@@ -544,5 +543,187 @@ describe("Sprint 12 execution contracts", () => {
       return declaration === undefined ? [] : [{ declaration, path }];
     });
     expect(userTimelineDeclarations).toEqual([]);
+  });
+});
+
+describe("Sprint 12A duration execution", () => {
+  const waitUntilPending = async (
+    clock: ReturnType<typeof createFakeExecutionClock>,
+  ): Promise<void> => {
+    for (
+      let index = 0;
+      index < 12 && clock.pendingWaitCount() === 0;
+      index += 1
+    ) {
+      await Promise.resolve();
+    }
+    expect(clock.pendingWaitCount()).toBe(1);
+  };
+
+  it("12A.T3 preserves activation, hold, and Active Layout instruction order", () => {
+    const generated = generateSegmentInstructions({
+      components: [],
+      layouts: [
+        { ...hostLayout, componentPlacements: [] },
+        { ...videoLayout, componentPlacements: [] },
+      ],
+      resources: [],
+      segment: {
+        id: segment.id,
+        layoutIds: [hostLayout.id, videoLayout.id],
+        lifecycle: {
+          prepare: [],
+          enter: [
+            { kind: "activateLayout", layoutId: hostLayout.id },
+            { kind: "waitForDuration", durationMs: 3_000 },
+          ],
+          active: {
+            availableLayoutIds: [hostLayout.id, videoLayout.id],
+            defaultLayoutId: videoLayout.id,
+          },
+          exit: [],
+          cleanup: [],
+        },
+        name: segment.name,
+      },
+    });
+
+    expect([...generated.enter, ...generated.active]).toEqual([
+      { kind: "activateLayout", layout: hostLayout },
+      { kind: "waitForDuration", durationMs: 3_000 },
+      {
+        availableLayouts: [hostLayout, videoLayout],
+        defaultLayout: videoLayout,
+        kind: "setActiveDefaults",
+      },
+      { kind: "activateLayout", layout: videoLayout },
+      {
+        durationMs: 0,
+        kind: "waitForAnimationCompletion",
+        layout: videoLayout,
+      },
+    ]);
+  });
+
+  it("12A.T4 stays pending before 3000ms and completes at exactly 3000ms", async () => {
+    const clock = createFakeExecutionClock();
+    const runtime = new SegmentRuntime(adapterHarness().adapter, clock);
+    const entering = runtime.enter(
+      plan({ enter: [{ kind: "waitForDuration", durationMs: 3_000 }] }),
+    );
+    await waitUntilPending(clock);
+
+    clock.advanceBy(2_999);
+    await Promise.resolve();
+    expect(runtime.snapshot.state).toBe("entering");
+    expect(runtime.snapshot.progress).toMatchObject({
+      actionIndex: 0,
+      actionKind: "waitForDuration",
+      phase: "enter",
+      remainingDurationMs: 1,
+    });
+
+    clock.advanceBy(1);
+    await entering;
+    expect(runtime.snapshot.state).toBe("active");
+  });
+
+  it("12A.T5 stop, Segment jump, and Layout change cancel a duration hold", async () => {
+    const cancelWith = async (
+      operation: (
+        runtime: SegmentRuntime,
+        entering: Promise<void>,
+      ) => Promise<void>,
+    ): Promise<void> => {
+      const clock = createFakeExecutionClock();
+      const runtime = new SegmentRuntime(adapterHarness().adapter, clock);
+      const entering = runtime.enter(
+        plan({ enter: [{ kind: "waitForDuration", durationMs: 3_000 }] }),
+      );
+      await waitUntilPending(clock);
+      await operation(runtime, entering);
+      await entering;
+      expect(clock.pendingWaitCount()).toBe(0);
+      clock.advanceBy(3_000);
+      await Promise.resolve();
+    };
+
+    await cancelWith(async (runtime) => runtime.stop());
+    await cancelWith(async (runtime) =>
+      runtime.jump(
+        plan({ active: [{ kind: "activateLayout", layout: videoLayout }] }),
+      ),
+    );
+    await cancelWith(async (runtime) => runtime.switchLayout(videoLayout));
+  });
+
+  it("12A.T5 restart cancels the old hold before starting a new run", async () => {
+    const clock = createFakeExecutionClock();
+    const runtime = new SegmentRuntime(adapterHarness().adapter, clock);
+    const firstRun = runtime.enter(
+      plan({ enter: [{ kind: "waitForDuration", durationMs: 3_000 }] }),
+    );
+    await waitUntilPending(clock);
+    const restarted = runtime.restart();
+    await firstRun;
+    await waitUntilPending(clock);
+    expect(clock.pendingWaitCount()).toBe(1);
+    clock.advanceBy(3_000);
+    await restarted;
+    expect(runtime.snapshot.state).toBe("active");
+  });
+
+  it("12A.T6 does not shorten an explicit hold for reduced motion", async () => {
+    const clock = createFakeExecutionClock();
+    const runtime = new SegmentRuntime(
+      adapterHarness({ reducedMotion: true }).adapter,
+      clock,
+    );
+    const entering = runtime.enter(
+      plan({ enter: [{ kind: "waitForDuration", durationMs: 3_000 }] }),
+    );
+    await waitUntilPending(clock);
+    clock.advanceBy(2_999);
+    await Promise.resolve();
+    expect(runtime.snapshot.state).toBe("entering");
+    clock.advanceBy(1);
+    await entering;
+    expect(runtime.snapshot.state).toBe("active");
+  });
+
+  it("12A.T11 emits serializable phase, action, Layout, and remaining-time progress", async () => {
+    const clock = createFakeExecutionClock();
+    const runtime = new SegmentRuntime(adapterHarness().adapter, clock);
+    const snapshots: string[] = [];
+    runtime.subscribe((snapshot) => snapshots.push(JSON.stringify(snapshot)));
+    const entering = runtime.enter(
+      plan({
+        enter: [
+          { kind: "activateLayout", layout: hostLayout },
+          { kind: "waitForDuration", durationMs: 3_000 },
+        ],
+      }),
+    );
+    await waitUntilPending(clock);
+
+    expect(runtime.snapshot.progress).toEqual({
+      actionIndex: 1,
+      actionKind: "waitForDuration",
+      activeLayoutId: hostLayout.id,
+      phase: "enter",
+      remainingDurationMs: 3_000,
+    });
+    clock.advanceBy(3_000);
+    await entering;
+    expect(runtime.snapshot.progress).toMatchObject({
+      actionIndex: null,
+      actionKind: null,
+      activeLayoutId: hostLayout.id,
+      phase: "active",
+      remainingDurationMs: null,
+    });
+    expect(snapshots.every((snapshot) => JSON.parse(snapshot) !== null)).toBe(
+      true,
+    );
   });
 });

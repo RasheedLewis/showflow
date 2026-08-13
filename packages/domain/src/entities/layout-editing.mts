@@ -120,8 +120,8 @@ export const LAYOUT_PRESETS: readonly LayoutPreset[] = Object.freeze([
   },
   {
     id: "fullscreenVideo",
-    name: "Fullscreen Video",
-    description: "One edge-to-edge video region.",
+    name: "Fullscreen Media",
+    description: "One edge-to-edge image or video region.",
     slots: [
       {
         name: "Main video",

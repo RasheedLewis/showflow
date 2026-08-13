@@ -47,6 +47,7 @@ export type LifecycleAction =
   | { readonly kind: "startMedia"; readonly resourceId: ResourceId }
   | { readonly kind: "stopMedia"; readonly resourceId: ResourceId }
   | { readonly kind: "waitForAnimationCompletion" }
+  | { readonly kind: "waitForDuration"; readonly durationMs: number }
   | {
       readonly kind: "waitForMediaCompletion";
       readonly resourceId?: ResourceId;

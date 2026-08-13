@@ -306,3 +306,192 @@ test("11.T15 and 12.T11 render a Host composition in Segment Preview and Episode
     .analyze();
   expect(accessibility.violations).toEqual([]);
 });
+
+test("12A.T14 runs a three-second Enter, manual Active, and three-second image Exit", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await createShow(page);
+  await page
+    .getByRole("button", { exact: true, name: "Add Segment" })
+    .last()
+    .click();
+  const segmentPicker = page.getByRole("dialog", { name: "Add Segment" });
+  await segmentPicker
+    .getByRole("textbox", { name: /Segment name/u })
+    .fill("Timed interview open");
+  await segmentPicker.getByRole("button", { name: "Create and Add" }).click();
+
+  const segmentInspector = page.getByRole("complementary", {
+    name: "Segment inspector",
+  });
+  if (!(await segmentInspector.isVisible())) {
+    await page.getByRole("button", { name: "Show Segment inspector" }).click();
+  }
+
+  await segmentInspector
+    .getByRole("button", { name: "Create a Layout" })
+    .click();
+  let dialog = page.getByRole("dialog", { name: "New Layout" });
+  await dialog
+    .getByRole("textbox", { name: "Layout name" })
+    .fill("Host and feature");
+  await dialog.getByRole("radio", { name: /Host \+ Video/u }).check();
+  await dialog.getByRole("button", { name: "Create Layout" }).click();
+  await page.getByRole("link", { name: "Back to Show Segment" }).click();
+
+  await segmentInspector
+    .getByRole("button", { name: "Create a Layout" })
+    .click();
+  dialog = page.getByRole("dialog", { name: "New Layout" });
+  await dialog
+    .getByRole("textbox", { name: "Layout name" })
+    .fill("Fullscreen exit still");
+  await dialog.getByRole("radio", { name: /Fullscreen Media/u }).check();
+  await dialog.getByRole("button", { name: "Create Layout" }).click();
+
+  const catalog = page.getByRole("complementary", { name: "Layout assets" });
+  if (!(await catalog.isVisible())) {
+    await page.getByRole("button", { name: "Open Layout assets" }).click();
+  }
+  const mainVideoSlot = page.getByRole("button", { name: "Main video Slot" });
+  await mainVideoSlot.focus();
+  await mainVideoSlot.press("Enter");
+  await catalog.getByRole("button", { name: /^Image/u }).click();
+  const layoutInspector = page.getByRole("complementary", {
+    name: "Layout inspector",
+  });
+  if (!(await layoutInspector.isVisible())) {
+    await page.getByRole("button", { name: "Show Layout inspector" }).click();
+  }
+  await layoutInspector.getByRole("button", { name: "Choose image" }).click();
+  const resourceBrowser = page.getByRole("dialog", {
+    name: "Resource Browser",
+  });
+  await resourceBrowser.getByRole("button", { name: "Import image" }).click();
+  const confirmImage = resourceBrowser.getByRole("button", {
+    name: "Use selected image",
+  });
+  await expect(confirmImage).toBeEnabled();
+  await expect(resourceBrowser.locator("img")).toBeVisible();
+  await confirmImage.click();
+  await expect(page.locator('[data-component-type="image"] img')).toBeVisible();
+  await page.getByRole("link", { name: "Back to Show Segment" }).click();
+
+  await segmentInspector
+    .getByRole("combobox", { name: "Default Layout" })
+    .selectOption({ label: "Fullscreen exit still" });
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Enter" }).click();
+  await segmentInspector.getByRole("button", { name: "Show Layout" }).click();
+  await segmentInspector
+    .getByRole("combobox", { name: "Layout for new Show Layout action" })
+    .selectOption({ label: "Host and feature" });
+  await expect(
+    segmentInspector.getByText("Show Host and feature"),
+  ).toBeVisible();
+  await segmentInspector.getByRole("button", { name: "Hold for" }).click();
+  await expect(segmentInspector.getByText("Hold for 3 seconds")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Exit" }).click();
+  await segmentInspector.getByRole("button", { name: "Show Layout" }).click();
+  await segmentInspector
+    .getByRole("combobox", { name: "Layout for new Show Layout action" })
+    .selectOption({ label: "Fullscreen exit still" });
+  await expect(
+    segmentInspector.getByText("Show Fullscreen exit still"),
+  ).toBeVisible();
+  await segmentInspector.getByRole("button", { name: "Hold for" }).click();
+  await expect(segmentInspector.getByText("Hold for 3 seconds")).toBeVisible();
+
+  const main = page.locator("main");
+  const editorScrollPosition = await main.evaluate((element) => {
+    element.scrollTop = 160;
+    return element.scrollTop;
+  });
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "test-results/sprint-12a-action-editor.png",
+  });
+  const previewClockStart = new Date("2026-08-09T12:00:00.000Z");
+  await page.clock.install({ time: previewClockStart });
+  await page.clock.pauseAt(previewClockStart);
+  await page.getByRole("button", { name: "Preview Segment" }).click();
+  const previewHeading = page.getByRole("heading", {
+    level: 2,
+    name: "Preview Timed interview open",
+  });
+  await expect(previewHeading).toBeFocused();
+  const controls = page.getByRole("group", {
+    name: "Segment preview controls",
+  });
+  const audience = page.getByLabel("Audience output");
+  const controlsBox = await controls.boundingBox();
+  const audienceBox = await audience.boundingBox();
+  if (controlsBox === null || audienceBox === null) {
+    throw new Error("Expected reachable preview controls and audience output.");
+  }
+  expect(controlsBox.y).toBeLessThan(audienceBox.y);
+
+  await controls.getByRole("button", { exact: true, name: "Enter" }).click();
+  await page.clock.runFor(0);
+  const progress = page.getByLabel("Preview progress");
+  await expect(progress).toContainText("Enter");
+  await expect(progress).toContainText("Hold for duration");
+  await expect(progress).toContainText("Host and feature");
+  await page.clock.fastForward(2_999);
+  await expect(
+    page.locator('section[data-runtime-state="entering"]'),
+  ).toBeVisible();
+  await page.clock.fastForward(1);
+  await page.clock.runFor(0);
+  await expect(progress).toContainText("Active");
+  await expect(progress).toContainText("Show Layout");
+  await page.clock.fastForward(1);
+  await expect(
+    page.locator('section[data-runtime-state="active"]'),
+  ).toBeVisible();
+  await expect(progress).toContainText("Fullscreen exit still");
+
+  await page.clock.fastForward(10_000);
+  await expect(
+    page.locator('section[data-runtime-state="active"]'),
+  ).toBeVisible();
+  await controls.getByRole("button", { name: "Exit" }).click();
+  await page.clock.runFor(0);
+  await expect(progress).toContainText("Exit");
+  await expect(progress).toContainText("Hold for duration");
+  await expect(audience.locator("img[data-resource-id]")).toBeVisible();
+  await page.clock.fastForward(2_999);
+  await expect(
+    page.locator('section[data-runtime-state="exiting"]'),
+  ).toBeVisible();
+  await page.clock.fastForward(1);
+  await expect(
+    page.locator('section[data-runtime-state="stopped"]'),
+  ).toBeVisible();
+  await expect(audience.locator("img")).toHaveCount(0);
+  await page.clock.resume();
+
+  await page.screenshot({
+    animations: "disabled",
+    fullPage: true,
+    path: "test-results/sprint-12a-timed-segment-flow.png",
+  });
+  const accessibility = await new AxeBuilder({ page })
+    .disableRules(["color-contrast"])
+    .analyze();
+  expect(accessibility.violations).toEqual([]);
+  await page.getByRole("button", { name: "Close Preview" }).click();
+  await expect(page.getByRole("tab", { name: "Exit" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(segmentInspector.getByText("Hold for 3 seconds")).toBeVisible();
+  expect(await main.evaluate((element) => element.scrollTop)).toBe(
+    editorScrollPosition,
+  );
+});

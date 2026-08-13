@@ -3,4 +3,5 @@ export * from "./clock.mjs";
 export * from "./animation-registry.mjs";
 export * from "./instruction-generator.mjs";
 export * from "./instructions.mjs";
+export * from "./lifecycle-timing.mjs";
 export * from "./runtime.mjs";

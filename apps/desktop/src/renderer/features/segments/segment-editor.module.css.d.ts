@@ -5,6 +5,7 @@ declare const styles: Readonly<{
   actionEditor: string;
   actionInstruction: string;
   actionList: string;
+  actionTimingDetail: string;
   audienceFrame: string;
   canvasStage: string;
   dependencyCopy: string;
@@ -30,7 +31,10 @@ declare const styles: Readonly<{
   notesPanel: string;
   phaseHeader: string;
   phaseHeading: string;
+  phaseTiming: string;
+  pendingAction: string;
   scopeDetail: string;
+  timingWarning: string;
   unavailable: string;
   usageWarning: string;
   layoutChoices: string;

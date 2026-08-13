@@ -80,6 +80,7 @@ describe("closed Segment lifecycle", () => {
     const enter = [
       { kind: "activateLayout", layoutId },
       { kind: "waitForAnimationCompletion" },
+      { kind: "waitForDuration", durationMs: 3_000 },
       { kind: "setActiveDefaults", layoutId },
     ] as const satisfies readonly LifecycleAction[];
     const lifecycle = defineSegmentLifecycle({
@@ -104,6 +105,39 @@ describe("closed Segment lifecycle", () => {
       "updatedAt",
     ]);
     expect(lifecycle.enter).toEqual(enter);
+  });
+
+  test.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "12A.T1 rejects invalid duration hold %s at the domain boundary",
+    (durationMs) => {
+      expect(() =>
+        defineSegmentLifecycle({
+          showSegmentId,
+          prepare: [],
+          enter: [{ kind: "waitForDuration", durationMs }],
+          active: { availableLayoutIds: [], hostCueIds: [] },
+          exit: [],
+          cleanup: [],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }),
+      ).toThrow(/positive whole number of milliseconds/u);
+    },
+  );
+
+  test("12A.T1 accepts a positive whole-millisecond duration hold", () => {
+    expect(
+      defineSegmentLifecycle({
+        showSegmentId,
+        prepare: [],
+        enter: [{ kind: "waitForDuration", durationMs: 3_000 }],
+        active: { availableLayoutIds: [], hostCueIds: [] },
+        exit: [],
+        cleanup: [],
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }).enter,
+    ).toEqual([{ kind: "waitForDuration", durationMs: 3_000 }]);
   });
 
   test("returns immutable phase containers detached from input arrays", () => {

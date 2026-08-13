@@ -2,11 +2,13 @@ import type { ExecutionClock } from "./clock.mjs";
 import { isExecutionAbort } from "./clock.mjs";
 import type {
   ExecutionInstruction,
+  ExecutionInstructionKind,
   LayoutExecutionTarget,
   ResourceExecutionTarget,
   SegmentExecutionPlan,
   SegmentExecutionTarget,
 } from "./instructions.mjs";
+import { assertExecutionDurationMs } from "./instructions.mjs";
 
 export const RUNTIME_STATES = Object.freeze([
   "idle",
@@ -52,9 +54,29 @@ export interface RuntimeFailure {
   readonly message: string;
 }
 
+export type RuntimeLifecyclePhase =
+  "prepare" | "enter" | "active" | "exit" | "cleanup";
+
+export interface RuntimeProgressSnapshot {
+  readonly actionIndex: number | null;
+  readonly actionKind: ExecutionInstructionKind | null;
+  readonly activeLayoutId: string | null;
+  readonly phase: RuntimeLifecyclePhase | null;
+  readonly remainingDurationMs: number | null;
+}
+
+export const EMPTY_RUNTIME_PROGRESS: RuntimeProgressSnapshot = Object.freeze({
+  actionIndex: null,
+  actionKind: null,
+  activeLayoutId: null,
+  phase: null,
+  remainingDurationMs: null,
+});
+
 export interface RuntimeSnapshot {
   readonly activeLayout?: LayoutExecutionTarget | undefined;
   readonly failure?: RuntimeFailure | undefined;
+  readonly progress: RuntimeProgressSnapshot;
   readonly segment?: SegmentExecutionTarget | undefined;
   readonly state: RuntimeState;
 }
@@ -129,6 +151,8 @@ const instructionObject = (
       return instruction.resource;
     case "waitForAnimationCompletion":
       return instruction.layout;
+    case "waitForDuration":
+      return undefined;
     case "waitForMediaCompletion":
       return instruction.resource;
     case "setActiveDefaults":
@@ -139,7 +163,10 @@ const instructionObject = (
 };
 
 export class SegmentRuntime {
-  private snapshotValue: RuntimeSnapshot = { state: "idle" };
+  private snapshotValue: RuntimeSnapshot = {
+    progress: EMPTY_RUNTIME_PROGRESS,
+    state: "idle",
+  };
   private readonly listeners = new Set<SnapshotListener>();
   private controller: AbortController | undefined;
   private currentInstruction: ExecutionInstruction | undefined;
@@ -161,11 +188,18 @@ export class SegmentRuntime {
   }
 
   private publish(
-    patch: Omit<RuntimeSnapshot, "state"> & { state?: RuntimeState },
+    patch: Omit<Partial<RuntimeSnapshot>, "progress"> & {
+      readonly progress?: Partial<RuntimeProgressSnapshot>;
+    },
   ): void {
+    const { progress, ...snapshotPatch } = patch;
     this.snapshotValue = {
       ...this.snapshotValue,
-      ...patch,
+      ...snapshotPatch,
+      progress:
+        progress === undefined
+          ? this.snapshotValue.progress
+          : { ...this.snapshotValue.progress, ...progress },
       state: patch.state ?? this.snapshotValue.state,
     };
     for (const listener of this.listeners) listener(this.snapshotValue);
@@ -180,13 +214,52 @@ export class SegmentRuntime {
     return { clock: this.clock, signal: controller.signal };
   }
 
+  private beginPhase(state: RuntimeState, phase: RuntimeLifecyclePhase): void {
+    assertRuntimeTransition(this.snapshotValue.state, state);
+    this.publish({
+      state,
+      progress: {
+        actionIndex: null,
+        actionKind: null,
+        phase,
+        remainingDurationMs: null,
+      },
+    });
+  }
+
+  private async waitForDuration(
+    durationMs: number,
+    controller: AbortController,
+  ): Promise<void> {
+    assertExecutionDurationMs(durationMs);
+    const deadline = this.clock.now() + durationMs;
+    while (!controller.signal.aborted) {
+      const remainingDurationMs = Math.max(0, deadline - this.clock.now());
+      this.publish({ progress: { remainingDurationMs } });
+      if (remainingDurationMs === 0) return;
+      await this.clock.wait(
+        Math.min(remainingDurationMs, 250),
+        controller.signal,
+      );
+    }
+  }
+
   private async execute(
     instructions: readonly ExecutionInstruction[],
     controller: AbortController,
+    phase: RuntimeLifecyclePhase,
   ): Promise<void> {
-    for (const instruction of instructions) {
+    for (const [actionIndex, instruction] of instructions.entries()) {
       if (controller.signal.aborted) return;
       this.currentInstruction = instruction;
+      this.publish({
+        progress: {
+          actionIndex,
+          actionKind: instruction.kind,
+          phase,
+          remainingDurationMs: null,
+        },
+      });
       const context = this.context(controller);
       switch (instruction.kind) {
         case "preloadResource":
@@ -198,7 +271,10 @@ export class SegmentRuntime {
             await this.adapter.deactivateLayout(active, context);
           }
           await this.adapter.activateLayout(instruction.layout, context);
-          this.publish({ activeLayout: instruction.layout });
+          this.publish({
+            activeLayout: instruction.layout,
+            progress: { activeLayoutId: instruction.layout.id },
+          });
           break;
         }
         case "playResource":
@@ -210,6 +286,9 @@ export class SegmentRuntime {
         case "waitForAnimationCompletion":
           await this.adapter.waitForAnimation(instruction, context);
           break;
+        case "waitForDuration":
+          await this.waitForDuration(instruction.durationMs, controller);
+          break;
         case "waitForMediaCompletion":
           await this.adapter.waitForMedia(instruction.resource, context);
           break;
@@ -218,11 +297,21 @@ export class SegmentRuntime {
           break;
         case "clearTemporaryState":
           await this.adapter.clearTemporaryState(context);
-          this.publish({ activeLayout: undefined });
+          this.publish({
+            activeLayout: undefined,
+            progress: { activeLayoutId: null },
+          });
           break;
       }
     }
     this.currentInstruction = undefined;
+    this.publish({
+      progress: {
+        actionIndex: null,
+        actionKind: null,
+        remainingDurationMs: null,
+      },
+    });
   }
 
   private fail(error: unknown, plan: SegmentExecutionPlan): void {
@@ -261,13 +350,21 @@ export class SegmentRuntime {
     this.controller = controller;
     this.publish({ failure: undefined, segment: plan.segment });
     try {
-      this.transition("preparing");
-      await this.execute(plan.prepare, controller);
+      this.beginPhase("preparing", "prepare");
+      await this.execute(plan.prepare, controller, "prepare");
       if (controller.signal.aborted) return;
-      this.transition("entering");
-      await this.execute(plan.enter, controller);
+      this.beginPhase("entering", "enter");
+      await this.execute(plan.enter, controller, "enter");
       if (controller.signal.aborted) return;
-      await this.execute(plan.active, controller);
+      this.publish({
+        progress: {
+          actionIndex: null,
+          actionKind: null,
+          phase: "active",
+          remainingDurationMs: null,
+        },
+      });
+      await this.execute(plan.active, controller, "active");
       if (controller.signal.aborted) return;
       this.transition("active");
     } catch (error) {
@@ -286,8 +383,8 @@ export class SegmentRuntime {
     const controller = new AbortController();
     this.controller = controller;
     try {
-      this.transition("exiting");
-      await this.execute(plan.exit, controller);
+      this.beginPhase("exiting", "exit");
+      await this.execute(plan.exit, controller, "exit");
       if (controller.signal.aborted) return;
       const activeLayout = this.snapshotValue.activeLayout;
       if (activeLayout !== undefined) {
@@ -295,11 +392,14 @@ export class SegmentRuntime {
           activeLayout,
           this.context(controller),
         );
-        this.publish({ activeLayout: undefined });
+        this.publish({
+          activeLayout: undefined,
+          progress: { activeLayoutId: null },
+        });
       }
       if (controller.signal.aborted) return;
-      this.transition("cleaningUp");
-      await this.execute(plan.cleanup, controller);
+      this.beginPhase("cleaningUp", "cleanup");
+      await this.execute(plan.cleanup, controller, "cleanup");
       if (controller.signal.aborted) return;
       this.transition("stopped");
     } catch (error) {
@@ -315,10 +415,12 @@ export class SegmentRuntime {
     durationMs = 0,
   ): Promise<void> {
     const plan = this.currentPlan;
-    if (plan === undefined || this.snapshotValue.state !== "active") {
-      throw new TypeError(
-        "Layout changes are available only while a Segment is Active.",
-      );
+    if (plan === undefined) {
+      throw new TypeError("Layout changes require a Segment execution plan.");
+    }
+    if (this.snapshotValue.state !== "active") {
+      await this.stop();
+      return;
     }
     this.controller?.abort();
     const controller = new AbortController();
@@ -330,6 +432,7 @@ export class SegmentRuntime {
           { kind: "waitForAnimationCompletion", layout, durationMs },
         ],
         controller,
+        "active",
       );
     } catch (error) {
       if (!isExecutionAbort(error) && !controller.signal.aborted)
@@ -351,7 +454,15 @@ export class SegmentRuntime {
         else if (canTransitionRuntime(state, "stopped"))
           this.transition("stopped");
       }
-      this.publish({ activeLayout: undefined });
+      this.publish({
+        activeLayout: undefined,
+        progress: {
+          actionIndex: null,
+          actionKind: null,
+          activeLayoutId: null,
+          remainingDurationMs: null,
+        },
+      });
     }
   }
 

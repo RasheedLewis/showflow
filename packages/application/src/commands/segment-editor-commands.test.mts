@@ -194,7 +194,7 @@ describe("Segment editor commands", () => {
     ).rejects.toThrow("zero or a positive");
   });
 
-  it("persists the limited Enter and Exit action APIs within the Show boundary", async () => {
+  it("12A.T1 persists validated Enter and Exit duration actions within the Show boundary", async () => {
     const studioId = entityId<"studio">(30);
     const show = {
       createdAt: timestamp,
@@ -263,6 +263,7 @@ describe("Segment editor commands", () => {
       ...scope(),
       actions: [
         { kind: "activateLayout", layoutId: layout.id },
+        { kind: "waitForDuration", durationMs: 3_000 },
         { kind: "waitForAnimationCompletion" },
         { kind: "startMedia", resourceId: resource.id },
       ],
@@ -270,6 +271,7 @@ describe("Segment editor commands", () => {
     });
     expect(repository.segment.lifecycle.enter).toEqual([
       { kind: "activateLayout", layoutId: layout.id },
+      { kind: "waitForDuration", durationMs: 3_000 },
       { kind: "waitForAnimationCompletion" },
       { kind: "startMedia", resourceId: resource.id },
     ]);
@@ -305,6 +307,17 @@ describe("Segment editor commands", () => {
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect(repository.segment.lifecycle.exit).toEqual([]);
+
+    await expect(
+      command.execute({
+        ...scope(),
+        actions: [{ kind: "waitForDuration", durationMs: 0 }],
+        phase: "exit",
+      }),
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: expect.stringContaining("Action 1 (Hold for)"),
+    });
   });
 
   it("blocks deletion when Episode content uses the field", async () => {

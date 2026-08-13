@@ -200,6 +200,7 @@ export const ResourcePicker = ({
   const [actionError, setActionError] = useState<string>();
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [pendingResourceId, setPendingResourceId] = useState<string>();
   const query = useQuery({
     enabled: open || selectedResourceId !== undefined,
     queryFn: () => loadResources(context),
@@ -224,18 +225,31 @@ export const ResourcePicker = ({
 
   const applyResult = (
     result: Awaited<ReturnType<typeof window.showflow.resources.list>>,
-  ): void => {
+  ): readonly ResourceDto[] | undefined => {
     if (!result.ok) {
       setActionError(result.error.message);
-      return;
+      return undefined;
     }
     setActionError(undefined);
     queryClient.setQueryData(resourceQueryKey(context), result.data);
+    return result.data;
   };
   const importNative = async (): Promise<void> => {
     setBusy(true);
     try {
-      applyResult(await window.showflow.resources.import({ context }));
+      const existingIds = new Set((query.data ?? []).map(({ id }) => id));
+      const imported = applyResult(
+        await window.showflow.resources.import({ context }),
+      );
+      const newestCompatible = imported?.find(
+        (resource) =>
+          !existingIds.has(resource.id) &&
+          resource.category === category &&
+          resource.availability === "available",
+      );
+      if (newestCompatible !== undefined) {
+        setPendingResourceId(newestCompatible.id);
+      }
     } finally {
       setBusy(false);
     }
@@ -272,6 +286,7 @@ export const ResourcePicker = ({
         resourceId: resource.id,
       }),
     );
+    if (pendingResourceId === resource.id) setPendingResourceId(undefined);
     if (selectedResourceId === resource.id) onSelect(undefined);
   };
   const rename = async (resource: ResourceDto): Promise<void> => {
@@ -342,15 +357,31 @@ export const ResourcePicker = ({
       <Drawer
         description={`Import, search, and choose a compatible ${category} Resource. Files remain linked in their original location.`}
         footer={
-          <Button
-            disabled={busy}
-            onClick={() => void importNative()}
-            variant="primary"
-          >
-            Import {category}
-          </Button>
+          <>
+            <Button
+              disabled={busy}
+              onClick={() => void importNative()}
+              variant="secondary"
+            >
+              Import {category}
+            </Button>
+            <Button
+              disabled={busy || pendingResourceId === undefined}
+              onClick={() => {
+                if (pendingResourceId === undefined) return;
+                onSelect(pendingResourceId);
+                setOpen(false);
+              }}
+              variant="primary"
+            >
+              Use selected {category}
+            </Button>
+          </>
         }
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (nextOpen) setPendingResourceId(selectedResourceId);
+        }}
         open={open}
         title="Resource Browser"
       >
@@ -361,10 +392,22 @@ export const ResourcePicker = ({
             event.preventDefault();
             const files = [...event.dataTransfer.files];
             if (files.length === 0) return;
+            const existingIds = new Set((query.data ?? []).map(({ id }) => id));
             setBusy(true);
             void window.showflow.resources
               .importDropped({ context }, files)
-              .then(applyResult)
+              .then((result) => {
+                const imported = applyResult(result);
+                const newestCompatible = imported?.find(
+                  (resource) =>
+                    !existingIds.has(resource.id) &&
+                    resource.category === category &&
+                    resource.availability === "available",
+                );
+                if (newestCompatible !== undefined) {
+                  setPendingResourceId(newestCompatible.id);
+                }
+              })
               .finally(() => setBusy(false));
           }}
         >
@@ -498,11 +541,13 @@ export const ResourcePicker = ({
                         }
                         onClick={() => {
                           onSelect(resource.id);
+                          setPendingResourceId(resource.id);
                           setOpen(false);
                         }}
                         size="small"
                         variant={
-                          selectedResourceId === resource.id
+                          (pendingResourceId ?? selectedResourceId) ===
+                          resource.id
                             ? "primary"
                             : "secondary"
                         }

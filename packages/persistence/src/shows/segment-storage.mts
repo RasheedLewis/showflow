@@ -63,6 +63,12 @@ const LifecycleActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("waitForAnimationCompletion") }).strict(),
   z
     .object({
+      durationMs: z.number().finite().int().positive(),
+      kind: z.literal("waitForDuration"),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("waitForMediaCompletion"),
       resourceId: z.string().optional(),
     })
@@ -195,13 +201,17 @@ const parseLifecycleAction = (
             kind: value.kind,
             resourceId: parseEntityId<"resource">(value.resourceId),
           };
+    case "waitForDuration":
+      return { kind: value.kind, durationMs: value.durationMs };
     case "waitForAnimationCompletion":
     case "clearTemporaryState":
       return { kind: value.kind };
   }
 };
 
-const parseActions = (json: string): readonly LifecycleAction[] =>
+export const parseStoredLifecycleActions = (
+  json: string,
+): readonly LifecycleAction[] =>
   z
     .array(LifecycleActionSchema)
     .parse(JSON.parse(json) as unknown)
@@ -285,11 +295,11 @@ export const readShowSegmentDetails = (
     );
     const lifecycle = defineSegmentLifecycle({
       showSegmentId: segment.id,
-      prepare: parseActions(lifecycleRow.prepareActionsJson),
-      enter: parseActions(lifecycleRow.enterActionsJson),
+      prepare: parseStoredLifecycleActions(lifecycleRow.prepareActionsJson),
+      enter: parseStoredLifecycleActions(lifecycleRow.enterActionsJson),
       active: parseActiveConfiguration(lifecycleRow.activeConfigurationJson),
-      exit: parseActions(lifecycleRow.exitActionsJson),
-      cleanup: parseActions(lifecycleRow.cleanupActionsJson),
+      exit: parseStoredLifecycleActions(lifecycleRow.exitActionsJson),
+      cleanup: parseStoredLifecycleActions(lifecycleRow.cleanupActionsJson),
       createdAt: parseUtcTimestamp(lifecycleRow.createdAt),
       updatedAt: parseUtcTimestamp(lifecycleRow.updatedAt),
     });

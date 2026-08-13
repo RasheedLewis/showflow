@@ -285,6 +285,8 @@ export const ShowSegmentEditorDestination = () => {
   const [previewOpen, setPreviewOpen] = useState(() =>
     requestsPreview(location.state),
   );
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const editorScrollPosition = useRef(0);
   const [previewStartPhase, setPreviewStartPhase] = useState<
     "enter" | "exit"
   >();
@@ -359,6 +361,22 @@ export const ShowSegmentEditorDestination = () => {
   const navigationError = usePersistedNavigation({ route, studioId });
   const run = (operation: Promise<unknown>): void => {
     void operation.catch(() => undefined);
+  };
+  const openPreview = (startAt?: "enter" | "exit"): void => {
+    editorScrollPosition.current =
+      workspaceRef.current?.closest("main")?.scrollTop ?? 0;
+    setPreviewStartPhase(startAt);
+    setPreviewOpen(true);
+  };
+  const closePreview = (): void => {
+    setPreviewOpen(false);
+    setPreviewStartPhase(undefined);
+    window.requestAnimationFrame(() => {
+      const scrollContainer = workspaceRef.current?.closest("main");
+      if (scrollContainer !== undefined && scrollContainer !== null) {
+        scrollContainer.scrollTop = editorScrollPosition.current;
+      }
+    });
   };
   const navigationOrigin =
     studioId === undefined || showId === undefined
@@ -543,13 +561,12 @@ export const ShowSegmentEditorDestination = () => {
           >
             <LifecycleActionEditor
               actions={editor.lifecycle[phase]}
+              components={componentsQuery.data ?? []}
               disabled={mutations.isSaving}
+              key={`${phase}:${JSON.stringify(editor.lifecycle[phase])}`}
               layouts={(layoutsQuery.data ?? []).map(({ layout }) => layout)}
               onChange={(actions) => mutations.updateActions(phase, actions)}
-              onPreview={() => {
-                setPreviewStartPhase(phase);
-                setPreviewOpen(true);
-              }}
+              onPreview={() => openPreview(phase)}
               phase={phase}
               resources={resourcesQuery.data ?? []}
             />
@@ -631,13 +648,7 @@ export const ShowSegmentEditorDestination = () => {
       }
       primaryAction={
         editor !== undefined && !previewOpen ? (
-          <Button
-            onClick={() => {
-              setPreviewStartPhase(undefined);
-              setPreviewOpen(true);
-            }}
-            variant="primary"
-          >
+          <Button onClick={() => openPreview()} variant="primary">
             Preview Segment
           </Button>
         ) : undefined
@@ -658,7 +669,7 @@ export const ShowSegmentEditorDestination = () => {
       }
       title={details.draft?.name || editor?.name || "Show Segment"}
     >
-      <div className={styles.workspace}>
+      <div className={styles.workspace} ref={workspaceRef}>
         {error ? (
           <p className={styles.error} role="alert">
             {error}
@@ -679,10 +690,7 @@ export const ShowSegmentEditorDestination = () => {
             components={componentsQuery.data ?? []}
             editor={editor}
             layouts={(layoutsQuery.data ?? []).map(({ layout }) => layout)}
-            onClose={() => {
-              setPreviewOpen(false);
-              setPreviewStartPhase(undefined);
-            }}
+            onClose={closePreview}
             resources={resourcesQuery.data ?? []}
             showName={designQuery.data.show.name}
             {...(previewStartPhase === undefined

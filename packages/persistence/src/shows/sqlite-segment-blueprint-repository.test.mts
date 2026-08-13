@@ -138,7 +138,7 @@ describe("SQLite Segment and Blueprint persistence", () => {
     }
   });
 
-  test("persists Catalog Segments and exact Blueprint order across reload", async () => {
+  test("12A.T2 persists duration actions, Catalog Segments, and exact Blueprint order across reload", async () => {
     const temporaryDirectory = await fs.mkdtemp(
       path.join(os.tmpdir(), "showflow-blueprint-test-"),
     );
@@ -210,7 +210,10 @@ describe("SQLite Segment and Blueprint persistence", () => {
           expectedDurationMs: 60_000,
           lifecycle: defineSegmentLifecycle({
             ...opening.lifecycle,
-            enter: [{ kind: "waitForAnimationCompletion" }],
+            enter: [
+              { kind: "waitForAnimationCompletion" },
+              { kind: "waitForDuration", durationMs: 3_000 },
+            ],
           }),
           notesTemplate: "Welcome the audience.\nIntroduce the Show.",
         } satisfies typeof opening;

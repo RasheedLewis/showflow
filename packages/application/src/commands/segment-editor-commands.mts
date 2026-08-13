@@ -1,4 +1,5 @@
 import {
+  assertPositiveIntegerDurationMs,
   assertValidSegmentDataFieldDefault,
   createSegmentDataField,
   currentUtcTimestamp,
@@ -361,6 +362,18 @@ export class UpdateSegmentLifecycleActionsCommand {
       this.repositories.segments,
       input,
     );
+    input.actions.forEach((action, index) => {
+      if (action.kind !== "waitForDuration") return;
+      try {
+        assertPositiveIntegerDurationMs(action.durationMs);
+      } catch (error) {
+        throw new ApplicationError(
+          "VALIDATION_ERROR",
+          `Action ${index + 1} (Hold for) needs a duration greater than zero seconds.`,
+          { cause: error },
+        );
+      }
+    });
     const layoutIds = [
       ...new Set(
         input.actions.flatMap((action) =>

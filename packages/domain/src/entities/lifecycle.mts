@@ -49,9 +49,30 @@ export const getNextSegmentLifecyclePhase = (
   return SEGMENT_LIFECYCLE_PHASES[phaseIndex + 1];
 };
 
+export const assertPositiveIntegerDurationMs = (durationMs: number): void => {
+  if (
+    !Number.isFinite(durationMs) ||
+    !Number.isInteger(durationMs) ||
+    durationMs <= 0
+  ) {
+    throw new RangeError(
+      "A lifecycle hold duration must be a positive whole number of milliseconds.",
+    );
+  }
+};
+
+export const assertValidLifecycleAction = (action: LifecycleAction): void => {
+  if (action.kind === "waitForDuration") {
+    assertPositiveIntegerDurationMs(action.durationMs);
+  }
+};
+
 const freezeActions = (
   actions: readonly LifecycleAction[],
-): readonly LifecycleAction[] => Object.freeze([...actions]);
+): readonly LifecycleAction[] => {
+  for (const action of actions) assertValidLifecycleAction(action);
+  return Object.freeze([...actions]);
+};
 
 const freezeActiveConfiguration = (
   active: ActiveSegmentConfiguration,

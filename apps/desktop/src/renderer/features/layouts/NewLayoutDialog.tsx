@@ -24,8 +24,8 @@ const PRESETS = [
   },
   {
     id: "fullscreenVideo",
-    name: "Fullscreen Video",
-    description: "One edge-to-edge video region.",
+    name: "Fullscreen Media",
+    description: "One edge-to-edge image or video region.",
   },
 ] as const;
 

@@ -96,6 +96,7 @@ const layout: LayoutDto = {
 
 const editor = (
   enter: ShowSegmentEditorDto["lifecycle"]["enter"] = [],
+  exit: ShowSegmentEditorDto["lifecycle"]["exit"] = [],
 ): ShowSegmentEditorDto => ({
   archivedAt: null,
   createdAt: timestamp,
@@ -111,7 +112,7 @@ const editor = (
     },
     cleanup: [],
     enter,
-    exit: [],
+    exit,
     prepare: [],
   },
   name: "Opening",
@@ -175,6 +176,63 @@ describe("SegmentPreview", () => {
     );
   });
 
+  test("12A.T11 keeps live phase, action, Layout, and hold progress outside the audience frame", async () => {
+    render(
+      <SegmentPreview
+        components={[component]}
+        editor={editor([
+          { kind: "activateLayout", layoutId },
+          { durationMs: 300, kind: "waitForDuration" },
+        ])}
+        layouts={[layout]}
+        onClose={() => undefined}
+        resources={[]}
+        showName="Late Night"
+        studioId={studioId}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Enter" }));
+    const progress = screen.getByLabelText("Preview progress");
+    await waitFor(() => expect(progress).toHaveTextContent("Enter"));
+    expect(progress).toHaveTextContent("2. Hold for duration");
+    expect(progress).toHaveTextContent("Audience title");
+    expect(progress).toHaveTextContent(/Remaining hold:?\s*0\.[0-3] seconds/u);
+    expect(screen.getByLabelText("Audience output")).not.toHaveTextContent(
+      "Remaining hold",
+    );
+    await waitFor(
+      () => expect(progress).toHaveTextContent("No action running"),
+      { timeout: 1_000 },
+    );
+    expect(progress).toHaveTextContent("Active");
+    expect(progress).toHaveTextContent("Audience title");
+    expect(progress).toHaveTextContent("Not holding");
+  });
+
+  test("12A.T12 focuses the preview heading and keeps controls before the audience output", () => {
+    render(
+      <SegmentPreview
+        components={[component]}
+        editor={editor()}
+        layouts={[layout]}
+        onClose={() => undefined}
+        resources={[]}
+        showName="Late Night"
+        studioId={studioId}
+      />,
+    );
+
+    const heading = screen.getByRole("heading", { name: "Preview Opening" });
+    const controls = screen.getByLabelText("Segment preview controls");
+    const audience = screen.getByLabelText("Audience output");
+    expect(heading).toHaveFocus();
+    expect(
+      controls.compareDocumentPosition(audience) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   test("12.T12 names the affected production object and offers safe Retry and Stop", async () => {
     render(
       <SegmentPreview
@@ -199,9 +257,16 @@ describe("SegmentPreview", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Locate or replace this Resource",
     );
+    expect(screen.getByLabelText("Preview progress")).toHaveTextContent(
+      "Prepare Resource",
+    );
+    expect(screen.getByLabelText("Preview progress")).toHaveTextContent("None");
     expect(screen.getByRole("button", { name: "Retry Preview" })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Stop Preview" }));
     await waitFor(() => expect(screen.getByText("Stopped")).toBeVisible());
+    expect(screen.getByLabelText("Preview progress")).toHaveTextContent(
+      "No action running",
+    );
   });
 
   test("12.T10 starts an audio Resource without requiring a visual Placement", async () => {
@@ -339,6 +404,91 @@ describe("SegmentPreview", () => {
     await waitFor(() => expect(screen.getByText("Stopped")).toBeVisible());
   });
 
+  test("12A.T13 resolves a selected image by Resource ID through the preview URL boundary", async () => {
+    const baseApi = createMockDesktopApi();
+    const getUrl = vi.fn(async () => ({
+      data: "data:image/png;base64,iVBORw0KGgo=",
+      ok: true as const,
+    }));
+    Object.defineProperty(window, "showflow", {
+      configurable: true,
+      value: Object.freeze({
+        ...baseApi,
+        resources: Object.freeze({ ...baseApi.resources, getUrl }),
+      }) satisfies ShowflowDesktopApi,
+    });
+    const imageComponent: ComponentDto = {
+      ...component,
+      name: "Exit image",
+      propertySchema: [
+        {
+          key: "image",
+          label: "Image",
+          required: true,
+          type: "imageResource",
+        },
+      ],
+      supportedSlotRoles: ["mainVideo"],
+      type: "image",
+    };
+    const basePlacement = layout.componentPlacements[0];
+    const baseSlot = layout.slots[0];
+    if (basePlacement === undefined || baseSlot === undefined) {
+      throw new Error("Expected a preview Placement and Slot.");
+    }
+    const imageLayout: LayoutDto = {
+      ...layout,
+      componentPlacements: [
+        {
+          ...basePlacement,
+          bindings: { image: { kind: "resource", resourceId } },
+        },
+      ],
+      slots: [
+        {
+          ...baseSlot,
+          allowedComponentTypes: ["image"],
+          role: "mainVideo",
+        },
+      ],
+    };
+    const imageResource: ResourceDto = {
+      ...missingResource,
+      availability: "available",
+      category: "image",
+      dimensions: { height: 1080, width: 1920 },
+      displayName: "Exit still",
+      durationMs: null,
+      mimeType: "image/png",
+      originalFilename: "exit-still.png",
+    };
+
+    render(
+      <SegmentPreview
+        components={[imageComponent]}
+        editor={editor([{ kind: "activateLayout", layoutId }])}
+        layouts={[imageLayout]}
+        onClose={() => undefined}
+        resources={[imageResource]}
+        showName="Late Night"
+        studioId={studioId}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Enter" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("img", { name: "Exit still" })).toHaveAttribute(
+        "data-resource-id",
+        resourceId,
+      ),
+    );
+    expect(getUrl).toHaveBeenCalledWith({
+      resourceId,
+      studioId,
+      variant: "content",
+    });
+  });
+
   test("14.7 previews Enter directly from the lifecycle action editor", async () => {
     render(
       <SegmentPreview
@@ -380,26 +530,22 @@ describe("SegmentPreview", () => {
         screen.getByLabelText("Segment preview controls").parentElement,
       ).toHaveAttribute("data-runtime-state", "stopped"),
     );
+    expect(screen.getByLabelText("Preview progress")).toHaveTextContent(
+      "No action running",
+    );
+    expect(screen.getByLabelText("Preview progress")).toHaveTextContent(
+      "Not holding",
+    );
     expect(screen.getByLabelText("Audience output")).toHaveTextContent(
       "Preview stopped",
     );
   });
 
-  test("12.5 cancels an in-flight animation when the preview window closes", async () => {
+  test("12A.T5 cancels an in-flight duration when the preview window closes", async () => {
     render(
       <SegmentPreview
-        components={[
-          {
-            ...component,
-            defaultEnterAnimation: {
-              delayMs: 0,
-              durationMs: 10_000,
-              easing: "linear",
-              preset: "fade",
-            },
-          },
-        ]}
-        editor={editor()}
+        components={[component]}
+        editor={editor([{ durationMs: 10_000, kind: "waitForDuration" }])}
         layouts={[layout]}
         onClose={() => undefined}
         resources={[]}

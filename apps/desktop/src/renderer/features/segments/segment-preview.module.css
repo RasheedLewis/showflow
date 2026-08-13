@@ -1,8 +1,7 @@
 .preview {
   display: grid;
-  gap: var(--sf-space-6);
+  gap: var(--sf-space-5);
   min-height: 100%;
-  padding: var(--sf-space-8);
 }
 
 .header,
@@ -62,14 +61,14 @@
   display: grid;
   gap: var(--sf-space-3);
   justify-items: center;
-  padding: var(--sf-space-8);
+  padding: var(--sf-space-6);
 }
 
 .audienceFrame {
   background: var(--sf-bg-canvas);
   border: var(--sf-border-width-default) solid var(--sf-border-default);
   border-radius: var(--sf-radius-md);
-  max-height: 66vh;
+  max-height: 56vh;
   overflow: hidden;
   position: relative;
   width: min(100%, 72rem);
@@ -94,6 +93,50 @@
 .controls {
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.status {
+  background: var(--sf-bg-panel);
+  border: var(--sf-border-width-default) solid var(--sf-border-default);
+  border-radius: var(--sf-radius-md);
+  padding: var(--sf-space-4) var(--sf-space-5);
+}
+
+.statusGrid {
+  display: grid;
+  gap: var(--sf-space-4);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.statusGrid > div {
+  display: grid;
+  gap: var(--sf-space-1);
+}
+
+.statusGrid dt {
+  color: var(--sf-text-tertiary);
+  font-size: var(--sf-font-size-label-sm);
+  font-weight: var(--sf-font-weight-label-sm);
+  line-height: var(--sf-line-height-label-sm);
+}
+
+.statusGrid dd {
+  color: var(--sf-text-primary);
+  font-size: var(--sf-font-size-body-sm);
+  line-height: var(--sf-line-height-body-sm);
+  margin: 0;
+}
+
+.srOnly {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
 }
 
 .layoutControls {
@@ -124,10 +167,6 @@
 }
 
 @media (max-width: 49.9375rem) {
-  .preview {
-    padding: var(--sf-space-4);
-  }
-
   .header,
   .layoutControls,
   .failure {
@@ -137,5 +176,9 @@
 
   .audienceSurround {
     padding: var(--sf-space-4);
+  }
+
+  .statusGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

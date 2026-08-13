@@ -449,6 +449,8 @@ const domainLifecycleAction = (action: LifecycleActionDto): LifecycleAction => {
         kind: action.kind,
         layoutId: parseEntityId<"layout">(action.layoutId),
       };
+    case "waitForDuration":
+      return { kind: action.kind, durationMs: action.durationMs };
     case "waitForAnimationCompletion":
     case "clearTemporaryState":
       return { kind: action.kind };
@@ -469,7 +471,7 @@ export const handleUpdateSegmentActionsRequest = async (
   if (!valid.success)
     return errorResult(
       "IPC_INVALID_REQUEST",
-      "Review the ordered production actions and try again.",
+      "Review each production action. Hold durations must be greater than zero seconds.",
     );
   try {
     await operations.updateActions.execute({
